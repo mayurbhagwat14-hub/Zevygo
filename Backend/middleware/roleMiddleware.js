@@ -83,12 +83,39 @@ const isSuperAdmin = async (req, res, next) => {
   }
 };
 
+/**
+ * Vendor Self-Service middleware
+ * Allows vendors to access profile, services, and KYC endpoints
+ * even before full admin approval. Blocks suspended/blocked vendors.
+ * Use this instead of isVendor for self-service endpoints.
+ */
+const isVendorSelfService = (req, res, next) => {
+  if (req.userRole !== USER_ROLES.VENDOR) {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Vendor role required.'
+    });
+  }
+
+  // Block suspended or blocked vendors
+  const accountStatus = req.user?.accountStatus;
+  if (accountStatus === 'SUSPENDED' || accountStatus === 'BLOCKED') {
+    return res.status(403).json({
+      success: false,
+      message: 'Your account has been suspended or blocked. Please contact support.'
+    });
+  }
+
+  next();
+};
+
 module.exports = {
   isUser,
   isVendor,
   isWorker,
   isAdmin,
   isAdminOrVendor,
-  isSuperAdmin
+  isSuperAdmin,
+  isVendorSelfService
 };
 

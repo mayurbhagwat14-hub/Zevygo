@@ -76,33 +76,29 @@ const ReportsOverview = () => {
       title: 'Total Revenue',
       value: `₹${stats?.totalRevenue?.toLocaleString() || 0}`,
       icon: FiDollarSign,
-      color: 'text-green-600',
-      bg: 'bg-green-50',
+      iconBox: 'bg-white border-2 border-emerald-500 text-emerald-600',
       link: '/admin/reports/revenue'
     },
     {
       title: 'Platform Comm.',
       value: `₹${stats?.platformCommission?.toLocaleString() || 0}`,
       icon: FiTrendingUp,
-      color: 'text-primary-600',
-      bg: 'bg-primary-50',
+      iconBox: 'bg-white border-2 border-blue-500 text-blue-600',
       link: '/admin/reports/revenue'
     },
     {
       title: 'Total Bookings',
       value: stats?.totalBookings || 0,
       icon: FiShoppingBag,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50',
+      iconBox: 'bg-white border-2 border-amber-500 text-amber-600',
       link: '/admin/reports/bookings'
     },
     {
       title: 'Active Users',
       value: stats?.totalUsers || 0,
       icon: FiUsers,
-      color: 'text-indigo-600',
-      bg: 'bg-indigo-50',
-      link: '/admin/reports/workers' // Just as an example link
+      iconBox: 'bg-white border-2 border-indigo-500 text-indigo-600',
+      link: '/admin/reports/workers'
     }
   ];
 
@@ -195,8 +191,8 @@ const ReportsOverview = () => {
           <Link key={index} to={kpi.link}>
             <CardShell className="bg-white hover:shadow-lg transition-shadow cursor-pointer h-full p-4">
               <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-xl ${kpi.bg} ${kpi.color}`}>
-                  <kpi.icon size={22} />
+                <div className={`w-11 h-11 rounded-xl ${kpi.iconBox} flex items-center justify-center shadow-2xs`}>
+                  <kpi.icon size={20} />
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{kpi.title}</p>

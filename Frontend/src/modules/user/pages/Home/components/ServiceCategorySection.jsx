@@ -4,17 +4,15 @@ import { themeColors } from '../../../../../theme';
 
 const ServiceCategorySection = ({ title, services, onSeeAllClick, onServiceClick }) => {
   return (
-    <div className="mb-6">
-      <div className="px-4 mb-5 flex items-center justify-between">
-        <h2 
-          className="text-xl font-bold text-black"
-        >
+    <div className="mb-8">
+      <div className="px-4 mb-4 flex items-center justify-between">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
           {title}
         </h2>
       </div>
 
       {/* Horizontal Scrollable Service Cards */}
-      <div className="flex gap-4 overflow-x-auto px-4 pb-2 scrollbar-hide">
+      <div className="flex gap-3.5 sm:gap-4 overflow-x-auto px-4 pb-3 pt-1 scrollbar-hide snap-x snap-mandatory">
         {services.map((service) => (
           <SimpleServiceCard
             key={service.id}

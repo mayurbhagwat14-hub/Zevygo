@@ -6,7 +6,7 @@ import Modal from "../components/Modal";
 import ToggleSwitch from "../components/ToggleSwitch"; // Import ToggleSwitch
 import { ensureIds, saveCatalog, slugify, toAssetUrl } from "../utils";
 
-import { homeContentService, serviceService } from "../../../../../services/catalogService";
+import { homeContentService, serviceService, categoryService } from "../../../../../services/catalogService";
 
 const RedirectionSelector = ({
   targetCategoryId,
@@ -194,14 +194,34 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
 
   const home = ensureIds(catalog).home;
 
-  // Fetch home content from API on mount or city change
+  // Fetch home content and categories from API on mount or city change
   useEffect(() => {
     const fetchHomeContent = async () => {
       try {
         const params = {};
         if (selectedCity) params.cityId = selectedCity;
 
-        const response = await homeContentService.get(params);
+        const [response, catRes] = await Promise.all([
+          homeContentService.get(params),
+          categoryService.getAll(params).catch(() => ({ success: false }))
+        ]);
+
+        const next = ensureIds(catalog);
+
+        if (catRes.success && catRes.categories) {
+          next.categories = catRes.categories.map(cat => ({
+            id: cat.id || cat._id,
+            title: cat.title,
+            slug: cat.slug,
+            homeIconUrl: cat.homeIconUrl || cat.icon || cat.imageUrl || cat.iconUrl || "",
+            imageUrl: cat.imageUrl || cat.homeIconUrl || cat.icon || cat.iconUrl || "",
+            homeBadge: cat.homeBadge || "",
+            hasSaleBadge: Boolean(cat.hasSaleBadge),
+            showOnHome: cat.showOnHome !== false,
+            homeOrder: Number.isFinite(cat.homeOrder) ? cat.homeOrder : 0,
+          }));
+        }
+
         if (response.success && response.homeContent) {
           const hc = response.homeContent;
 
@@ -224,8 +244,6 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
             }));
           };
 
-          // Map API response to component's expected format
-          const next = ensureIds(catalog);
           next.home = {
             banners: addIds(hc.banners || []),
             promoCarousel: addIds(hc.promos || []), // API returns 'promos', component expects 'promoCarousel'
@@ -241,9 +259,9 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
             isCategorySectionsVisible: hc.isCategorySectionsVisible ?? true,
             isCategoriesVisible: hc.isCategoriesVisible ?? true
           };
-          setCatalog(next);
-          saveCatalog(next);
         }
+        setCatalog(next);
+        saveCatalog(next);
       } catch (error) {
         console.error("Error fetching home content:", error);
         toast.error("Failed to load home content");
@@ -749,116 +767,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
           )}
         </div>
 
-        {/* Curated Services */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
-          <div className="flex items-start justify-between gap-3 pb-2 mb-3 border-b border-gray-200">
-            <div>
-              <div className="text-lg font-bold text-gray-900">Thoughtful Curations</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <ToggleSwitch
-              label="Show Curated"
-              checked={home?.isCuratedVisible !== false}
-              onChange={() => patchHome({ isCuratedVisible: !home?.isCuratedVisible })}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                resetCuratedForm();
-                setIsCuratedModalOpen(true);
-              }}
-              className="px-4 py-2 rounded-xl text-white transition-all flex items-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: 'linear-gradient(to right, #2874F0, #1e5fd4)',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <FiPlus className="w-4 h-4" style={{ display: 'block', color: '#ffffff' }} />
-              <span>Add</span>
-            </button>
-          </div>
-        </div>
-        {(home.curatedServices || []).length === 0 ? (
-          <div className="text-base text-gray-500">No items</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b-2 border-gray-200">
-                  <th className="text-left py-2 px-3 text-sm font-bold text-gray-700 w-12">#</th>
-                  <th className="text-left py-2 px-3 text-sm font-bold text-gray-700 w-24">Media</th>
-                  <th className="text-left py-2 px-3 text-sm font-bold text-gray-700">Title</th>
-                  <th className="text-left py-2 px-3 text-sm font-bold text-gray-700">YouTube URL</th>
-                  <th className="text-left py-2 px-3 text-sm font-bold text-gray-700">Redirect</th>
-                  <th className="text-center py-2 px-3 text-sm font-bold text-gray-700 w-32">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(home.curatedServices || []).map((s, idx) => (
-                  <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="py-2.5 px-3 text-sm font-semibold text-gray-600">{idx + 1}</td>
-                    <td className="py-2.5 px-3">
-                      {s.gifUrl ? (
-                        s.gifUrl.match(/\.(gif|webp)$/i) ? (
-                          <img src={s.gifUrl} alt="Preview" className="h-14 w-14 object-cover rounded-lg border border-gray-200" />
-                        ) : (
-                          <video src={s.gifUrl} className="h-14 w-14 object-cover rounded-lg border border-gray-200" controls />
-                        )
-                      ) : (
-                        <div className="h-14 w-14 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                          <span className="text-[10px] text-gray-400">No media</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <div className="text-sm font-semibold text-gray-900">{s.title || "—"}</div>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <div className="text-sm text-gray-600">{s.youtubeUrl || "—"}</div>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <div className="text-sm text-gray-600">
-                        {s.slug
-                          ? `Service: ${allServices.find(svc => svc.slug === s.slug)?.title || s.slug}`
-                          : (s.targetCategoryId ? getCategoryTitle(s.targetCategoryId) : "—")
-                        }
-                      </div>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingCuratedId(s.id);
-                            setCuratedForm({ ...s });
-                            setIsCuratedModalOpen(true);
-                          }}
-                          className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                          title="Edit"
-                        >
-                          <FiEdit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => patchHome({ curatedServices: (home.curatedServices || []).filter((x) => x.id !== s.id) })}
-                          className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                          title="Delete"
-                        >
-                          <FiTrash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+
 
         {/* New & Noteworthy */}
         <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
@@ -1248,11 +1157,11 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                   <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-4 text-sm font-semibold text-gray-600">{idx + 1}</td>
                     <td className="py-4 px-4">
-                      {c.homeIconUrl ? (
-                        <img src={c.homeIconUrl} alt={c.title} className="h-12 w-12 object-cover rounded-lg border border-gray-200" />
+                      {(c.homeIconUrl || c.imageUrl || c.iconUrl || c.icon) ? (
+                        <img src={toAssetUrl(c.homeIconUrl || c.imageUrl || c.iconUrl || c.icon)} alt={c.title} className="h-10 w-10 object-contain rounded bg-gray-50 border border-gray-100" />
                       ) : (
-                        <div className="h-12 w-12 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                          <span className="text-xs text-gray-400">No icon</span>
+                        <div className="h-10 w-10 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                          <span className="text-[10px] text-gray-400">No icon</span>
                         </div>
                       )}
                     </td>
@@ -1570,119 +1479,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
         </div>
       </Modal>
 
-      <Modal
-        isOpen={isCuratedModalOpen}
-        onClose={resetCuratedForm}
-        title={editingCuratedId ? "Edit Curated Service" : "Add Curated Service"}
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-base font-bold text-gray-900 mb-2">Title</label>
-            <input
-              value={curatedForm.title}
-              onChange={(e) => setCuratedForm((p) => ({ ...p, title: e.target.value }))}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
-              placeholder="Bathroom Deep Cleaning"
-            />
-          </div>
-          <div>
-            <label className="block text-base font-bold text-gray-900 mb-2">GIF/Video</label>
-            <div className="space-y-3">
-              <input
-                type="file"
-                accept="image/gif,video/*"
-                disabled={uploading}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setUploading(true);
-                    setUploadProgress(0);
-                    try {
-                      const response = await serviceService.uploadImage(file, 'curated', (progress) => {
-                        setUploadProgress(progress);
-                      });
-                      if (response.success) {
-                        setCuratedForm((p) => ({ ...p, gifUrl: response.imageUrl }));
-                        toast.success("Media uploaded!");
-                      }
-                    } catch (error) {
-                      console.error('Curated upload error:', error);
-                      toast.error("Failed to upload image/video");
-                    } finally {
-                      setUploading(false);
-                      setUploadProgress(0);
-                    }
-                  }
-                }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              {uploading && (
-                <div className="space-y-2 mt-2">
-                  <div className="flex items-center justify-between text-blue-600 text-sm font-medium">
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                      Uploading...
-                    </div>
-                    <span>{uploadProgress}%</span>
-                  </div>
-                  <div className="w-full bg-blue-100 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="bg-blue-600 h-full transition-all duration-300 ease-out"
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )}
-              {curatedForm.gifUrl && !uploading && (
-                <div className="mt-3 relative inline-block group">
-                  {curatedForm.gifUrl.match(/\.(gif|webp)$/i) ? (
-                    <img src={curatedForm.gifUrl} alt="Preview" className="h-32 w-auto object-cover rounded-lg border border-gray-200" />
-                  ) : (
-                    <video src={curatedForm.gifUrl} className="h-32 w-auto object-cover rounded-lg border border-gray-200" controls />
-                  )}
-                  <button
-                    onClick={() => setCuratedForm(p => ({ ...p, gifUrl: "" }))}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Remove media"
-                  >
-                    <FiTrash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-          <div>
-            <label className="block text-base font-bold text-gray-900 mb-2">YouTube URL</label>
-            <input
-              value={curatedForm.youtubeUrl}
-              onChange={(e) => setCuratedForm((p) => ({ ...p, youtubeUrl: e.target.value }))}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
-              placeholder="https://youtube.com/..."
-            />
-          </div>
 
-          <div className="flex gap-3 pt-4">
-            <button
-              onClick={saveCurated}
-              disabled={uploading || isSyncing}
-              className={`flex-1 py-3.5 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg ${(uploading || isSyncing) ? 'opacity-50 cursor-not-allowed bg-gray-400' : ''}`}
-              style={{ backgroundColor: (uploading || isSyncing) ? '#cbd5e1' : '#2874F0' }}
-            >
-              {(uploading || isSyncing) ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              ) : <FiSave className="w-5 h-5" />}
-              {uploading ? "Uploading..." : isSyncing ? "Saving..." : (editingCuratedId ? "Update Curated Service" : "Add Curated Service")}
-            </button>
-            <button
-              onClick={resetCuratedForm}
-              disabled={isSyncing}
-              className="px-6 py-3.5 text-gray-700 rounded-xl font-medium hover:bg-gray-100 transition-all border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       <Modal
         isOpen={isNoteworthyModalOpen}

@@ -7,81 +7,77 @@ const ServiceWithRatingCard = memo(({ image, title, rating, reviews, price, orig
   const { branding } = useBranding();
   return (
     <div
-      className="min-w-[180px] w-[180px] bg-white rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-95 group"
-      style={{
-        boxShadow: themeColors.cardShadow,
-        border: themeColors.cardBorder
-      }}
+      className="w-[155px] sm:w-[185px] shrink-0 snap-start flex flex-col bg-white rounded-xl overflow-hidden cursor-pointer border border-gray-100/90 group transition-all duration-300 shadow-[0_3px_14px_rgba(0,0,0,0.04)] hover:shadow-lg"
       onClick={onClick}
     >
-      <div className="relative">
+      {/* Image Container */}
+      <div className="relative w-full h-26 sm:h-30 overflow-hidden bg-gray-100">
         {discount && (
           <div
-            className="absolute top-3 left-3 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md z-10"
-            style={{ backgroundColor: themeColors.button }}
+            className="absolute top-2 left-2 bg-[#2563EB] text-white text-[9.5px] font-black px-2 py-0.5 rounded shadow-xs z-10 uppercase tracking-wider"
           >
-            {discount} OFF
+            {discount.toString().toUpperCase().includes('OFF') ? discount : `${discount}% OFF`}
           </div>
         )}
         {image ? (
           <img
             src={image}
             alt={title}
-            className="w-full h-36 object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-108"
             loading="lazy"
             decoding="async"
           />
         ) : (
-          <div className="w-full h-36 flex items-center justify-center bg-gray-50 border-b border-gray-100">
+          <div className="w-full h-full flex items-center justify-center bg-blue-50/50">
             <img
               src={branding?.appLogo}
               alt="Placeholder"
-              className="w-12 h-12 object-contain opacity-40 grayscale"
+              className="w-10 h-10 object-contain opacity-40 grayscale"
             />
           </div>
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
-      <div className="p-3">
-        <h3 className="text-[13px] font-semibold text-gray-900 leading-snug mb-1 line-clamp-2 min-h-[40px]">{title}</h3>
-        {rating && (
+
+      {/* Content Container */}
+      <div className="p-2.5 flex flex-col flex-1 justify-between">
+        <div>
+          <h3 className="text-[11.5px] sm:text-xs font-semibold text-gray-900 leading-snug mb-1 line-clamp-2 min-h-[30px] capitalize group-hover:text-blue-600 transition-colors">
+            {title}
+          </h3>
+
           <div className="flex items-center gap-1 mb-2">
-            <AiFillStar className="w-3.5 h-3.5 text-yellow-400" />
-            <span className="text-xs text-gray-900 font-bold">{rating}</span>
+            <span className="inline-flex items-center gap-0.5 bg-amber-50 text-amber-800 border border-amber-200/60 px-1.5 py-0.5 rounded text-[10px] font-bold">
+              <AiFillStar className="w-2.5 h-2.5 text-amber-500" />
+              {rating || '4.8'}
+            </span>
             {reviews && (
-              <span className="text-[10px] text-gray-500">({reviews})</span>
+              <span className="text-[9.5px] text-gray-400 font-medium truncate">
+                ({reviews})
+              </span>
             )}
           </div>
-        )}
-        <div className="flex items-center justify-between mt-auto pt-2">
+        </div>
+
+        {/* Price & Action */}
+        <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-gray-100/80 mt-auto">
           <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[15px] font-bold text-gray-900">
-                {price && !isNaN(price.toString().replace(/[,]/g, '')) ? `₹${price}` : (price || 'Contact for price')}
+            {originalPrice && (
+              <span className="text-[9px] text-gray-400 line-through leading-tight">
+                ₹{originalPrice}
               </span>
-              {originalPrice && (
-                <span className="text-[11px] text-gray-400 line-through decoration-gray-400/60">₹{originalPrice}</span>
-              )}
-            </div>
+            )}
+            <span className="text-xs sm:text-sm font-bold text-gray-900 leading-none">
+              {price && !isNaN(price.toString().replace(/[,]/g, '')) ? `₹${price}` : (price || 'Custom')}
+            </span>
           </div>
+
           <button
             onClick={(e) => {
               e.stopPropagation();
               onAddClick?.();
             }}
-            className="px-5 py-1.5 h-8 rounded-lg text-xs font-bold transition-all active:scale-95 border"
-            style={{
-              backgroundColor: `${themeColors.brand.teal}0D`,
-              color: themeColors.button,
-              borderColor: `${themeColors.brand.teal}1A`
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = themeColors.button;
-              e.target.style.color = '#FFFFFF';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = `${themeColors.brand.teal}0D`;
-              e.target.style.color = themeColors.button;
-            }}
+            className="shrink-0 text-[10.5px] font-bold px-2.5 py-1 rounded-md bg-[#2563EB] hover:bg-blue-700 text-white shadow-xs active:scale-95 transition-all whitespace-nowrap"
           >
             Add
           </button>

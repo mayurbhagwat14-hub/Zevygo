@@ -216,19 +216,25 @@ const sendBookingEmails = async (booking, user, vendor, service) => {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
     const transporter = createTransporter();
     const bookingId = booking.bookingNumber || booking._id;
+    const categoryTitle = booking.categoryId?.title || booking.categoryName || 'Service';
+    const isScheduled = booking.bookingType === 'scheduled' || booking.scheduledFor;
+    const scheduledDisplay = isScheduled && (booking.scheduledFor || booking.scheduledDate)
+      ? `${new Date(booking.scheduledFor || booking.scheduledDate).toLocaleDateString('en-IN', { dateStyle: 'full' })} ${booking.scheduledTime || ''}`
+      : 'Instant Booking';
 
     if (user && user.email) {
       const content = `
         <div class="badge badge-success">Confirmed</div>
-        <h2>Booking Scheduled</h2>
-        <p>Great news! Your booking for <strong>${service.title || service.name}</strong> has been confirmed. A professional will be at your door as per the schedule below.</p>
+        <h2>Booking Confirmed</h2>
+        <p>Great news! Your booking for <strong>${service?.title || service?.name || categoryTitle}</strong> has been confirmed. A professional will be assigned as per your schedule.</p>
         
         <div class="card">
           <div class="card-title">Order Summary</div>
           <div class="data-row"><span class="data-label">Booking ID</span><span class="data-value">#${bookingId}</span></div>
-          <div class="data-row"><span class="data-label">Date</span><span class="data-value">${new Date(booking.scheduledDate).toLocaleDateString('en-IN', { dateStyle: 'full' })}</span></div>
-          <div class="data-row"><span class="data-label">Time Slot</span><span class="data-value">${booking.scheduledTime}</span></div>
-          <div class="data-row"><span class="data-label">Address</span><span class="data-value">${booking.address.city}, ${booking.address.pincode}</span></div>
+          <div class="data-row"><span class="data-label">Category</span><span class="data-value">${categoryTitle}</span></div>
+          <div class="data-row"><span class="data-label">Booking Type</span><span class="data-value" style="text-transform: capitalize;">${booking.bookingType || 'scheduled'}</span></div>
+          <div class="data-row"><span class="data-label">Schedule / Date</span><span class="data-value">${scheduledDisplay}</span></div>
+          <div class="data-row"><span class="data-label">Address</span><span class="data-value">${booking.address?.city || ''}, ${booking.address?.pincode || ''}</span></div>
           
           <div class="total-row">
             <span class="total-label">Total Amount</span>
@@ -242,9 +248,9 @@ const sendBookingEmails = async (booking, user, vendor, service) => {
       `;
 
       await transporter.sendMail({
-        from: process.env.EMAIL_FROM || 'Homster <noreply@homster.com>',
+        from: process.env.EMAIL_FROM || 'Zevygo <noreply@zevygo.com>',
         to: user.email,
-        subject: `Booking Confirmed #${bookingId} - Homster`,
+        subject: `Booking Confirmed #${bookingId} - Zevygo`,
         html: emailWrapper(content, 'Confirmed', 'Your booking is scheduled successfully')
       });
     }
@@ -253,14 +259,16 @@ const sendBookingEmails = async (booking, user, vendor, service) => {
       const vContent = `
         <div class="badge badge-primary">New Job</div>
         <h2>Incoming Order</h2>
-        <p>Hello ${vendor.name}, a new booking has been assigned to you. Plan your resources accordingly.</p>
+        <p>Hello ${vendor.name}, a new booking in <strong>${categoryTitle}</strong> has been assigned to you. Plan your resources accordingly.</p>
         
         <div class="card">
           <div class="card-title">Job Details</div>
           <div class="data-row"><span class="data-label">Order</span><span class="data-value">#${bookingId}</span></div>
-          <div class="data-row"><span class="data-label">Service</span><span class="data-value">${service.title}</span></div>
-          <div class="data-row"><span class="data-label">Customer</span><span class="data-value">${user.name}</span></div>
-          <div class="data-row"><span class="data-label">Schedule</span><span class="data-value">${new Date(booking.scheduledDate).toLocaleDateString()} at ${booking.scheduledTime}</span></div>
+          <div class="data-row"><span class="data-label">Category</span><span class="data-value">${categoryTitle}</span></div>
+          <div class="data-row"><span class="data-label">Service</span><span class="data-value">${service?.title || categoryTitle}</span></div>
+          <div class="data-row"><span class="data-label">Booking Type</span><span class="data-value" style="text-transform: capitalize;">${booking.bookingType || 'scheduled'}</span></div>
+          <div class="data-row"><span class="data-label">Schedule</span><span class="data-value">${scheduledDisplay}</span></div>
+          <div class="data-row"><span class="data-label">Customer</span><span class="data-value">${user?.name || 'Customer'}</span></div>
           <div class="data-row"><span class="data-label">Amount</span><span class="data-value">₹${booking.finalAmount}</span></div>
         </div>
 
@@ -270,9 +278,9 @@ const sendBookingEmails = async (booking, user, vendor, service) => {
       `;
 
       await transporter.sendMail({
-        from: process.env.EMAIL_FROM || 'Homster <noreply@homster.com>',
+        from: process.env.EMAIL_FROM || 'Zevygo <noreply@zevygo.com>',
         to: vendor.email,
-        subject: `New Job Assigned #${bookingId} - Homster`,
+        subject: `New Job Assigned #${bookingId} - Zevygo`,
         html: emailWrapper(vContent, 'New Job', 'Action Required: New job assigned')
       });
     }
@@ -288,18 +296,20 @@ const sendBookingCompletionEmails = async (booking) => {
     const transporter = createTransporter();
     const user = booking.userId;
     const bookingId = booking.bookingNumber || booking._id;
+    const categoryTitle = booking.categoryId?.title || booking.categoryName || 'Home Service';
 
     if (user && user.email) {
       const content = `
         <div style="text-align: center; margin-bottom: 32px;">
           <div style="font-size: 48px; margin-bottom: 16px;">⭐</div>
           <h2>Service Completed</h2>
-          <p>Thank you for choosing Homster. We hope the service for <strong>${booking.serviceId?.title || 'Home Service'}</strong> was to your satisfaction.</p>
+          <p>Thank you for choosing Zevygo. We hope the service for <strong>${booking.serviceId?.title || categoryTitle}</strong> (${categoryTitle}) was to your satisfaction.</p>
         </div>
 
         <div class="card" style="background-color: white;">
           <div class="card-title">Official Receipt</div>
           <div class="data-row"><span class="data-label">Invoice No.</span><span class="data-value">INV-${bookingId}</span></div>
+          <div class="data-row"><span class="data-label">Category</span><span class="data-value">${categoryTitle}</span></div>
           <div class="data-row"><span class="data-label">Completed On</span><span class="data-value">${new Date().toLocaleDateString('en-IN')}</span></div>
           <div class="data-row"><span class="data-label">Service Charge</span><span class="data-value">₹${booking.basePrice - booking.discount}</span></div>
           <div class="data-row"><span class="data-label">Visiting Fee</span><span class="data-value">₹${booking.visitingCharges}</span></div>
@@ -321,9 +331,9 @@ const sendBookingCompletionEmails = async (booking) => {
       `;
 
       await transporter.sendMail({
-        from: process.env.EMAIL_FROM || 'Homster <noreply@homster.com>',
+        from: process.env.EMAIL_FROM || 'Zevygo <noreply@zevygo.com>',
         to: user.email,
-        subject: `Service Invoice #${bookingId} - Homster`,
+        subject: `Service Invoice #${bookingId} - Zevygo`,
         html: emailWrapper(content, 'Invoice', 'Your service is complete. Here is the receipt.')
       });
     }

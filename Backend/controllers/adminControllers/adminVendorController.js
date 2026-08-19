@@ -133,6 +133,8 @@ const getVendorDetails = async (req, res) => {
   }
 };
 
+const { logAudit } = require('../../utils/auditLogger');
+
 /**
  * Approve vendor registration
  */
@@ -141,17 +143,27 @@ const approveVendor = async (req, res) => {
     const { id } = req.params;
 
     const vendor = await Vendor.findById(id);
-
     if (!vendor) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
-      });
+      return res.status(404).json({ success: false, message: 'Vendor not found' });
     }
 
+    const prevStatus = vendor.accountStatus;
     vendor.approvalStatus = VENDOR_STATUS.APPROVED;
+    vendor.accountStatus = 'ACTIVE';
     vendor.approvalDate = new Date();
     await vendor.save();
+
+    await logAudit({
+      actorId: req.user ? req.user.id : vendor._id,
+      actorType: 'ADMIN',
+      actorName: req.user ? (req.user.name || 'Admin') : 'Admin',
+      action: 'KYC_APPROVED',
+      entity: 'Vendor',
+      entityId: vendor._id,
+      previousValue: { accountStatus: prevStatus, approvalStatus: vendor.approvalStatus },
+      newValue: { accountStatus: 'ACTIVE', approvalStatus: 'approved' },
+      req
+    });
 
     // Send notification to vendor
     await createNotification({
@@ -170,10 +182,7 @@ const approveVendor = async (req, res) => {
     });
   } catch (error) {
     console.error('Approve vendor error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to approve vendor. Please try again.'
-    });
+    res.status(500).json({ success: false, message: 'Failed to approve vendor.' });
   }
 };
 
@@ -182,30 +191,31 @@ const approveVendor = async (req, res) => {
  */
 const rejectVendor = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
-
     const { id } = req.params;
     const { reason } = req.body;
 
     const vendor = await Vendor.findById(id);
-
     if (!vendor) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
-      });
+      return res.status(404).json({ success: false, message: 'Vendor not found' });
     }
 
+    const prevStatus = vendor.accountStatus;
     vendor.approvalStatus = VENDOR_STATUS.REJECTED;
+    vendor.accountStatus = 'REJECTED';
     vendor.rejectedReason = reason || 'Registration rejected by admin';
     await vendor.save();
+
+    await logAudit({
+      actorId: req.user ? req.user.id : vendor._id,
+      actorType: 'ADMIN',
+      actorName: req.user ? (req.user.name || 'Admin') : 'Admin',
+      action: 'KYC_REJECTED',
+      entity: 'Vendor',
+      entityId: vendor._id,
+      previousValue: { accountStatus: prevStatus },
+      newValue: { accountStatus: 'REJECTED', reason: vendor.rejectedReason },
+      req
+    });
 
     // Send notification to vendor
     await createNotification({
@@ -224,10 +234,7 @@ const rejectVendor = async (req, res) => {
     });
   } catch (error) {
     console.error('Reject vendor error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to reject vendor. Please try again.'
-    });
+    res.status(500).json({ success: false, message: 'Failed to reject vendor.' });
   }
 };
 
@@ -237,19 +244,31 @@ const rejectVendor = async (req, res) => {
 const suspendVendor = async (req, res) => {
   try {
     const { id } = req.params;
+    const { reason } = req.body;
 
     const vendor = await Vendor.findById(id);
-
     if (!vendor) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
-      });
+      return res.status(404).json({ success: false, message: 'Vendor not found' });
     }
 
+    const prevStatus = vendor.accountStatus;
     vendor.approvalStatus = VENDOR_STATUS.SUSPENDED;
+    vendor.accountStatus = 'SUSPENDED';
     vendor.isActive = false;
+    if (reason) vendor.rejectedReason = reason;
     await vendor.save();
+
+    await logAudit({
+      actorId: req.user ? req.user.id : vendor._id,
+      actorType: 'ADMIN',
+      actorName: req.user ? (req.user.name || 'Admin') : 'Admin',
+      action: 'VENDOR_SUSPENDED',
+      entity: 'Vendor',
+      entityId: vendor._id,
+      previousValue: { accountStatus: prevStatus },
+      newValue: { accountStatus: 'SUSPENDED', reason },
+      req
+    });
 
     res.status(200).json({
       success: true,
@@ -258,10 +277,7 @@ const suspendVendor = async (req, res) => {
     });
   } catch (error) {
     console.error('Suspend vendor error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to suspend vendor. Please try again.'
-    });
+    res.status(500).json({ success: false, message: 'Failed to suspend vendor.' });
   }
 };
 

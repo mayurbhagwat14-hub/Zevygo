@@ -84,27 +84,24 @@ const CuratedServices = React.memo(({ services, onServiceClick }) => {
   }
 
   return (
-    <div ref={sectionRef} className="">
+    <div ref={sectionRef} className="mb-8">
       {/* Title Section */}
-      <div ref={titleRef} className="px-4 mb-5" style={{ opacity: 1 }}>
-        <h2
-          className="text-xl font-bold mb-1 text-gray-900 tracking-tight"
-        >
+      <div ref={titleRef} className="px-4 mb-3.5" style={{ opacity: 1 }}>
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
           Thoughtful curations
         </h2>
-        <p className="text-sm font-medium text-gray-500">
+        <p className="text-xs sm:text-sm font-medium text-gray-500">
           of our finest experiences
         </p>
       </div>
 
-      <div ref={cardsRef} className="flex gap-2 overflow-x-auto px-6 lg:px-4 pb-2 scrollbar-hide lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible">
+      <div ref={cardsRef} className="flex gap-3.5 sm:gap-4 overflow-x-auto px-4 pb-3 pt-1 scrollbar-hide snap-x snap-mandatory lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible lg:snap-none">
         {serviceList.map((service, index) => (
           <ServiceCard
             key={service.id || index}
             title={service.title}
             gif={service.gif}
             youtubeUrl={service.youtubeUrl}
-
           />
         ))}
       </div>

@@ -17,101 +17,92 @@ import {
 } from 'react-icons/fi';
 import api from '../../../../services/api';
 
-// Report Card Component
-const ReportCard = ({ title, description, icon: Icon, color, status, onGenerate, loading }) => {
-  const colorClasses = {
-    blue: {
-      bg: 'bg-blue-50',
-      text: 'text-blue-600',
-      hover: 'hover:border-blue-500',
-      hoverBg: 'group-hover:bg-blue-100',
-      btn: 'text-blue-600 hover:text-blue-800'
-    },
-    green: {
-      bg: 'bg-green-50',
-      text: 'text-green-600',
-      hover: 'hover:border-green-500',
-      hoverBg: 'group-hover:bg-green-100',
-      btn: 'text-green-600 hover:text-green-800'
-    },
-    purple: {
-      bg: 'bg-purple-50',
-      text: 'text-purple-600',
-      hover: 'hover:border-purple-500',
-      hoverBg: 'group-hover:bg-purple-100',
-      btn: 'text-purple-600 hover:text-purple-800'
-    },
-    orange: {
-      bg: 'bg-orange-50',
-      text: 'text-orange-600',
-      hover: 'hover:border-orange-500',
-      hoverBg: 'group-hover:bg-orange-100',
-      btn: 'text-orange-600 hover:text-orange-800'
-    },
-    red: {
-      bg: 'bg-red-50',
-      text: 'text-red-600',
-      hover: 'hover:border-red-500',
-      hoverBg: 'group-hover:bg-red-100',
-      btn: 'text-red-600 hover:text-red-800'
-    },
-    teal: {
-      bg: 'bg-teal-50',
-      text: 'text-teal-600',
-      hover: 'hover:border-teal-500',
-      hoverBg: 'group-hover:bg-teal-100',
-      btn: 'text-teal-600 hover:text-teal-800'
-    }
-  };
+// Color configurations for Modern Quick Export Report Cards
+const reportThemes = {
+  blue: {
+    iconBg: 'bg-white border-2 border-blue-500 text-blue-600 shadow-2xs',
+    badge: 'bg-blue-50/70 text-blue-700 border border-blue-200/60'
+  },
+  green: {
+    iconBg: 'bg-white border-2 border-emerald-500 text-emerald-600 shadow-2xs',
+    badge: 'bg-emerald-50/70 text-emerald-700 border border-emerald-200/60'
+  },
+  purple: {
+    iconBg: 'bg-white border-2 border-purple-500 text-purple-600 shadow-2xs',
+    badge: 'bg-purple-50/70 text-purple-700 border border-purple-200/60'
+  },
+  orange: {
+    iconBg: 'bg-white border-2 border-amber-500 text-amber-600 shadow-2xs',
+    badge: 'bg-amber-50/70 text-amber-700 border border-amber-200/60'
+  }
+};
 
-  const classes = colorClasses[color] || colorClasses.blue;
+// Ultra-Modern Quick Export Report Card Component
+const ReportCard = ({ title, description, icon: Icon, color, status, onGenerate, loading }) => {
+  const theme = reportThemes[color] || reportThemes.blue;
 
   return (
-    <div className={`border border-gray-200 rounded-xl p-5 ${classes.hover} transition-all cursor-pointer group hover:shadow-md`}>
-      <div className="flex items-start justify-between mb-4">
-        <div className={`p-3 ${classes.bg} ${classes.text} rounded-xl ${classes.hoverBg} transition-colors`}>
-          <Icon className="w-6 h-6" />
+    <motion.div
+      whileHover={{ y: -2 }}
+      className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all duration-300 flex flex-col justify-between group cursor-pointer"
+    >
+      <div>
+        {/* Header Row: Icon Box & Status Badge */}
+        <div className="flex items-center justify-between mb-4">
+          <div className={`w-11 h-11 rounded-xl ${theme.iconBg} flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform duration-200`}>
+            <Icon className="w-5 h-5" />
+          </div>
+
+          <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${theme.badge} flex items-center gap-1.5`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            {status === 'available' ? 'Ready' : 'Beta'}
+          </span>
         </div>
-        <span className={`${status === 'available' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'} text-xs px-2.5 py-1 rounded-full font-medium`}>
-          {status === 'available' ? 'Ready' : 'Beta'}
-        </span>
+
+        {/* Title & Description */}
+        <h3 className="font-bold text-slate-900 text-sm mb-1 group-hover:text-blue-600 transition-colors tracking-tight">
+          {title}
+        </h3>
+        <p className="text-xs text-slate-500 leading-relaxed mb-5 line-clamp-2 font-normal">
+          {description}
+        </p>
       </div>
-      <h3 className="font-semibold text-gray-800 mb-1">{title}</h3>
-      <p className="text-sm text-gray-500 mb-4 line-clamp-2">{description}</p>
+
+      {/* Modern Action Button */}
       <button
         onClick={onGenerate}
         disabled={loading}
-        className={`${classes.btn} text-sm font-medium flex items-center disabled:opacity-50`}
+        className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-blue-600 text-white shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer"
       >
         {loading ? (
-          <FiRefreshCw className="mr-1.5 animate-spin" />
+          <FiRefreshCw className="w-3.5 h-3.5 animate-spin" />
         ) : (
-          <FiDownload className="mr-1.5" />
+          <FiDownload className="w-3.5 h-3.5" />
         )}
-        {loading ? 'Generating...' : 'Download CSV'}
+        <span>{loading ? 'Generating CSV...' : 'Download CSV'}</span>
       </button>
-    </div>
+    </motion.div>
   );
 };
 
-// Stats Card Component
+// Stats Card Component (Clean White Card with Colored Bordered Icon)
 const StatsCard = ({ title, value, subtitle, icon: Icon, color, trend }) => {
-  const colorMap = {
-    blue: 'from-blue-500 to-blue-600',
-    green: 'from-green-500 to-green-600',
-    purple: 'from-purple-500 to-purple-600',
-    orange: 'from-orange-500 to-orange-600',
-    red: 'from-red-500 to-red-600',
-    teal: 'from-teal-500 to-teal-600',
-    indigo: 'from-indigo-500 to-indigo-600',
-    emerald: 'from-emerald-500 to-emerald-600'
+  const borderMap = {
+    blue: 'border-2 border-blue-500 text-blue-600',
+    green: 'border-2 border-emerald-500 text-emerald-600',
+    purple: 'border-2 border-purple-500 text-purple-600',
+    orange: 'border-2 border-orange-500 text-orange-600',
+    red: 'border-2 border-red-500 text-red-600',
+    teal: 'border-2 border-teal-500 text-teal-600',
+    indigo: 'border-2 border-indigo-500 text-indigo-600',
+    emerald: 'border-2 border-emerald-500 text-emerald-600'
   };
 
   return (
     <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${colorMap[color] || 'from-gray-500 to-gray-600'} flex items-center justify-center`}>
-          <Icon className="w-5 h-5 text-white" />
+        <div className={`w-10 h-10 rounded-xl bg-white ${borderMap[color] || 'border-2 border-gray-400 text-gray-700'} flex items-center justify-center shadow-2xs`}>
+          <Icon className="w-5 h-5" />
         </div>
         {trend && (
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${trend > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

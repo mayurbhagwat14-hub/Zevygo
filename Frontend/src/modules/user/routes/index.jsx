@@ -153,7 +153,6 @@ const UserRoutes = () => {
       {/* These components are OUTSIDE Suspense so they persist during page loads */}
       {!isBookingDetailsPage && !isBookingConfirmationPage && !isPublicPage && <LiveBookingCard hasBottomNav={shouldShowBottomNav} />}
       {shouldShowBottomNav && <BottomNav />}
-      {(location.pathname === '/user' || location.pathname === '/user/') && <Footer />}
     </ErrorBoundary>
   );
 };

@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FiGrid, FiPlus, FiEdit2, FiTrash2, FiSave, FiChevronUp, FiChevronDown, FiMove, FiX } from "react-icons/fi";
+import { FiGrid, FiPlus, FiEdit2, FiTrash2, FiSave, FiChevronUp, FiChevronDown, FiMove, FiX, FiSliders } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import CardShell from "../components/CardShell";
 import Modal from "../components/Modal";
 import ModeSelector from "../components/ModeSelector";
+import VendorFormBuilderModal from "../components/VendorFormBuilderModal";
 import { ensureIds, saveCatalog, slugify, toAssetUrl } from "../utils";
 
 import { categoryService, serviceService } from "../../../../../services/catalogService";
@@ -35,6 +36,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
+  const [formBuilderCategory, setFormBuilderCategory] = useState(null);
 
   const categories = (catalog.categories || []).sort((a, b) => (a.homeOrder || 0) - (b.homeOrder || 0));
   const editing = useMemo(() => categories.find((c) => c.id === editingId) || null, [categories, editingId]);
@@ -54,11 +56,14 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
 
         if (response.success && response.categories) {
           // Map backend format to frontend format
-          const mappedCategories = response.categories.map(cat => ({
-            id: cat.id, // Backend returns id (not _id)
+          const mappedCategories = response.categories
+            .filter(cat => cat.status !== 'deleted')
+            .map(cat => ({
+            id: cat.id,
             title: cat.title,
             slug: cat.slug,
-            homeIconUrl: cat.homeIconUrl || "",
+            homeIconUrl: cat.homeIconUrl || cat.icon || cat.imageUrl || cat.iconUrl || "",
+            imageUrl: cat.imageUrl || cat.homeIconUrl || cat.icon || cat.iconUrl || "",
             homeBadge: cat.homeBadge || "",
             hasSaleBadge: cat.hasSaleBadge || false,
             showOnHome: cat.showOnHome !== false,
@@ -480,11 +485,11 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                   <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-4 text-sm font-semibold text-gray-600">{idx + 1}</td>
                     <td className="py-4 px-4">
-                      {c.homeIconUrl ? (
-                        <img src={toAssetUrl(c.homeIconUrl)} alt={c.title} className="h-10 w-10 object-contain rounded bg-gray-50 border border-gray-100" />
+                      {(c.homeIconUrl || c.imageUrl || c.iconUrl || c.icon) ? (
+                        <img src={toAssetUrl(c.homeIconUrl || c.imageUrl || c.iconUrl || c.icon)} alt={c.title} className="h-10 w-10 object-contain rounded bg-gray-50 border border-gray-100" />
                       ) : (
-                        <div className="h-12 w-12 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                          <span className="text-xs text-gray-400">No icon</span>
+                        <div className="h-10 w-10 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                          <span className="text-[10px] text-gray-400">No icon</span>
                         </div>
                       )}
                     </td>
@@ -530,12 +535,19 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                     <td className="py-4 px-4">
                       <div className="flex items-center justify-center gap-2">
                         <button
+                          onClick={() => setFormBuilderCategory(c)}
+                          className="p-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                          title="Manage Vendor Form Fields (vendorFormSchema)"
+                        >
+                          <FiSliders className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => {
                             setEditingId(c.id);
                             setIsModalOpen(true);
                           }}
                           className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                          title="Edit"
+                          title="Edit Category Details"
                         >
                           <FiEdit2 className="w-4 h-4" />
                         </button>
@@ -735,6 +747,18 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
           </div>
         </div>
       </Modal>
+
+      <VendorFormBuilderModal
+        isOpen={Boolean(formBuilderCategory)}
+        onClose={() => setFormBuilderCategory(null)}
+        category={formBuilderCategory}
+        onSaveSuccess={(updatedCat) => {
+          setCatalog(prev => ({
+            ...prev,
+            categories: (prev.categories || []).map(c => c.id === updatedCat.id ? { ...c, vendorFormSchema: updatedCat.vendorFormSchema } : c)
+          }));
+        }}
+      />
     </div>
   );
 };

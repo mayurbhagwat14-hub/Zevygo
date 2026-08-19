@@ -87,42 +87,38 @@ const MyBookings = () => {
   ];
 
   return (
-    <div className="min-h-screen pb-24 relative bg-neutral-50">
-      <div
-        className="fixed inset-0 z-0 pointer-events-none"
-        style={{ background: gradients.pageSoft }}
-        aria-hidden
-      />
-
+    <div className="min-h-screen pb-20 relative bg-slate-50/60">
       <div className="relative z-10">
-        <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 border-b border-neutral-100 px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
+        {/* Sleek Top Header */}
+        <header className="sticky top-0 z-40 backdrop-blur-md bg-white/90 border-b border-slate-200/80 px-3.5 py-3 flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <button
               type="button"
-              variant="icon"
               onClick={() => navigate(-1)}
+              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 active:scale-95"
               aria-label="Go back"
             >
               <FiArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="text-xl font-extrabold text-neutral-900 tracking-tight">My Bookings</h1>
+            </button>
+            <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">My Bookings</h1>
           </div>
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-neutral-100 relative">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200/60">
             <NotificationBell />
           </div>
         </header>
 
-        <div className="bg-white/90 backdrop-blur-md border-b border-neutral-100 sticky top-[61px] z-20 shadow-sm">
-          <div className="flex overflow-x-auto px-4 py-3 gap-2.5 no-scrollbar scroll-smooth">
+        {/* Filter Pills Scroll Row */}
+        <div className="bg-white border-b border-slate-200/60 sticky top-[49px] z-20 shadow-2xs">
+          <div className="flex overflow-x-auto px-3.5 py-2.5 gap-2 scrollbar-hide scroll-smooth">
             {filterTabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setFilter(tab.id)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-200 border ${
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border ${
                   filter === tab.id
-                    ? 'border-transparent bg-primary-600 text-white shadow-md shadow-primary-500/25 active:scale-95'
-                    : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:bg-neutral-100'
+                    ? 'border-transparent bg-slate-900 text-white shadow-xs active:scale-95'
+                    : 'bg-slate-50 border-slate-200/80 text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 {tab.label}
@@ -131,9 +127,10 @@ const MyBookings = () => {
           </div>
         </div>
 
-        <main className="px-4 py-5 max-w-lg mx-auto w-full">
+        {/* Main Content Area */}
+        <main className="px-3.5 py-4 max-w-2xl mx-auto w-full">
           {loading ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <SkeletonCard key={i} />
               ))}
@@ -148,7 +145,7 @@ const MyBookings = () => {
                   : `You don't have any ${filter.replace('-', ' ')} bookings right now.`
               }
               actionLabel="Browse services"
-              onAction={() => navigate('/user/home')}
+              onAction={() => navigate('/user')}
             />
           ) : (
             <motion.div
@@ -156,9 +153,9 @@ const MyBookings = () => {
               animate="visible"
               variants={{
                 hidden: { opacity: 0 },
-                visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
+                visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
               }}
-              className="space-y-4"
+              className="space-y-3"
             >
               {bookings.map((booking) => {
                 const statusKey = String(booking.status || '').toLowerCase().replace(/-/g, '_');
@@ -166,76 +163,74 @@ const MyBookings = () => {
                   <motion.div
                     key={booking._id || booking.id}
                     variants={{
-                      hidden: { opacity: 0, y: 16 },
-                      visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 120, damping: 18 } },
+                      hidden: { opacity: 0, y: 12 },
+                      visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 140, damping: 20 } },
                     }}
                     onClick={() => handleBookingClick(booking)}
-                    className={`group relative bg-white rounded-2xl p-5 border border-neutral-200 border-l-4 shadow-sm hover:shadow-md hover:border-primary-200 active:scale-[0.99] transition-all duration-300 cursor-pointer ${getStatusBorder(booking.status)}`}
+                    className={`group bg-white rounded-xl p-3.5 border border-slate-200/80 border-l-[3.5px] shadow-2xs hover:shadow-md hover:border-slate-300 active:scale-[0.99] transition-all duration-200 cursor-pointer ${getStatusBorder(booking.status)}`}
                   >
-                    <div className="flex items-start justify-between mb-4 border-b border-neutral-100 pb-4 gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-bold tracking-wider text-neutral-400 uppercase mb-1.5">
+                    {/* Header Row: Category Badge & Status */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[10px] font-extrabold tracking-wider text-slate-400 uppercase">
                           #{booking.bookingNumber || (booking._id || booking.id).substring(0, 8)}
-                        </p>
+                        </span>
                         {booking.serviceCategory && (
-                          <Badge variant="primary" size="sm" className="mb-1 uppercase tracking-wide">
+                          <span className="inline-block text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100/80 truncate">
                             {booking.serviceCategory}
-                          </Badge>
+                          </span>
                         )}
-                        <h3 className="text-lg font-bold text-neutral-800 leading-tight line-clamp-2 group-hover:text-primary-700 transition-colors mt-1">
-                          {booking.serviceName || 'Service Request'}
-                        </h3>
-                        {booking.bookedItems?.length > 0 && (
-                          <p className="text-xs text-neutral-400 line-clamp-1 mt-1">
-                            {booking.bookedItems.map((item) => item.card?.title || item.title).join(', ')}
+                      </div>
+                      <Badge variant="status" status={statusKey} size="sm" className="shrink-0 text-[10px] uppercase font-bold" />
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-sm font-extrabold text-slate-900 leading-snug line-clamp-1 group-hover:text-blue-600 transition-colors mb-2">
+                      {booking.serviceName || 'Service Request'}
+                    </h3>
+
+                    {/* Items Summary */}
+                    {booking.bookedItems?.length > 0 && (
+                      <p className="text-xs text-slate-500 line-clamp-1 mb-2.5 font-medium">
+                        {booking.bookedItems.map((item) => item.card?.title || item.title).join(', ')}
+                      </p>
+                    )}
+
+                    {/* Slot & Location Info Box */}
+                    <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs mb-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FiCalendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase leading-none">Slot</p>
+                          <p className="font-bold text-slate-800 text-[11px] truncate mt-0.5">
+                            {formatDate(booking.scheduledDate)}
                           </p>
-                        )}
+                        </div>
                       </div>
-                      <Badge variant="status" status={statusKey} size="sm" className="shrink-0 uppercase" />
-                    </div>
 
-                    <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-4 mb-5 p-3 rounded-xl bg-neutral-50/80 border border-neutral-100">
-                      <div className="w-8 h-8 rounded-full bg-white border border-neutral-200 flex items-center justify-center shrink-0">
-                        <FiCalendar className="w-4 h-4 text-primary-600" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Slot</p>
-                        <p className="text-sm font-bold text-neutral-700">
-                          {formatDate(booking.scheduledDate)}
-                          <span className="text-neutral-300 mx-1">•</span>
-                          {booking.scheduledTime || booking.timeSlot?.start || 'N/A'}
-                        </p>
-                      </div>
-                      <div className="w-8 h-8 rounded-full bg-white border border-neutral-200 flex items-center justify-center shrink-0">
-                        <FiMapPin className="w-4 h-4 text-error-500" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Location</p>
-                        <p className="text-sm font-medium text-neutral-700 truncate">
-                          {getAddressString(booking.address)}
-                        </p>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FiMapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase leading-none">Location</p>
+                          <p className="font-semibold text-slate-700 text-[11px] truncate mt-0.5">
+                            {getAddressString(booking.address)}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+                    {/* Footer Row: Amount & Action Button */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                       <div>
-                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide mb-0.5">
-                          Total amount
-                        </p>
-                        <p className="text-xl font-bold text-neutral-900">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Total: </span>
+                        <span className="text-base font-black text-slate-900 ml-1">
                           ₹{(booking.finalAmount || booking.totalAmount || 0).toLocaleString('en-IN')}
-                        </p>
+                        </span>
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="pointer-events-none"
-                        icon={FiChevronRight}
-                        iconPosition="right"
-                      >
-                        View Details
-                      </Button>
+                      <div className="flex items-center gap-1 text-xs font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
+                        <span>Details</span>
+                        <FiChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
                     </div>
                   </motion.div>
                 );

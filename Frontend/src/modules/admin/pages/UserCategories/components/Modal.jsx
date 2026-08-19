@@ -2,6 +2,17 @@ import React from "react";
 import { FiX } from "react-icons/fi";
 
 const Modal = ({ isOpen, onClose, title, children, size = "md" }) => {
+  React.useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const sizeClasses = {

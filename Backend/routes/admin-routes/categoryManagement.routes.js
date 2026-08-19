@@ -9,7 +9,9 @@ const {
   createCategory,
   updateCategory,
   deleteCategory,
-  updateCategoryOrder
+  updateCategoryOrder,
+  getCategoryFormSchema,
+  updateCategoryFormSchema
 } = require('../../controllers/adminControllers/categoryController');
 
 // Validation rules
@@ -67,6 +69,12 @@ router.get('/categories', authenticate, isAdmin, getAllCategories);
 // GET /api/admin/categories/:id - Get single category
 router.get('/categories/:id', authenticate, isAdmin, getCategoryById);
 
+// GET /api/admin/categories/:id/form-schema - Get category form schema and booking config
+router.get('/categories/:id/form-schema', authenticate, isAdmin, getCategoryFormSchema);
+
+// PUT /api/admin/categories/:id/form-schema - Update category form schema and booking config
+router.put('/categories/:id/form-schema', authenticate, isAdmin, updateCategoryFormSchema);
+
 // POST /api/admin/categories - Create new category
 router.post('/categories', authenticate, isAdmin, createCategoryValidation, createCategory);
 
@@ -80,3 +88,4 @@ router.delete('/categories/:id', authenticate, isAdmin, deleteCategory);
 router.patch('/categories/:id/order', authenticate, isAdmin, updateCategoryOrder);
 
 module.exports = router;
+

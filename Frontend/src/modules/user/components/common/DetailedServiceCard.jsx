@@ -23,9 +23,9 @@ const DetailedServiceCard = memo(({ image, title, rating, reviews, price, origin
 
       const handleMouseEnter = () => {
         gsap.to(card, {
-          y: -8,
-          scale: 1.02,
-          boxShadow: '0 12px 24px rgba(59, 130, 246, 0.15), 0 6px 12px rgba(59, 130, 246, 0.1)',
+          y: -6,
+          scale: 1.01,
+          boxShadow: '0 14px 28px rgba(37, 99, 235, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05)',
           duration: 0.3,
           ease: 'power2.out',
         });
@@ -35,7 +35,7 @@ const DetailedServiceCard = memo(({ image, title, rating, reviews, price, origin
         gsap.to(card, {
           y: 0,
           scale: 1,
-          boxShadow: themeColors.cardShadow,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
           duration: 0.3,
           ease: 'power2.out',
         });
@@ -43,7 +43,7 @@ const DetailedServiceCard = memo(({ image, title, rating, reviews, price, origin
 
       const handleClick = () => {
         gsap.to(card, {
-          scale: 0.95,
+          scale: 0.97,
           duration: 0.1,
           yoyo: true,
           repeat: 1,
@@ -66,55 +66,74 @@ const DetailedServiceCard = memo(({ image, title, rating, reviews, price, origin
   return (
     <div
       ref={cardRef}
-      className="min-w-[200px] flex flex-col bg-white rounded-2xl overflow-hidden cursor-pointer group"
+      className="w-[155px] sm:w-[185px] shrink-0 snap-start flex flex-col bg-white rounded-xl overflow-hidden cursor-pointer border border-gray-100/90 group transition-all duration-300"
       style={{
-        boxShadow: themeColors.cardShadow,
-        border: themeColors.cardBorder
+        boxShadow: '0 3px 14px rgba(0, 0, 0, 0.04)'
       }}
       onClick={onClick}
     >
-      <div className="relative">
+      {/* Image Container */}
+      <div className="relative w-full h-26 sm:h-30 overflow-hidden bg-gray-100">
         {discount && (
           <div
-            className="absolute top-3 left-3 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md z-10"
-            style={{ backgroundColor: themeColors.button }}
+            className="absolute top-2 left-2 bg-[#2563EB] text-white text-[9.5px] font-black px-2 py-0.5 rounded shadow-xs z-10 uppercase tracking-wider"
           >
             {discount.toString().toUpperCase().includes('OFF') ? discount : `${discount}% OFF`}
           </div>
         )}
         {image ? (
           <img
-            src={optimizeCloudinaryUrl(image, { width: 400, quality: 'auto' })}
+            src={optimizeCloudinaryUrl(image, { width: 350, quality: 'auto' })}
             alt={title}
-            className="w-full h-36 object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-108"
             loading="lazy"
             decoding="async"
           />
         ) : (
-          <div className="w-full h-36 flex items-center justify-center" style={{ backgroundColor: `${themeColors.brand.teal}10` }}>
-            <span style={{ color: themeColors.brand.teal }} className="font-medium">No Image</span>
+          <div className="w-full h-full flex items-center justify-center bg-blue-50/50">
+            <span className="text-[11px] font-semibold text-blue-600">No Image</span>
           </div>
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
-      <div className="p-3 flex flex-col flex-1">
-        <h3 className="text-[13px] font-semibold text-gray-900 leading-snug mb-1 line-clamp-2 min-h-[40px]">{title}</h3>
 
-        <div className="flex items-center gap-1 mb-2">
-          <AiFillStar className="w-3.5 h-3.5 text-yellow-400" />
-          <span className="text-xs text-gray-900 font-bold">{rating}</span>
-          {reviews && (
-            <span className="text-[10px] text-gray-500">({reviews})</span>
-          )}
+      {/* Content Container */}
+      <div className="p-2.5 flex flex-col flex-1 justify-between">
+        <div>
+          {/* Title */}
+          <h3 className="text-[11.5px] sm:text-xs font-semibold text-gray-900 leading-snug mb-1 line-clamp-2 min-h-[30px] capitalize group-hover:text-blue-600 transition-colors">
+            {title}
+          </h3>
+
+          {/* Rating */}
+          <div className="flex items-center gap-1 mb-2">
+            <span className="inline-flex items-center gap-0.5 bg-amber-50 text-amber-800 border border-amber-200/60 px-1.5 py-0.5 rounded text-[10px] font-bold">
+              <AiFillStar className="w-2.5 h-2.5 text-amber-500" />
+              {rating || '4.8'}
+            </span>
+            {reviews && (
+              <span className="text-[9.5px] text-gray-400 font-medium truncate">
+                ({reviews})
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 mt-auto">
-          {displayOriginalPrice && (
-            <span className="text-[10px] text-gray-400 line-through">₹{displayOriginalPrice}</span>
-          )}
-          <span className="text-[14px] font-bold text-gray-900">₹{displayPrice}</span>
+        {/* Price & Action Row */}
+        <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-gray-100/80 mt-auto">
+          <div className="flex flex-col">
+            {displayOriginalPrice && (
+              <span className="text-[9px] text-gray-400 line-through leading-tight">
+                ₹{displayOriginalPrice}
+              </span>
+            )}
+            <span className="text-xs sm:text-sm font-bold text-gray-900 leading-none">
+              ₹{displayPrice}
+            </span>
+          </div>
 
           <button
-            className="ml-auto text-[11px] font-bold px-3 py-1.5 rounded-lg bg-[#2563EB] text-white hover:bg-blue-700 transition-colors shadow-sm"
+            className="shrink-0 text-[10.5px] font-bold px-2.5 py-1 rounded-md bg-[#2563EB] hover:bg-blue-700 text-white shadow-xs active:scale-95 transition-all whitespace-nowrap"
             onClick={(e) => {
               e.stopPropagation();
               onAddClick?.();
@@ -124,7 +143,7 @@ const DetailedServiceCard = memo(({ image, title, rating, reviews, price, origin
           </button>
         </div>
       </div>
-    </div >
+    </div>
   );
 });
 

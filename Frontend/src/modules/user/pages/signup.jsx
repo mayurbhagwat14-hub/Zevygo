@@ -11,14 +11,15 @@ import { AuthShell, Button, Input, OtpInput, StepIndicator } from '../../../comp
 const signupSchema = z.object({
   name: z
     .string()
-    .min(2, 'Name must be at least 2 characters')
-    .regex(/^[a-zA-Z\s]+$/, 'Name can only contain letters'),
+    .trim()
+    .min(2, 'Name must be at least 2 characters'),
   email: z
     .string()
     .optional()
-    .refine((val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), 'Invalid email address'),
+    .refine((val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim()), 'Invalid email address'),
   phoneNumber: z
     .string()
+    .trim()
     .regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian phone number'),
 });
 
@@ -91,11 +92,11 @@ const Signup = () => {
     if (verificationToken) {
       const nameCheck = z
         .string()
+        .trim()
         .min(2)
-        .regex(/^[a-zA-Z\s]+$/)
         .safeParse(formData.name);
       if (!nameCheck.success) {
-        toast.error('Please enter a valid name');
+        toast.error('Please enter a valid name (at least 2 characters)');
         return;
       }
     }

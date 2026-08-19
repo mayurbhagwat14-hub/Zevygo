@@ -14,10 +14,10 @@ import { motion } from 'framer-motion';
 
 // Lazy load heavy components for better initial load performance
 import PromoCarousel from './components/PromoCarousel';
+import TrustStatsRow from './components/TrustStatsRow';
 // Lazy load OTHER heavy components
 const NewAndNoteworthy = lazy(() => import('./components/NewAndNoteworthy'));
 const MostBookedServices = lazy(() => import('./components/MostBookedServices'));
-const CuratedServices = lazy(() => import('./components/CuratedServices'));
 const ServiceSectionWithRating = lazy(() => import('./components/ServiceSectionWithRating'));
 const Banner = lazy(() => import('./components/Banner'));
 const ReferEarnSection = lazy(() => import('./components/ReferEarnSection'));
@@ -42,7 +42,15 @@ const toAssetUrl = (url) => {
 const Home = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [address, setAddress] = useState(localStorage.getItem('currentAddress') || 'Select Location');
+  const getInitialAddress = () => {
+    const stored = localStorage.getItem('currentAddress');
+    if (!stored || stored === 'Select Location' || /^[\d\s.,\-+]+$/.test(stored.trim())) {
+      return 'Pune, Maharashtra';
+    }
+    return stored;
+  };
+
+  const [address, setAddress] = useState(getInitialAddress);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [houseNumber, setHouseNumber] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -264,7 +272,10 @@ const Home = () => {
               slug: cat.slug,
               icon: toAssetUrl(cat.icon),
               hasSaleBadge: cat.hasSaleBadge,
-              badge: cat.badge
+              badge: cat.badge,
+              supportedBookingTypes: cat.supportedBookingTypes || ['scheduled'],
+              allowMultiSelect: Boolean(cat.allowMultiSelect),
+              formSchema: cat.formSchema || []
             }));
             setCategories(mappedCategories);
           }
@@ -431,27 +442,21 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen pb-20 relative bg-neutral-50" style={{ background: gradients.page }}>
+    <div className="min-h-screen relative bg-slate-50">
       <motion.div
         className="relative z-10"
         initial="hidden"
         animate="visible"
         variants={containerVariants}
       >
-        <motion.div
-          variants={itemVariants}
-          className="backdrop-blur-xl sticky top-0 z-50 border-b border-neutral-200/60 rounded-b-3xl shadow-sm transition-all duration-300 bg-white/70"
-        >
-          <Header
-            location={address}
-            onLocationClick={handleLocationClick}
-          />
-          <div className="px-5 pb-5 pt-1 max-w-lg lg:max-w-2xl mx-auto w-full">
-            <SearchBar onInputClick={() => setIsSearchOpen(true)} />
-          </div>
-        </motion.div>
+        {/* Sleek Top Navy Header */}
+        <Header
+          location={address}
+          onLocationClick={handleLocationClick}
+          onSearchClick={() => setIsSearchOpen(true)}
+        />
 
-        <main className="pt-6 space-y-8 pb-24 max-w-screen-xl mx-auto w-full">
+        <main className="pt-2 sm:pt-4 space-y-4 sm:space-y-6 pb-16 max-w-screen-xl mx-auto w-full px-2 sm:px-6">
           {!isLocationSupported ? (
             <EmptyState
               icon="offline"
@@ -463,37 +468,85 @@ const Home = () => {
             />
           ) : (
             <>
-              {/* Categories Section */}
-              {homeContent?.isCategoriesVisible !== false && (
-                <motion.section variants={itemVariants} className="relative z-10 px-4 -mt-4">
-                  <ServiceCategories
-                    categories={categories}
-                    onCategoryClick={handleCategoryClick}
-                    onSeeAllClick={() => { }}
-                  />
-                </motion.section>
-              )}
-
-              {/* Hero Section - Promo Carousel */}
+              {/* Hero Section - Promo Carousel Banner (Seamlessly on page background!) */}
               {homeContent?.isPromosVisible !== false && (
-                <motion.section variants={itemVariants} className="relative z-0 mt-4">
+                <motion.section variants={itemVariants} className="relative z-10">
                   <PromoCarousel
-                    promos={(homeContent?.promos || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(promo => ({
+                    promos={(homeContent?.promos || []).length > 0 ? (homeContent?.promos || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(promo => ({
                       id: promo.id || promo._id,
-                      title: promo.title || '',
-                      subtitle: promo.subtitle || promo.description || '',
-                      buttonText: promo.buttonText || 'Book now',
-                      className: promo.gradientClass || 'from-primary-500 to-secondary-500',
+                      title: promo.title || 'Find Expert Service. Book Instantly.',
+                      subtitle: promo.subtitle || promo.description || 'Verified Professionals • Transparent Pricing • Guaranteed Satisfaction',
+                      buttonText: promo.buttonText || 'Book Service Now',
+                      className: promo.gradientClass || 'from-blue-700 via-indigo-700 to-sky-600',
                       image: toAssetUrl(promo.imageUrl),
                       targetCategoryId: promo.targetCategoryId,
                       slug: promo.slug,
                       scrollToSection: promo.scrollToSection,
                       route: '/'
-                    }))}
+                    })) : [
+                      {
+                        id: 'default-hero-driver',
+                        title: 'Need a Driver? Book On-Demand Personal Driver',
+                        subtitle: 'City Drive • Outstation Trips • Verified & Experienced Drivers',
+                        buttonText: 'Book Driver Now',
+                        className: 'from-blue-700 via-indigo-700 to-sky-600',
+                        image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&auto=format&fit=crop&q=80',
+                        route: '/'
+                      },
+                      {
+                        id: 'default-hero-cook',
+                        title: 'Hire Expert Cook & Maharaj at Home',
+                        subtitle: 'Daily Home Meals • Event Catering • Pure Hygienic Cooking',
+                        buttonText: 'Book Cook / Maharaj',
+                        className: 'from-amber-600 via-orange-600 to-red-600',
+                        image: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&auto=format&fit=crop&q=80',
+                        route: '/'
+                      },
+                      {
+                        id: 'default-hero-repair',
+                        title: 'Electrician & Plumbing Repair in 30 Mins',
+                        subtitle: 'Doorstep Arrival • Transparent Charges • Guaranteed Work',
+                        buttonText: 'Book Repair Now',
+                        className: 'from-indigo-700 via-purple-700 to-blue-600',
+                        image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&auto=format&fit=crop&q=80',
+                        route: '/'
+                      },
+                      {
+                        id: 'default-hero-tiffin',
+                        title: 'Fresh & Healthy Tiffin Service Delivery',
+                        subtitle: 'Home Style Food • Daily Subscriptions • Clean Packaging',
+                        buttonText: 'Order Tiffin Service',
+                        className: 'from-emerald-700 via-teal-700 to-green-600',
+                        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop&q=80',
+                        route: '/'
+                      },
+                      {
+                        id: 'default-hero-cleaning',
+                        title: 'Full Home Deep Cleaning & Housekeeping',
+                        subtitle: 'Sanitized Equipment • Trained Experts • Complete Care',
+                        buttonText: 'Book Cleaning',
+                        className: 'from-teal-700 via-cyan-700 to-blue-600',
+                        image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&auto=format&fit=crop&q=80',
+                        route: '/'
+                      }
+                    ]}
                     onPromoClick={handlePromoClick}
                   />
                 </motion.section>
               )}
+
+              {/* Our Services Section (12 Categories Grid) */}
+              {homeContent?.isCategoriesVisible !== false && (
+                <motion.section variants={itemVariants} className="relative z-10">
+                  <ServiceCategories
+                    categories={categories}
+                    onCategoryClick={handleCategoryClick}
+                    onSeeAllClick={() => setIsSearchOpen(true)}
+                  />
+                </motion.section>
+              )}
+
+
 
 
 
@@ -523,23 +576,7 @@ const Home = () => {
                 </motion.div>
               )}
 
-              {/* Curated Services */}
-              {homeContent?.isCuratedVisible !== false && (
-                <motion.div variants={itemVariants}>
-                  <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
-                    <CuratedServices
-                      services={(homeContent?.curated || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(item => ({
-                        id: item.id || item._id,
-                        title: item.title,
-                        gif: toAssetUrl(item.gifUrl),
-                        slug: item.slug,
-                        targetCategoryId: item.targetCategoryId
-                      }))}
-                      onServiceClick={handleServiceClick}
-                    />
-                  </Suspense>
-                </motion.div>
-              )}
+
 
               {/* New & Noteworthy */}
               {homeContent?.isNoteworthyVisible !== false && (
@@ -561,29 +598,7 @@ const Home = () => {
 
 
 
-              {/* Dynamic Banner 1 */}
-              {homeContent?.isBannersVisible !== false && (
-                <motion.div variants={itemVariants}>
-                  <Suspense fallback={<div className="h-32 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
-                    <Banner
-                      imageUrl={homeContent?.banners?.[0] ? toAssetUrl(homeContent.banners[0].imageUrl) : null}
-                      onClick={() => {
-                        const b = homeContent?.banners?.[0];
-                        if (b?.slug) {
-                          navigate(`/user/${b.slug}`);
-                          return;
-                        }
-                        if (b?.targetCategoryId) {
-                          const cat = categories.find(c => c.id === b.targetCategoryId);
-                          if (cat) handleCategoryClick(cat);
-                        }
-                      }}
-                    />
-                  </Suspense>
-                </motion.div>
-              )}
-
-              {/* Dynamic Sections */}
+              {/* Dynamic Category Sections */}
               {homeContent?.isCategorySectionsVisible !== false && (homeContent?.categorySections || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map((section, sIdx) => (
                 <motion.div key={section._id || sIdx} variants={itemVariants}>
                   <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
@@ -617,31 +632,6 @@ const Home = () => {
                   </Suspense>
                 </motion.div>
               ))}
-
-              {/* Dynamic Banner 2 */}
-              {homeContent?.isBannersVisible !== false && (
-                <motion.div variants={itemVariants}>
-                  <Suspense fallback={<div className="h-32 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
-                    <Banner
-                      imageUrl={homeContent?.banners?.[1] ? toAssetUrl(homeContent.banners[1].imageUrl) : null}
-                      onClick={() => {
-                        const b = homeContent?.banners?.[1];
-                        if (b?.targetCategoryId) {
-                          const cat = categories.find(c => (c.id === b.targetCategoryId || c._id === b.targetCategoryId));
-                          if (cat) handleCategoryClick(cat);
-                        }
-                      }}
-                    />
-                  </Suspense>
-                </motion.div>
-              )}
-
-              {/* Refer & Earn Section */}
-              <motion.div variants={itemVariants}>
-                <Suspense fallback={<div className="h-32 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
-                  <ReferEarnSection onReferClick={handleReferClick} />
-                </Suspense>
-              </motion.div>
             </>
           )}
         </main>
@@ -679,8 +669,6 @@ const Home = () => {
         onHouseNumberChange={setHouseNumber}
         onSave={handleAddressSave}
       />
-
-      <DebugConsole />
     </div>
   );
 };

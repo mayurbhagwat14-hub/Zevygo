@@ -143,10 +143,7 @@ const AdminDashboard = () => {
       value: formatCurrency(stats.totalRevenue || 0),
       change: 0,
       icon: FiDollarSign,
-      color: 'text-white',
-      bgColor: 'bg-gradient-to-br from-green-500 to-emerald-600',
-      cardBg: 'bg-gradient-to-br from-green-50 to-emerald-50',
-      iconBg: 'bg-white/20',
+      iconBox: 'bg-white border-2 border-emerald-500 text-emerald-600',
       link: '/admin/reports/revenue'
     },
     {
@@ -154,10 +151,7 @@ const AdminDashboard = () => {
       value: (stats.activeBookings || 0).toLocaleString(),
       change: 0,
       icon: FiShoppingBag,
-      color: 'text-white',
-      bgColor: 'bg-gradient-to-br from-blue-500 to-indigo-600',
-      cardBg: 'bg-gradient-to-br from-blue-50 to-indigo-50',
-      iconBg: 'bg-white/20',
+      iconBox: 'bg-white border-2 border-blue-500 text-blue-600',
       link: '/admin/reports/bookings'
     },
     {
@@ -165,10 +159,7 @@ const AdminDashboard = () => {
       value: (stats.completedBookings || 0).toLocaleString(),
       change: 0,
       icon: FiActivity,
-      color: 'text-white',
-      bgColor: 'bg-gradient-to-br from-purple-500 to-violet-600',
-      cardBg: 'bg-gradient-to-br from-purple-50 to-violet-50',
-      iconBg: 'bg-white/20',
+      iconBox: 'bg-white border-2 border-purple-500 text-purple-600',
       link: '/admin/reports/bookings'
     },
     {
@@ -176,10 +167,7 @@ const AdminDashboard = () => {
       value: (stats.totalUsers || 0).toLocaleString(),
       change: 0,
       icon: FiUser,
-      color: 'text-white',
-      bgColor: 'bg-gradient-to-br from-orange-500 to-amber-600',
-      cardBg: 'bg-gradient-to-br from-orange-50 to-amber-50',
-      iconBg: 'bg-white/20',
+      iconBox: 'bg-white border-2 border-amber-500 text-amber-600',
       link: '/admin/users/analytics'
     },
     {
@@ -187,10 +175,7 @@ const AdminDashboard = () => {
       value: (stats.totalVendors || 0).toLocaleString(),
       change: 0,
       icon: FiBriefcase,
-      color: 'text-white',
-      bgColor: 'bg-gradient-to-br from-teal-500 to-cyan-600',
-      cardBg: 'bg-gradient-to-br from-teal-50 to-cyan-50',
-      iconBg: 'bg-white/20',
+      iconBox: 'bg-white border-2 border-teal-500 text-teal-600',
       link: '/admin/vendors/analytics'
     },
   ];
@@ -225,13 +210,11 @@ const AdminDashboard = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.08 }}
               onClick={() => card.link && navigate(card.link)}
-              className={`${card.cardBg} rounded-xl p-3 sm:p-4 shadow-sm border border-transparent hover:shadow-md transition-all duration-300 relative overflow-hidden cursor-pointer group`}
+              className="bg-white rounded-xl p-3.5 sm:p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 relative overflow-hidden cursor-pointer group"
             >
-              <div className={`absolute top-0 right-0 w-24 h-24 ${card.bgColor} opacity-10 rounded-full -mr-12 -mt-12 group-hover:scale-110 transition-transform`} />
-
               <div className="flex items-center justify-between mb-2 sm:mb-3 relative z-10">
-                <div className={`${card.bgColor} ${card.iconBg} p-1.5 sm:p-2 rounded-lg shadow-sm`}>
-                  <Icon className={`${card.color} text-base sm:text-lg`} />
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${card.iconBox} flex items-center justify-center shadow-2xs`}>
+                  <Icon className="text-base sm:text-lg" />
                 </div>
                 {card.change !== 0 && (
                   <div
@@ -245,8 +228,8 @@ const AdminDashboard = () => {
               </div>
 
               <div className="relative z-10">
-                <h3 className="text-gray-600 text-[10px] sm:text-xs font-medium mb-0.5">{card.title}</h3>
-                <p className="text-gray-800 text-lg sm:text-xl font-bold">{card.value}</p>
+                <h3 className="text-gray-500 text-[10px] sm:text-xs font-medium mb-0.5">{card.title}</h3>
+                <p className="text-gray-900 text-lg sm:text-xl font-bold">{card.value}</p>
               </div>
             </motion.div>
           );

@@ -23,8 +23,7 @@ const AuthShell = ({
   const widthClass = maxWidth === '2xl' ? 'sm:max-w-2xl' : 'sm:max-w-md';
 
   return (
-    <div className={`min-h-[100dvh] bg-neutral-25 flex flex-col justify-center py-10 sm:px-6 lg:px-8 relative overflow-x-hidden ${className}`}>
-      <div className="absolute top-0 right-0 w-[150px] h-[150px] sm:w-[200px] sm:h-[200px] bg-gradient-to-br from-primary-500 to-secondary-500 rounded-bl-[100%] z-0 opacity-90" />
+    <div className={`min-h-[100dvh] w-full bg-neutral-25 flex flex-col justify-center py-10 sm:px-6 lg:px-8 relative overflow-hidden ${className}`}>
 
       <div className="absolute bottom-0 left-[-10%] w-full h-[50%] opacity-50 pointer-events-none z-0">
         <svg

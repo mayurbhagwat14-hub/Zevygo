@@ -60,6 +60,8 @@ const SettlementHistory = lazyLoad(() => import('../pages/Wallet/SettlementHisto
 const MyRatings = lazyLoad(() => import('../pages/MyRatings'));
 const AboutApp = lazyLoad(() => import('../pages/AboutApp'));
 const BillingPage = lazyLoad(() => import('../pages/BillingPage'));
+const MyServices = lazyLoad(() => import('../pages/MyServices'));
+const AddService = lazyLoad(() => import('../pages/AddService'));
 
 // Loading fallback component
 import LogoLoader from '../../../components/common/LogoLoader';
@@ -76,7 +78,9 @@ const VendorRoutes = () => {
   const shouldHideBottomNav = location.pathname === '/vendor/login' ||
     location.pathname === '/vendor/signup' ||
     location.pathname.endsWith('/map') ||
-    location.pathname.includes('/booking-alert/');
+    location.pathname.includes('/booking-alert/') ||
+    location.pathname.includes('/add-service') ||
+    location.pathname.includes('/edit-service');
 
   const shouldShowBottomNav = !shouldHideBottomNav;
 
@@ -101,6 +105,10 @@ const VendorRoutes = () => {
               <Route path="/booking/:id/billing" element={<ProtectedRoute userType="vendor"><BillingPage /></ProtectedRoute>} />
               <Route path="/booking/:id/timeline" element={<ProtectedRoute userType="vendor"><BookingTimeline /></ProtectedRoute>} />
               <Route path="/jobs" element={<ProtectedRoute userType="vendor"><ActiveJobs /></ProtectedRoute>} />
+              <Route path="/my-services" element={<ProtectedRoute userType="vendor"><MyServices /></ProtectedRoute>} />
+              <Route path="/add-service" element={<ProtectedRoute userType="vendor"><AddService /></ProtectedRoute>} />
+              <Route path="/add-service/:categorySlug" element={<ProtectedRoute userType="vendor"><AddService /></ProtectedRoute>} />
+              <Route path="/edit-service/:serviceId" element={<ProtectedRoute userType="vendor"><AddService /></ProtectedRoute>} />
 
               <Route path="/earnings" element={<ProtectedRoute userType="vendor"><Earnings /></ProtectedRoute>} />
               <Route path="/wallet" element={<ProtectedRoute userType="vendor"><Wallet /></ProtectedRoute>} />

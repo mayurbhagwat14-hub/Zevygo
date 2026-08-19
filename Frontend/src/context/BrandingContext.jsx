@@ -30,8 +30,10 @@ export const BrandingProvider = ({ children }) => {
     try {
       const res = await api.get('/public/config');
       if (res.data && res.data.settings) {
+        const rawName = res.data.settings.appName || APP_NAME;
+        const normalizedName = rawName.toLowerCase() === 'zevgo' ? 'Zevygo' : rawName;
         const newBranding = {
-          appName: res.data.settings.appName || APP_NAME,
+          appName: normalizedName,
           appLogo: res.data.settings.appLogo || '',
         };
         setBranding(newBranding);

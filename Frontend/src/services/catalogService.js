@@ -50,6 +50,18 @@ export const categoryService = {
   updateOrder: async (id, homeOrder) => {
     const response = await api.patch(`/admin/categories/${id}/order`, { homeOrder });
     return response.data;
+  },
+
+  // Get category form schema (customer & vendor)
+  getFormSchema: async (id) => {
+    const response = await api.get(`/admin/categories/${id}/form-schema`);
+    return response.data;
+  },
+
+  // Update category form schema (customer & vendor)
+  updateFormSchema: async (id, data) => {
+    const response = await api.put(`/admin/categories/${id}/form-schema`, data);
+    return response.data;
   }
 };
 
@@ -238,23 +250,38 @@ export const homeContentService = {
   }
 };
 
+const inFlightCategoriesPromises = {};
+
 /**
  * Public Catalog Service (for user app - no authentication required)
- * Now with caching for faster data retrieval
+ * Now with caching and request deduplication for faster data retrieval
  */
 export const publicCatalogService = {
-  // Get all active categories (cached for 5 minutes)
+  // Get all active categories (cached for 5 minutes with request deduplication)
   getCategories: async (cityId) => {
     const cacheKey = `public:categories:${cityId || 'default'}`;
     const cached = apiCache.get(cacheKey);
     if (cached) return cached;
 
-    const query = cityId ? `?cityId=${cityId}` : '';
-    const response = await api.get(`/public/categories${query}`);
-    if (response.data.success) {
-      apiCache.set(cacheKey, response.data, 300); // 5 minutes
+    if (inFlightCategoriesPromises[cacheKey]) {
+      return inFlightCategoriesPromises[cacheKey];
     }
-    return response.data;
+
+    const query = cityId ? `?cityId=${cityId}` : '';
+    const promise = (async () => {
+      try {
+        const response = await api.get(`/public/categories${query}`);
+        if (response.data.success) {
+          apiCache.set(cacheKey, response.data, 300); // 5 minutes
+        }
+        return response.data;
+      } finally {
+        delete inFlightCategoriesPromises[cacheKey];
+      }
+    })();
+
+    inFlightCategoriesPromises[cacheKey] = promise;
+    return promise;
   },
 
   // Get all active brands (formerly services)

@@ -31,6 +31,7 @@
     "children": [
       "All Vendors",
       "Vendor Bookings",
+      "Service Listings",
       "Vendor Analytics"
     ]
   },
@@ -122,14 +123,6 @@
   {
     "title": "Reviews",
     "route": "/admin/reviews",
-    "allowedRoles": [
-      "super_admin"
-    ],
-    "children": []
-  },
-  {
-    "title": "Plans",
-    "route": "/admin/plans",
     "allowedRoles": [
       "super_admin"
     ],

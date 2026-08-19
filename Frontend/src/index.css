@@ -7,21 +7,21 @@
  */
 @theme {
   /* Brand aliases */
-  --color-brand: #00A6A6;
-  --color-brand-light: #F0FDFA;
-  --color-brand-dark: #0D9488;
+  --color-brand: #2563EB;
+  --color-brand-light: #EFF6FF;
+  --color-brand-dark: #1D4ED8;
 
   /* Primary */
-  --color-primary-50: #F0FDFA;
-  --color-primary-100: #CCFBF1;
-  --color-primary-200: #99F6E4;
-  --color-primary-300: #5EEAD4;
-  --color-primary-400: #2DD4BF;
-  --color-primary-500: #00A6A6;
-  --color-primary-600: #0D9488;
-  --color-primary-700: #0F766E;
-  --color-primary-800: #115E59;
-  --color-primary-900: #134E4A;
+  --color-primary-50: #EFF6FF;
+  --color-primary-100: #DBEAFE;
+  --color-primary-200: #BFDBFE;
+  --color-primary-300: #93C5FD;
+  --color-primary-400: #60A5FA;
+  --color-primary-500: #2563EB;
+  --color-primary-600: #1D4ED8;
+  --color-primary-700: #1E40AF;
+  --color-primary-800: #1E3A8A;
+  --color-primary-900: #172554;
 
   /* Secondary (cyan) */
   --color-secondary-50: #ECFEFF;

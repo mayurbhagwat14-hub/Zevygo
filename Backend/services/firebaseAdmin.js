@@ -401,10 +401,57 @@ async function sendNotificationToAdmin(adminId, payload, includeMobile = true) {
   }
 }
 
+/**
+ * Format push notification payload with category name and scheduled date/time
+ * @param {Object} options
+ * @param {string} options.title - Notification title
+ * @param {string} options.message - Base notification message
+ * @param {string} options.categoryName - Name of the category
+ * @param {string} options.bookingType - 'instant' or 'scheduled'
+ * @param {Date|string} options.scheduledFor - Scheduled date/time
+ * @param {string} options.bookingId - Booking ID
+ * @param {Object} options.data - Additional data
+ */
+function formatBookingNotificationPayload({
+  title,
+  message,
+  categoryName,
+  bookingType = 'scheduled',
+  scheduledFor = null,
+  bookingId = null,
+  data = {}
+}) {
+  let enrichedBody = message || '';
+  if (categoryName) {
+    enrichedBody += ` [Category: ${categoryName}]`;
+  }
+  if (bookingType === 'scheduled' && scheduledFor) {
+    const formattedDate = new Date(scheduledFor).toLocaleString('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
+    enrichedBody += ` [Scheduled: ${formattedDate}]`;
+  }
+
+  return {
+    title,
+    body: enrichedBody,
+    data: {
+      ...data,
+      categoryName: categoryName || '',
+      bookingType,
+      scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : '',
+      bookingId: bookingId ? String(bookingId) : ''
+    }
+  };
+}
+
 module.exports = {
   sendPushNotification,
   sendNotificationToUser,
   sendNotificationToVendor,
   sendNotificationToWorker,
-  sendNotificationToAdmin
+  sendNotificationToAdmin,
+  formatBookingNotificationPayload
 };
+

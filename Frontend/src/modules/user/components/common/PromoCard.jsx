@@ -11,53 +11,49 @@ const PromoCard = memo(({ title, subtitle, buttonText, image, onClick, className
 
   return (
     <div
-      className={`relative rounded-[24px] overflow-hidden min-w-[320px] md:min-w-[400px] h-[190px] md:h-56 cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-95 bg-gradient-to-r from-[#031B33] via-[#093560] to-[#125396] ${className}`}
+      className={`relative rounded-2xl overflow-hidden w-[92vw] sm:w-[360px] md:w-[410px] h-[140px] sm:h-[175px] md:h-[195px] cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.01] active:scale-98 bg-slate-900 border border-slate-200/50 shadow-md ${className}`}
       onClick={onClick}
     >
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#031B33] via-[#031B33]/80 to-transparent z-10" />
-        {image ? (
-          isVideo ? (
-            <OptimizedVideo
-              src={image}
-              className="w-full h-full object-cover object-right"
-              autoPlay
-              loop
-              muted
-              playsInline
-            />
-          ) : (
-            <OptimizedImage
-              src={image}
-              alt={title || 'Promo'}
-              className="w-full h-full object-cover object-right ml-auto max-w-[60%]"
-            />
-          )
-        ) : null}
-      </div>
-
-      <div className="relative z-20 flex flex-col justify-center h-full p-6 w-[70%]">
-        {title && (
-          <h3 className="text-[22px] font-black text-white leading-tight mb-1">
-            {title.split('\n').map((line, i) => (
-              <React.Fragment key={i}>
-                {line}
-                <br />
-              </React.Fragment>
-            ))}
-          </h3>
-        )}
-        {subtitle && (
-          <p className="text-[13px] text-white/80 font-medium mb-4 line-clamp-2">
-            {subtitle}
-          </p>
-        )}
-        {buttonText && (
-          <button className="bg-[#2563EB] text-white text-[13px] font-bold py-2 px-5 rounded-full w-max flex items-center gap-2 shadow-lg shadow-blue-500/30">
-            {buttonText} <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+      {image ? (
+        isVideo ? (
+          <OptimizedVideo
+            src={image}
+            className="w-full h-full object-cover"
+            autoPlay
+            loop
+            muted
+            playsInline
+          />
+        ) : (
+          <OptimizedImage
+            src={image}
+            alt={title || 'Promo Banner'}
+            className="w-full h-full object-cover"
+          />
+        )
+      ) : (
+        /* Fallback text banner if no image is uploaded */
+        <div className="relative z-20 flex flex-col justify-between h-full p-5 sm:p-6 w-[80%] text-left bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-600">
+          <div>
+            {title && (
+              <h3 className="text-lg sm:text-2xl font-black text-white leading-tight mb-1.5 tracking-tight line-clamp-2">
+                {title}
+              </h3>
+            )}
+            {subtitle && (
+              <p className="text-xs text-white/90 font-semibold line-clamp-2 leading-relaxed">
+                {subtitle}
+              </p>
+            )}
+          </div>
+          <button className="bg-white text-blue-700 text-xs font-black py-2.5 px-5 rounded-full w-max flex items-center gap-2 shadow-lg">
+            <span>{buttonText || 'Book Service Now'}</span>
+            <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">
+              ➔
+            </span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 });

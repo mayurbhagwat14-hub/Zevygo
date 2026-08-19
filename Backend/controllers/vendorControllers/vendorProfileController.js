@@ -1,7 +1,24 @@
-const mongoose = require('mongoose');
-const Vendor = require('../../models/Vendor');
-const { validationResult } = require('express-validator');
-const cloudinaryService = require('../../services/cloudinaryService');
+const { formatVendorResponse } = require('../../utils/masking.util');
+const { logAudit } = require('../../utils/auditLogger');
+const ServiceListing = require('../../models/ServiceListing');
+
+/**
+ * Calculate dynamic profile completion percentage
+ */
+const calculateProfileCompletion = async (vendor) => {
+  let score = 0;
+  if (vendor.name && vendor.email && vendor.phone && (vendor.address?.fullAddress || vendor.address?.city)) score += 20;
+  if (vendor.profilePhoto) score += 10;
+  if (vendor.aadhar?.document && vendor.pan?.document) score += 30;
+  
+  const serviceCount = await ServiceListing.countDocuments({ vendorId: vendor._id });
+  if (serviceCount > 0) score += 20;
+
+  if (vendor.bankDetails?.accountNumber && vendor.bankDetails?.accountHolderName) score += 10;
+  if (vendor.businessHours || vendor.isAvailableNow !== undefined) score += 10;
+
+  return score;
+};
 
 /**
  * Get vendor profile
@@ -15,9 +32,13 @@ const getProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Vendor not found' });
     }
 
-    // Use stored rating if available (and > 0), otherwise calculate
-    let rating = vendor.rating || 0;
+    const completionScore = await calculateProfileCompletion(vendor);
+    if (vendor.profileCompletion !== completionScore) {
+      vendor.profileCompletion = completionScore;
+      await vendor.save();
+    }
 
+    let rating = vendor.rating || 0;
     const Booking = require('../../models/Booking');
 
     if (rating === 0) {
@@ -32,27 +53,20 @@ const getProfile = async (req, res) => {
     const completedJobs = await Booking.countDocuments({ vendorId, status: 'completed' });
     const completionRate = totalJobs > 0 ? (completedJobs / totalJobs) * 100 : 0;
 
+    const formatted = formatVendorResponse(vendor);
+
     res.status(200).json({
       success: true,
       vendor: {
-        id: vendor._id,
-        name: vendor.name,
-        businessName: vendor.businessName || null,
-        email: vendor.email,
-        phone: vendor.phone,
-        service: vendor.service,
+        ...formatted,
         skills: vendor.skills || [],
-        address: vendor.address || null,
-        rating: rating > 0 ? parseFloat(rating.toFixed(1)) : 0,
         totalJobs,
+        completedJobs,
         completionRate,
-        approvalStatus: vendor.approvalStatus,
+        businessHours: vendor.businessHours || {},
+        settings: vendor.settings || {},
         isPhoneVerified: vendor.isPhoneVerified || false,
-        isEmailVerified: vendor.isEmailVerified || false,
-        profilePhoto: vendor.profilePhoto || null,
-        aadharDocument: vendor.aadhar?.document || null,
-        createdAt: vendor.createdAt,
-        updatedAt: vendor.updatedAt
+        isEmailVerified: vendor.isEmailVerified || false
       }
     });
   } catch (error) {
@@ -65,167 +79,211 @@ const getProfile = async (req, res) => {
 };
 
 /**
- * Update vendor profile
+ * Update personal profile section
+ */
+const updatePersonal = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { name, bio, profilePhoto, address, skills } = req.body;
+
+    const vendor = await Vendor.findById(vendorId);
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+
+    if (name) vendor.name = name.trim();
+    if (bio !== undefined) vendor.businessDetails = { ...vendor.businessDetails, businessDescription: bio };
+    if (skills && Array.isArray(skills)) vendor.skills = skills;
+
+    if (profilePhoto && profilePhoto.startsWith('data:')) {
+      const uploadRes = await cloudinaryService.uploadFile(profilePhoto, { folder: 'vendors/profiles' });
+      if (uploadRes.success) vendor.profilePhoto = uploadRes.url;
+    } else if (profilePhoto) {
+      vendor.profilePhoto = profilePhoto;
+    }
+
+    if (address) {
+      vendor.address = { ...vendor.address, ...address };
+      if (address.lat && address.lng) {
+        vendor.geoLocation = { type: 'Point', coordinates: [parseFloat(address.lng), parseFloat(address.lat)] };
+      }
+    }
+
+    vendor.profileCompletion = await calculateProfileCompletion(vendor);
+    await vendor.save();
+
+    await logAudit({ actorId: vendor._id, actorType: 'VENDOR', actorName: vendor.name, action: 'PROFILE_UPDATED', entity: 'Vendor', entityId: vendor._id, req });
+
+    res.status(200).json({ success: true, message: 'Personal profile updated', vendor: formatVendorResponse(vendor) });
+  } catch (error) {
+    console.error('Update personal profile error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update personal details' });
+  }
+};
+
+/**
+ * Update business details
+ */
+const updateBusiness = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { providerType, businessName, businessLogo, businessDescription, teamSize, gstin, businessAddress } = req.body;
+
+    const vendor = await Vendor.findById(vendorId);
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+
+    if (providerType) vendor.providerType = providerType;
+    let logoUrl = vendor.businessDetails?.businessLogo;
+
+    if (businessLogo && businessLogo.startsWith('data:')) {
+      const uploadRes = await cloudinaryService.uploadFile(businessLogo, { folder: 'vendors/business' });
+      if (uploadRes.success) logoUrl = uploadRes.url;
+    } else if (businessLogo) {
+      logoUrl = businessLogo;
+    }
+
+    vendor.businessDetails = {
+      businessName: businessName !== undefined ? businessName : vendor.businessDetails?.businessName,
+      businessLogo: logoUrl,
+      businessDescription: businessDescription !== undefined ? businessDescription : vendor.businessDetails?.businessDescription,
+      teamSize: teamSize || vendor.businessDetails?.teamSize || 1,
+      gstin: gstin !== undefined ? gstin : vendor.businessDetails?.gstin,
+      businessAddress: businessAddress !== undefined ? businessAddress : vendor.businessDetails?.businessAddress
+    };
+
+    vendor.profileCompletion = await calculateProfileCompletion(vendor);
+    await vendor.save();
+
+    await logAudit({ actorId: vendor._id, actorType: 'VENDOR', actorName: vendor.name, action: 'BUSINESS_DETAILS_UPDATED', entity: 'Vendor', entityId: vendor._id, req });
+
+    res.status(200).json({ success: true, message: 'Business details updated', vendor: formatVendorResponse(vendor) });
+  } catch (error) {
+    console.error('Update business details error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update business details' });
+  }
+};
+
+/**
+ * Update bank & payout details (Triggers admin verification requirement)
+ */
+const updateBank = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { accountHolderName, accountNumber, ifscCode, bankName, upiId } = req.body;
+
+    const vendor = await Vendor.findById(vendorId);
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+
+    vendor.bankDetails = {
+      accountHolderName: accountHolderName ? accountHolderName.trim() : vendor.bankDetails?.accountHolderName,
+      accountNumber: accountNumber ? accountNumber.trim() : vendor.bankDetails?.accountNumber,
+      ifscCode: ifscCode ? ifscCode.trim().toUpperCase() : vendor.bankDetails?.ifscCode,
+      bankName: bankName ? bankName.trim() : vendor.bankDetails?.bankName,
+      upiId: upiId ? upiId.trim() : vendor.bankDetails?.upiId,
+      isVerified: false // Reset verification status when bank details change
+    };
+
+    vendor.profileCompletion = await calculateProfileCompletion(vendor);
+    await vendor.save();
+
+    await logAudit({ actorId: vendor._id, actorType: 'VENDOR', actorName: vendor.name, action: 'BANK_DETAILS_UPDATED', entity: 'Vendor', entityId: vendor._id, req });
+
+    res.status(200).json({ success: true, message: 'Bank details updated successfully', vendor: formatVendorResponse(vendor) });
+  } catch (error) {
+    console.error('Update bank details error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update bank details' });
+  }
+};
+
+/**
+ * Update availability & working hours
+ */
+const updateAvailability = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { isAvailableNow, businessHours, blockedDates, holidayDates, availability } = req.body;
+
+    const vendor = await Vendor.findById(vendorId);
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+
+    if (isAvailableNow !== undefined) vendor.isAvailableNow = Boolean(isAvailableNow);
+    if (availability) vendor.availability = availability;
+    if (businessHours) vendor.businessHours = { ...vendor.businessHours, ...businessHours };
+    if (blockedDates && Array.isArray(blockedDates)) vendor.blockedDates = blockedDates;
+    if (holidayDates && Array.isArray(holidayDates)) vendor.holidayDates = holidayDates;
+
+    vendor.profileCompletion = await calculateProfileCompletion(vendor);
+    await vendor.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Availability updated',
+      availability: {
+        isAvailableNow: vendor.isAvailableNow,
+        availability: vendor.availability,
+        businessHours: vendor.businessHours,
+        blockedDates: vendor.blockedDates,
+        holidayDates: vendor.holidayDates
+      }
+    });
+  } catch (error) {
+    console.error('Update availability error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update availability' });
+  }
+};
+
+/**
+ * Update vendor profile (Legacy compatibility)
  */
 const updateProfile = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
-
     const vendorId = req.user.id;
-    const { name, businessName, address, profilePhoto, serviceCategory, skills, aadharNumber, aadharDocument, panNumber, panDocument, serviceRange } = req.body;
-
-    console.log('Update Vendor Profile Body:', JSON.stringify(req.body, null, 2));
+    const { name, businessName, address, profilePhoto, serviceCategory, skills, serviceRange } = req.body;
 
     const vendor = await Vendor.findById(vendorId);
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
 
-    if (!vendor) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
-      });
-    }
-
-    // Update fields
     if (name) vendor.name = name.trim();
-    if (businessName !== undefined) vendor.businessName = businessName ? businessName.trim() : null;
+    if (businessName !== undefined) {
+      if (!vendor.businessDetails) vendor.businessDetails = {};
+      vendor.businessDetails.businessName = businessName ? businessName.trim() : null;
+    }
     if (address) {
       if (typeof address === 'string') {
-        // If address is coming as string from simple form
-        vendor.address = {
-          ...vendor.address,
-          fullAddress: address
-        };
+        vendor.address = { ...vendor.address, fullAddress: address };
       } else {
-        // Address is an object from advanced picker
-        vendor.address = {
-          fullAddress: address.fullAddress || vendor.address?.fullAddress || '',
-          addressLine1: address.addressLine1 || vendor.address?.addressLine1 || '',
-          addressLine2: address.addressLine2 || vendor.address?.addressLine2 || '',
-          city: address.city || vendor.address?.city || '',
-          state: address.state || vendor.address?.state || '',
-          pincode: address.pincode || vendor.address?.pincode || '',
-          landmark: address.landmark || vendor.address?.landmark || '',
-          lat: address.lat !== undefined ? address.lat : vendor.address?.lat,
-          lng: address.lng !== undefined ? address.lng : vendor.address?.lng
-        };
-
-        // Sync GeoJSON geoLocation for fast geo queries
-        if (vendor.address.lat && vendor.address.lng) {
-          vendor.geoLocation = {
-            type: 'Point',
-            coordinates: [vendor.address.lng, vendor.address.lat] // [lng, lat]
-          };
+        vendor.address = { ...vendor.address, ...address };
+        if (address.lat && address.lng) {
+          vendor.geoLocation = { type: 'Point', coordinates: [parseFloat(address.lng), parseFloat(address.lat)] };
         }
       }
     }
 
-    // Update profile photo - upload to Cloudinary if it's a base64 string
-    if (profilePhoto !== undefined) {
-      if (profilePhoto && profilePhoto.startsWith('data:')) {
-        const uploadRes = await cloudinaryService.uploadFile(profilePhoto, { folder: 'vendors/profiles' });
-        if (uploadRes.success) {
-          vendor.profilePhoto = uploadRes.url;
-        }
-      } else {
-        vendor.profilePhoto = profilePhoto;
-      }
+    if (profilePhoto && profilePhoto.startsWith('data:')) {
+      const uploadRes = await cloudinaryService.uploadFile(profilePhoto, { folder: 'vendors/profiles' });
+      if (uploadRes.success) vendor.profilePhoto = uploadRes.url;
+    } else if (profilePhoto) {
+      vendor.profilePhoto = profilePhoto;
     }
 
-    // Handle multiple service categories
     if (serviceCategory !== undefined) {
-      if (Array.isArray(serviceCategory)) {
-        vendor.service = serviceCategory;
-        vendor.categories = serviceCategory; // Sync categories field too
-      } else if (typeof serviceCategory === 'string') {
-        // If string, likely single value or comma separated
-        vendor.service = [serviceCategory];
-        vendor.categories = [serviceCategory];
-      }
+      vendor.service = Array.isArray(serviceCategory) ? serviceCategory : [serviceCategory];
     }
-
-    // Handle service range
     if (serviceRange !== undefined) {
       if (!vendor.settings) vendor.settings = {};
       vendor.settings.serviceRange = Number(serviceRange) || 10;
     }
+    if (skills !== undefined) vendor.skills = Array.isArray(skills) ? skills : [];
 
-    // Handle skills
-    if (skills !== undefined) {
-      vendor.skills = Array.isArray(skills) ? skills : [];
-    }
-    // If aadharDocument exists and is not empty, update it
-    if (aadharDocument || aadharNumber) {
-      let aadharUrl = aadharDocument || vendor.aadhar?.document;
-      if (aadharUrl && aadharUrl.startsWith('data:')) {
-        const uploadRes = await cloudinaryService.uploadFile(aadharUrl, { folder: 'vendors/documents' });
-        if (uploadRes.success) aadharUrl = uploadRes.url;
-      }
-
-      if (vendor.aadhar) {
-        if (aadharNumber) vendor.aadhar.number = aadharNumber;
-        if (aadharDocument) vendor.aadhar.document = aadharUrl;
-      } else {
-        vendor.aadhar = {
-          number: aadharNumber || '',
-          document: aadharUrl || ''
-        };
-      }
-    }
-
-    // If panDocument exists and is not empty, update it
-    if (panDocument || panNumber) {
-      let panUrl = panDocument || vendor.pan?.document;
-      if (panUrl && panUrl.startsWith('data:')) {
-        const uploadRes = await cloudinaryService.uploadFile(panUrl, { folder: 'vendors/documents' });
-        if (uploadRes.success) panUrl = uploadRes.url;
-      }
-
-      if (vendor.pan) {
-        if (panNumber) vendor.pan.number = panNumber;
-        if (panDocument) vendor.pan.document = panUrl;
-      } else {
-        vendor.pan = {
-          number: panNumber || '',
-          document: panUrl || ''
-        };
-      }
-    }
-
+    vendor.profileCompletion = await calculateProfileCompletion(vendor);
     await vendor.save();
 
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',
-      vendor: {
-        id: vendor._id,
-        name: vendor.name,
-        businessName: vendor.businessName,
-        email: vendor.email,
-        phone: vendor.phone,
-        service: vendor.service,
-        address: vendor.address,
-        approvalStatus: vendor.approvalStatus,
-        isPhoneVerified: vendor.isPhoneVerified,
-        isEmailVerified: vendor.isEmailVerified,
-        profilePhoto: vendor.profilePhoto,
-        service: vendor.service,
-        skills: vendor.skills,
-        settings: vendor.settings
-      }
+      vendor: formatVendorResponse(vendor)
     });
   } catch (error) {
     console.error('Update vendor profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update profile. Please try again.'
-    });
+    res.status(500).json({ success: false, message: 'Failed to update profile' });
   }
 };
 
@@ -234,35 +292,16 @@ const updateProfile = async (req, res) => {
  */
 const updateAddress = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
-
     const vendorId = req.user.id;
     const { fullAddress, lat, lng } = req.body;
 
-    if (!fullAddress || !lat || !lng) {
-      return res.status(400).json({
-        success: false,
-        message: 'Full address and coordinates are required'
-      });
+    if (!fullAddress || lat === undefined || lng === undefined) {
+      return res.status(400).json({ success: false, message: 'Full address and coordinates are required' });
     }
 
     const vendor = await Vendor.findById(vendorId);
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
 
-    if (!vendor) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
-      });
-    }
-
-    // Update address with coordinates
     vendor.address = {
       ...vendor.address,
       fullAddress: fullAddress.trim(),
@@ -270,25 +309,13 @@ const updateAddress = async (req, res) => {
       lng: parseFloat(lng)
     };
 
-    // Sync GeoJSON geoLocation
-    vendor.geoLocation = {
-      type: 'Point',
-      coordinates: [parseFloat(lng), parseFloat(lat)]
-    };
-
+    vendor.geoLocation = { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] };
     await vendor.save();
 
-    res.status(200).json({
-      success: true,
-      message: 'Address updated successfully',
-      address: vendor.address
-    });
+    res.status(200).json({ success: true, message: 'Address updated successfully', address: vendor.address });
   } catch (error) {
     console.error('Update vendor address error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update address. Please try again.'
-    });
+    res.status(500).json({ success: false, message: 'Failed to update address' });
   }
 };
 
@@ -304,13 +331,9 @@ const updateLocation = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Latitude and Longitude are required' });
     }
 
-    // Update only the location field
     await Vendor.findByIdAndUpdate(vendorId, {
       location: { lat, lng, updatedAt: new Date() },
-      geoLocation: {
-        type: 'Point',
-        coordinates: [lng, lat]
-      }
+      geoLocation: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] }
     });
 
     res.status(200).json({ success: true, message: 'Location updated' });
@@ -323,6 +346,10 @@ const updateLocation = async (req, res) => {
 module.exports = {
   getProfile,
   updateProfile,
+  updatePersonal,
+  updateBusiness,
+  updateBank,
+  updateAvailability,
   updateAddress,
   updateLocation
 };

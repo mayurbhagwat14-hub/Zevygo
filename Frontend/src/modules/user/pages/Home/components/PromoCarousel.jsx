@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import { gsap } from 'gsap';
 import PromoCard from '../../../components/common/PromoCard';
 import { themeColors } from '../../../../../theme';
@@ -20,48 +20,72 @@ const PromoCarousel = memo(({ promos, onPromoClick }) => {
 
   const promotionalCards = promos || [];
 
-  // Simple auto-scroll functionality
+  // Append first card clone to end for seamless infinite manual & auto swiping
+  const displayCards = useMemo(() => {
+    if (promotionalCards.length > 1) {
+      return [
+        ...promotionalCards,
+        { ...promotionalCards[0], id: `${promotionalCards[0].id || 'promo'}-clone-end`, isClone: true }
+      ];
+    }
+    return promotionalCards;
+  }, [promotionalCards]);
+
+  const isResettingRef = useRef(false);
+
+  // Auto-scroll loop functionality (3-second interval)
   useEffect(() => {
     if (isHovered || promotionalCards.length <= 1) return;
 
     const interval = setInterval(() => {
-      if (!scrollContainerRef.current) return;
+      if (!scrollContainerRef.current || isResettingRef.current) return;
 
       const container = scrollContainerRef.current;
-      const cardWidth = container.offsetWidth; // Scroll by one screen/card width
+      const firstCard = container.querySelector('[data-promo-card]');
+      const cardWidth = firstCard ? firstCard.offsetWidth + 8 : container.offsetWidth * 0.88;
+      const maxScrollLeft = container.scrollWidth - container.clientWidth;
 
-      // Calculate next scroll position
-      let nextScrollLeft = container.scrollLeft + cardWidth;
+      if (container.scrollLeft >= maxScrollLeft - 15) {
+        // We are on clone card at the end -> instantly jump to real index 0, then scroll to index 1
+        container.style.scrollBehavior = 'auto';
+        container.scrollLeft = 0;
+        container.style.scrollBehavior = 'smooth';
 
-      // If we reached the end, loop back (smoothly if possible, or instant)
-      if (nextScrollLeft >= container.scrollWidth - 10) { // Tolerance
-        nextScrollLeft = 0;
+        setTimeout(() => {
+          if (container) {
+            container.scrollTo({ left: cardWidth, behavior: 'smooth' });
+          }
+        }, 50);
+      } else {
+        container.scrollTo({
+          left: container.scrollLeft + cardWidth,
+          behavior: 'smooth'
+        });
       }
-
-      container.scrollTo({
-        left: nextScrollLeft,
-        behavior: 'smooth'
-      });
-
-    }, 5000); // 5 seconds interval
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [isHovered, promotionalCards.length]);
 
-  // Trigger index update on scroll
+  // Handle manual & auto scroll for seamless instant reset on clone
   const handleScroll = () => {
-    if (scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      const scrollLeft = container.scrollLeft;
-      // Use card width if available, otherwise container width (assuming full width cards or snap points)
-      // For accurate dot highlighting, we prefer container width as the snap logic usually aligns near that.
-      const width = container.offsetWidth;
+    if (!scrollContainerRef.current || isResettingRef.current) return;
 
-      const index = Math.round(scrollLeft / width);
+    const container = scrollContainerRef.current;
+    const maxScrollLeft = container.scrollWidth - container.clientWidth;
 
-      if (index !== currentIndex && index >= 0 && index < promotionalCards.length) {
-        setCurrentIndex(index);
-      }
+    // If user manually swipes into the clone card at the end
+    if (container.scrollLeft >= maxScrollLeft - 5) {
+      isResettingRef.current = true;
+      // Instantly jump to beginning (real card 0) without smooth transition delay
+      setTimeout(() => {
+        if (container) {
+          container.style.scrollBehavior = 'auto';
+          container.scrollLeft = 0;
+          container.style.scrollBehavior = 'smooth';
+        }
+        isResettingRef.current = false;
+      }, 350);
     }
   };
 
@@ -90,11 +114,11 @@ const PromoCarousel = memo(({ promos, onPromoClick }) => {
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-hide snap-x snap-mandatory"
+        className="flex gap-2 overflow-x-auto px-1 sm:px-2 pt-2 pb-1 scrollbar-hide snap-x snap-mandatory"
         style={{ scrollBehavior: 'smooth' }}
       >
-        {promotionalCards.map((promo, index) => (
-          <div key={promo.id || promo._id || index} data-promo-card className="flex-shrink-0 snap-center">
+        {displayCards.map((promo, index) => (
+          <div key={`${promo.id || index}-${index}`} data-promo-card className="flex-shrink-0 snap-center">
             <PromoCard
               title={promo.title}
               subtitle={promo.subtitle}
@@ -104,19 +128,6 @@ const PromoCarousel = memo(({ promos, onPromoClick }) => {
               onClick={() => onPromoClick?.(promo)}
             />
           </div>
-        ))}
-      </div>
-      {/* Carousel indicator dots */}
-      <div className="flex justify-center gap-1.5 mt-3 mb-4">
-        {promotionalCards.map((_, index) => (
-          <div
-            key={index}
-            className={`rounded-full transition-all ${index === currentIndex ? 'w-6 h-1.5' : 'w-1.5 h-1.5'}`}
-            style={{
-              backgroundColor: index === currentIndex ? themeColors.brand.yellow : `${themeColors.brand.yellow}66`,
-              boxShadow: index === currentIndex ? `0 2px 6px ${themeColors.brand.yellow}80` : '0 1px 2px rgba(0, 0, 0, 0.2)'
-            }}
-          />
         ))}
       </div>
     </div>

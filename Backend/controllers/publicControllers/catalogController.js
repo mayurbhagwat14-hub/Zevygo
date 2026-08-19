@@ -16,27 +16,39 @@ const getPublicCategories = async (req, res) => {
   try {
     const { cityId } = req.query;
 
-    // Build query
+    // Build query - return active categories (both city-specific and global)
     const query = { status: 'active' };
     if (cityId) {
-      query.cityIds = cityId;
+      query.$or = [
+        { cityIds: cityId },
+        { cityIds: { $size: 0 } },
+        { cityIds: { $exists: false } }
+      ];
     }
 
     const categories = await Category.find(query)
-      .select('title slug homeIconUrl homeBadge hasSaleBadge homeOrder showOnHome')
+      .select('title slug homeIconUrl imageUrl homeBadge hasSaleBadge homeOrder showOnHome supportedBookingTypes bookingMode defaultPricingModel allowMultiSelect formSchema vendorFormSchema')
       .sort({ homeOrder: 1, createdAt: -1 })
       .lean();
 
-    // Fetch only necessary fields for initial category list
+    // Fetch necessary fields for category list
     const initialCategories = categories.map(cat => ({
       id: cat._id.toString(),
       title: cat.title,
       slug: cat.slug,
-      icon: cat.homeIconUrl || '',
+      icon: cat.homeIconUrl || cat.imageUrl || '',
       badge: cat.homeBadge || '',
       hasSaleBadge: cat.hasSaleBadge || false,
-      showOnHome: cat.showOnHome || false
+      showOnHome: cat.showOnHome !== false,
+      supportedBookingTypes: cat.supportedBookingTypes || ['scheduled'],
+      bookingMode: cat.bookingMode || 'BOTH',
+      defaultPricingModel: cat.defaultPricingModel || 'FIXED',
+      allowMultiSelect: Boolean(cat.allowMultiSelect),
+      formSchema: cat.formSchema || [],
+      vendorFormSchema: cat.vendorFormSchema || []
     }));
+
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
 
     res.status(200).json({
       success: true,
@@ -379,10 +391,19 @@ const getPublicHomeData = async (req, res) => {
   try {
     const { cityId } = req.query;
 
+    const categoryQuery = { status: 'active' };
+    if (cityId) {
+      categoryQuery.$or = [
+        { cityIds: cityId },
+        { cityIds: { $size: 0 } },
+        { cityIds: { $exists: false } }
+      ];
+    }
+
     // Fetch both in parallel
     const [categoriesRes, homeContent] = await Promise.all([
-      Category.find({ status: 'active', cityIds: cityId ? cityId : { $exists: true } })
-        .select('title slug homeIconUrl homeBadge hasSaleBadge')
+      Category.find(categoryQuery)
+        .select('title slug homeIconUrl imageUrl homeBadge hasSaleBadge supportedBookingTypes bookingMode defaultPricingModel allowMultiSelect formSchema vendorFormSchema')
         .sort({ homeOrder: 1 })
         .lean(),
       HomeContent.getHomeContent(cityId)
@@ -392,9 +413,15 @@ const getPublicHomeData = async (req, res) => {
       id: cat._id.toString(),
       title: cat.title,
       slug: cat.slug,
-      icon: cat.homeIconUrl || '',
+      icon: cat.homeIconUrl || cat.imageUrl || '',
       badge: cat.homeBadge || '',
-      hasSaleBadge: cat.hasSaleBadge || false
+      hasSaleBadge: cat.hasSaleBadge || false,
+      supportedBookingTypes: cat.supportedBookingTypes || ['scheduled'],
+      bookingMode: cat.bookingMode || 'BOTH',
+      defaultPricingModel: cat.defaultPricingModel || 'FIXED',
+      allowMultiSelect: Boolean(cat.allowMultiSelect),
+      formSchema: cat.formSchema || [],
+      vendorFormSchema: cat.vendorFormSchema || []
     }));
 
     let formattedContent = null;
@@ -469,11 +496,107 @@ const getPublicHomeData = async (req, res) => {
   }
 };
 
+/**
+ * Get approved provider service listings for Customer App
+ * GET /api/public/provider-services
+ */
+const getPublicServiceListings = async (req, res) => {
+  try {
+    const { categoryId, categorySlug, city, search, page = 1, limit = 20 } = req.query;
+    const ServiceListing = require('../../models/ServiceListing');
+
+    const query = { status: 'APPROVED' };
+
+    if (categoryId) query.categoryId = categoryId;
+    if (categorySlug) {
+      const Category = require('../../models/Category');
+      const cat = await Category.findOne({ slug: categorySlug });
+      if (cat) query.categoryId = cat._id;
+    }
+    if (city) {
+      query.$or = [
+        { 'serviceArea.city': { $regex: city, $options: 'i' } },
+        { 'serviceArea.areas': { $regex: city, $options: 'i' } }
+      ];
+    }
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const [listings, total] = await Promise.all([
+      ServiceListing.find(query)
+        .populate({
+          path: 'vendorId',
+          select: 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus',
+          match: { approvalStatus: 'approved', accountStatus: { $ne: 'SUSPENDED' } }
+        })
+        .populate('categoryId', 'title slug homeIconUrl defaultPricingModel vendorFormSchema')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      ServiceListing.countDocuments(query)
+    ]);
+
+    // Filter out any listings where vendor is unapproved/null
+    const validListings = listings.filter(l => l.vendorId).map(l => ({
+      id: l._id.toString(),
+      title: l.title,
+      description: l.description,
+      experience: l.experience,
+      languages: l.languages,
+      pricingModel: l.pricingModel,
+      bookingMode: l.bookingMode,
+      pricing: l.pricing,
+      availability: l.availability,
+      serviceArea: l.serviceArea,
+      cancellation: l.cancellation,
+      dynamicFormAnswers: l.dynamicFormAnswers,
+      portfolioPhotos: l.portfolioPhotos || [],
+      documents: (l.documents || []).filter(d => d.verified),
+      category: {
+        id: l.categoryId?._id?.toString(),
+        title: l.categoryId?.title,
+        slug: l.categoryId?.slug,
+        icon: l.categoryId?.homeIconUrl
+      },
+      provider: {
+        id: l.vendorId._id.toString(),
+        name: l.vendorId.name,
+        photo: l.vendorId.profilePhoto,
+        rating: l.vendorId.rating || 4.8,
+        reviews: l.vendorId.totalReviews || 0,
+        completedJobs: l.vendorId.completedJobs || 0,
+        city: l.vendorId.address?.city
+      }
+    }));
+
+    res.status(200).json({
+      success: true,
+      listings: validListings,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: validListings.length
+      }
+    });
+  } catch (error) {
+    console.error('Get public service listings error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch provider services' });
+  }
+};
+
 module.exports = {
   getPublicCategories,
   getPublicBrands,
   getPublicBrandBySlug,
   getPublicServices,
   getPublicHomeContent,
-  getPublicHomeData
+  getPublicHomeData,
+  getPublicServiceListings
 };

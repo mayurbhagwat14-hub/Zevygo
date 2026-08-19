@@ -2,6 +2,39 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { VENDOR_STATUS } = require('../utils/constants');
 
+const vendorCategoryEnrollmentSchema = new mongoose.Schema({
+  categoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: true
+  },
+  status: {
+    type: String,
+    enum: Object.values(VENDOR_STATUS),
+    default: VENDOR_STATUS.PENDING
+  },
+  documents: [{
+    label: { type: String, required: true },
+    url: { type: String, required: true }
+  }],
+  appliedAt: {
+    type: Date,
+    default: Date.now
+  },
+  approvedAt: {
+    type: Date,
+    default: null
+  },
+  rejectedReason: {
+    type: String,
+    default: null
+  },
+  dynamicAnswers: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  }
+}, { _id: true });
+
 const vendorSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -47,6 +80,8 @@ const vendorSchema = new mongoose.Schema({
     type: [String],
     default: []
   },
+  // Per-category enrollment applications and approval status
+  categoryEnrollments: [vendorCategoryEnrollmentSchema],
   aadhar: {
     number: {
       type: String,
@@ -77,6 +112,50 @@ const vendorSchema = new mongoose.Schema({
   otherDocuments: [{
     type: String // Cloudinary URLs
   }],
+  accountStatus: {
+    type: String,
+    enum: ['INCOMPLETE', 'PENDING_VERIFICATION', 'UNDER_REVIEW', 'ACTIVE', 'SUSPENDED', 'REJECTED', 'BLOCKED'],
+    default: 'INCOMPLETE',
+    index: true
+  },
+  providerType: {
+    type: String,
+    enum: ['INDIVIDUAL', 'BUSINESS'],
+    default: 'INDIVIDUAL'
+  },
+  businessDetails: {
+    businessName: { type: String, trim: true, default: null },
+    businessLogo: { type: String, default: null },
+    businessDescription: { type: String, trim: true, default: null },
+    businessType: { type: String, default: null },
+    teamSize: { type: Number, default: 1 },
+    gstin: { type: String, trim: true, uppercase: true, default: null },
+    businessAddress: { type: String, trim: true, default: null }
+  },
+  bankDetails: {
+    accountHolderName: { type: String, trim: true, default: null },
+    accountNumber: { type: String, trim: true, default: null },
+    ifscCode: { type: String, trim: true, uppercase: true, default: null },
+    bankName: { type: String, trim: true, default: null },
+    upiId: { type: String, trim: true, default: null },
+    isVerified: { type: Boolean, default: false }
+  },
+  profileCompletion: {
+    type: Number,
+    default: 20,
+    min: 0,
+    max: 100
+  },
+  blockedDates: [{
+    type: Date
+  }],
+  holidayDates: [{
+    type: Date
+  }],
+  isAvailableNow: {
+    type: Boolean,
+    default: true
+  },
   approvalStatus: {
     type: String,
     enum: Object.values(VENDOR_STATUS),
@@ -267,6 +346,8 @@ vendorSchema.index({ approvalStatus: 1 });
 vendorSchema.index({ 'wallet.earnings': -1 });
 vendorSchema.index({ geoLocation: '2dsphere' }); // Fast geo queries
 vendorSchema.index({ isOnline: 1, availability: 1, approvalStatus: 1 }); // Compound index for vendor search
+vendorSchema.index({ 'categoryEnrollments.categoryId': 1, 'categoryEnrollments.status': 1 }); // Index for category-gated queries
+
 
 // Hash password before saving
 vendorSchema.pre('save', async function (next) {

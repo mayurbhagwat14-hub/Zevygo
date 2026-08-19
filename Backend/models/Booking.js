@@ -245,11 +245,22 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Scheduled time is required']
   },
+  scheduledFor: {
+    type: Date,
+    default: null,
+    index: true
+  },
   timeSlot: {
     start: { type: String, required: true },
     end: { type: String, required: true },
     date: { type: String }, // redundant but kept for frontend convenience format
     time: { type: String }  // redundant but kept for frontend convenience format
+  },
+
+  // Dynamic answers filled by user based on category formSchema
+  dynamicAnswers: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   },
 
   // ==========================================
@@ -259,6 +270,7 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     enum: ['instant', 'scheduled'],
     default: 'scheduled',
+    required: [true, 'Booking type is required'],
     index: true
   },
   status: {
@@ -351,6 +363,18 @@ const bookingSchema = new mongoose.Schema({
 
 }, {
   timestamps: true
+});
+
+// Enforce scheduledFor when bookingType is scheduled
+bookingSchema.pre('validate', function (next) {
+  if (this.bookingType === 'scheduled' && !this.scheduledFor) {
+    if (this.scheduledDate) {
+      this.scheduledFor = this.scheduledDate;
+    } else {
+      return next(new Error('scheduledFor date is required when bookingType is scheduled'));
+    }
+  }
+  next();
 });
 
 // Generate unique booking number

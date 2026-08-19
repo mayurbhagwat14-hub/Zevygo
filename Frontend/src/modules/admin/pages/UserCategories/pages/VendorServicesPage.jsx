@@ -1,68 +1,55 @@
 import React, { useState, useEffect } from "react";
-import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiSearch } from "react-icons/fi";
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiSliders, FiGrid } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import CardShell from "../components/CardShell";
 import Modal from "../components/Modal";
-import { vendorCatalogService, categoryService } from "../../../../../services/catalogService";
+import VendorFormBuilderModal from "../components/VendorFormBuilderModal";
+import { categoryService } from "../../../../../services/catalogService";
 import { z } from "zod";
 
-const schema = z.object({
-  name: z.string().min(2, "Name is required"),
-  basePrice: z.number().min(0, "Price must be non-negative"),
-  description: z.string().optional(),
-  categoryId: z.string().min(1, "Category is required")
+const categorySchema = z.object({
+  title: z.string().min(2, "Title is required"),
+  homeBadge: z.string().optional(),
+  description: z.string().optional()
 });
 
 const VendorServicesPage = () => {
-  const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ name: "", basePrice: "", description: "", categoryId: "" });
+
+  // Modals
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [formBuilderCategory, setFormBuilderCategory] = useState(null);
+
+  // Category Edit State
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryForm, setCategoryForm] = useState({ title: "", homeBadge: "", description: "" });
 
   useEffect(() => {
-    loadServices();
     loadCategories();
   }, []);
 
   const loadCategories = async () => {
     try {
-      const response = await categoryService.getAll();
-      if (response.success) {
-        setCategories(response.categories || []);
+      setFetching(true);
+      const catRes = await categoryService.getAll({ status: 'active' });
+
+      if (catRes.success) {
+        setCategories((catRes.categories || []).filter(c => c.status !== 'deleted' && c.status !== 'inactive'));
       }
     } catch (error) {
       console.error("Failed to load categories:", error);
-    }
-  };
-
-  const loadServices = async () => {
-    try {
-      setFetching(true);
-      const response = await vendorCatalogService.getAllServices();
-      if (response.success) {
-        setServices(response.services || []);
-      }
-    } catch (error) {
-      console.error("Failed to load vendor services:", error);
-      toast.error("Failed to load services");
+      toast.error("Failed to load service categories");
     } finally {
       setFetching(false);
     }
   };
 
-  const handleSave = async () => {
-    const data = {
-      name: form.name,
-      basePrice: Number(form.basePrice),
-      description: form.description,
-      categoryId: form.categoryId
-    };
-
-    const result = schema.safeParse(data);
+  // Save Category
+  const handleSaveCategory = async () => {
+    const result = categorySchema.safeParse(categoryForm);
     if (!result.success) {
       toast.error(result.error.errors[0].message);
       return;
@@ -70,207 +57,199 @@ const VendorServicesPage = () => {
 
     try {
       setLoading(true);
-      if (editingId) {
-        const response = await vendorCatalogService.updateService(editingId, result.data);
-        if (response.success) {
-          toast.success("Service updated");
-          loadServices();
-          reset();
+      if (editingCategory) {
+        const res = await categoryService.update(editingCategory.id || editingCategory._id, result.data);
+        if (res.success) {
+          toast.success("Category updated successfully");
+          loadCategories();
+          resetCategoryForm();
         }
       } else {
-        const response = await vendorCatalogService.createService(result.data);
-        if (response.success) {
-          toast.success("Service created");
-          loadServices();
-          reset();
+        const res = await categoryService.create(result.data);
+        if (res.success) {
+          toast.success("Category created successfully");
+          loadCategories();
+          resetCategoryForm();
         }
       }
     } catch (error) {
-      console.error("Save error:", error);
-      toast.error(error.response?.data?.message || "Failed to save service");
+      console.error("Save category error:", error);
+      toast.error(error.response?.data?.message || "Failed to save category");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this service?")) return;
+  // Delete Category
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this category? It will remove it from vendor signup and user app.")) return;
     try {
       setLoading(true);
-      const response = await vendorCatalogService.deleteService(id);
-      if (response.success) {
-        toast.success("Service deleted");
-        loadServices();
+      const res = await categoryService.delete(id);
+      if (res.success) {
+        toast.success("Category deleted");
+        loadCategories();
       }
     } catch (error) {
-      toast.error("Failed to delete service");
+      toast.error("Failed to delete category");
     } finally {
       setLoading(false);
     }
   };
 
-  const reset = () => {
-    setEditingId(null);
-    setForm({ name: "", basePrice: "", description: "", categoryId: "" });
-    setIsModalOpen(false);
+  const resetCategoryForm = () => {
+    setEditingCategory(null);
+    setCategoryForm({ title: "", homeBadge: "", description: "" });
+    setIsCategoryModalOpen(false);
   };
 
-  const openEdit = (svc) => {
-    setEditingId(svc._id || svc.id);
-    setForm({
-      name: svc.name,
-      basePrice: svc.basePrice || svc.price,
-      description: svc.description || "",
-      categoryId: svc.categoryId?._id || svc.categoryId || ""
+  const openEditCategory = (cat) => {
+    setEditingCategory(cat);
+    setCategoryForm({
+      title: cat.title || "",
+      homeBadge: cat.homeBadge || "",
+      description: cat.description || ""
     });
-    setIsModalOpen(true);
+    setIsCategoryModalOpen(true);
   };
 
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("All");
-
-  const filteredServices = services.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategoryFilter === "All" ||
-      (s.categoryId?._id === selectedCategoryFilter) ||
-      (s.categoryId === selectedCategoryFilter) ||
-      (s.categoryId?.id === selectedCategoryFilter); // Handle populated or raw ID
-    return matchesSearch && matchesCategory;
-  });
+  const filteredCategories = categories.filter(c => c.title.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
-    <div className="space-y-6">
-      <CardShell title="Vendor Services Catalog" icon={FiPlus}>
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6">
-          <div className="flex gap-4 w-full sm:w-auto flex-1">
-            <div className="relative w-full sm:w-64">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search services..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-xl focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
+    <div className="space-y-6 max-w-7xl mx-auto p-2 sm:p-4">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <div>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight">Vendor Services & Form Builder</h1>
+          <p className="text-xs text-slate-500 mt-0.5">Manage platform service categories and configure dynamic vendor signup form fields</p>
+        </div>
 
-            <div className="w-full sm:w-48">
-              <select
-                value={selectedCategoryFilter}
-                onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-primary-500 bg-white"
-              >
-                <option value="All">All Categories</option>
-                {categories.map(cat => (
-                  <option key={cat.id || cat._id} value={cat.id || cat._id}>{cat.title}</option>
-                ))}
-              </select>
-            </div>
+        <button
+          onClick={() => { resetCategoryForm(); setIsCategoryModalOpen(true); }}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all shrink-0"
+        >
+          <FiPlus /> Create New Category
+        </button>
+      </div>
+
+      {/* CATEGORIES & VENDOR FORM SCHEMAS */}
+      <CardShell icon={FiGrid} title={`Service Categories (${categories.length})`}>
+        <div className="flex flex-col sm:flex-row gap-3 justify-between items-center mb-4">
+          <div className="relative w-full sm:w-80">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search category title..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+            />
           </div>
-          <button
-            onClick={() => { reset(); setIsModalOpen(true); }}
-            className="px-4 py-2 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 flex items-center gap-2 shrink-0"
-          >
-            <FiPlus /> Add Service
-          </button>
         </div>
 
         {fetching ? (
-          <div className="text-center py-8">Loading...</div>
-        ) : filteredServices.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No services found.</div>
+          <div className="text-center py-12 text-slate-400 text-xs font-semibold">Loading service categories...</div>
+        ) : filteredCategories.length === 0 ? (
+          <div className="text-center py-12 text-slate-400 text-xs">No categories found.</div>
         ) : (
-          <div className="overflow-x-auto border rounded-xl">
-            <table className="w-full">
-              <thead className="bg-gray-50 text-left">
-                <tr>
-                  <th className="p-3 text-xs font-bold text-gray-500 uppercase">Category</th>
-                  <th className="p-3 text-xs font-bold text-gray-500 uppercase">Name</th>
-                  <th className="p-3 text-xs font-bold text-gray-500 uppercase">Price (₹)</th>
-                  <th className="p-3 text-xs font-bold text-gray-500 uppercase">Description</th>
-                  <th className="p-3 text-right text-xs font-bold text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {filteredServices.map((s) => (
-                  <tr key={s._id || s.id} className="hover:bg-gray-50">
-                    <td className="p-3">
-                      <span className="px-2 py-1 bg-gray-100 rounded text-xs font-medium">
-                        {s.categoryId?.title || "N/A"}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredCategories.map((c) => {
+              const schemaCount = (c.vendorFormSchema || []).length;
+              return (
+                <div key={c.id || c._id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase">
+                        {c.slug || "category"}
                       </span>
-                    </td>
-                    <td className="p-3 font-medium">{s.name}</td>
-                    <td className="p-3">₹{s.basePrice || s.price}</td>
-                    <td className="p-3 text-sm text-gray-600 truncate max-w-xs">{s.description || "—"}</td>
-                    <td className="p-3 text-right flex justify-end gap-2">
-                      <button onClick={() => openEdit(s)} className="p-2 text-blue-600 hover:bg-blue-50 rounded">
-                        <FiEdit2 />
-                      </button>
-                      <button onClick={() => handleDelete(s._id || s.id)} className="p-2 text-red-600 hover:bg-red-50 rounded">
-                        <FiTrash2 />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      {c.homeBadge && (
+                        <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                          {c.homeBadge}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-sm font-black text-slate-900">{c.title}</h3>
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">{c.description || "No description provided."}</p>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => setFormBuilderCategory(c)}
+                      className="flex-1 py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-indigo-100"
+                    >
+                      <FiSliders className="w-3.5 h-3.5" /> Vendor Form ({schemaCount} fields)
+                    </button>
+
+                    <button onClick={() => openEditCategory(c)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors" title="Edit Category">
+                      <FiEdit2 className="w-4 h-4" />
+                    </button>
+
+                    <button onClick={() => handleDeleteCategory(c.id || c._id)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Delete Category">
+                      <FiTrash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </CardShell>
 
-      <Modal isOpen={isModalOpen} onClose={reset} title={editingId ? "Edit Vendor Service" : "Add Vendor Service"}>
-        <div className="space-y-4">
+      {/* CREATE / EDIT CATEGORY MODAL */}
+      <Modal isOpen={isCategoryModalOpen} onClose={resetCategoryForm} title={editingCategory ? "Edit Category" : "Create New Category"}>
+        <div className="space-y-4 text-xs">
           <div>
-            <label className="block text-sm font-bold mb-1">Category</label>
-            <select
-              value={form.categoryId}
-              onChange={(e) => setForm(p => ({ ...p, categoryId: e.target.value }))}
-              className="w-full px-4 py-2 border rounded-xl"
-            >
-              <option value="">Select Category</option>
-              {categories.map(cat => (
-                <option key={cat.id || cat._id} value={cat.id || cat._id}>
-                  {cat.title}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-bold mb-1">Service Name</label>
+            <label className="block font-bold text-slate-700 mb-1">Category Title *</label>
             <input
-              value={form.name}
-              onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
-              className="w-full px-4 py-2 border rounded-xl"
-              placeholder="e.g. AC Service"
+              type="text"
+              value={categoryForm.title}
+              onChange={(e) => setCategoryForm(p => ({ ...p, title: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="e.g. Electrician, Car Wash, Salon"
             />
           </div>
+
           <div>
-            <label className="block text-sm font-bold mb-1">Base Price (₹)</label>
+            <label className="block font-bold text-slate-700 mb-1">Badge (Optional)</label>
             <input
-              type="number"
-              value={form.basePrice}
-              onChange={(e) => setForm(p => ({ ...p, basePrice: e.target.value }))}
-              className="w-full px-4 py-2 border rounded-xl"
-              placeholder="0"
+              type="text"
+              value={categoryForm.homeBadge}
+              onChange={(e) => setCategoryForm(p => ({ ...p, homeBadge: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="e.g. Popular, Subscription, 24/7 Available"
             />
           </div>
+
           <div>
-            <label className="block text-sm font-bold mb-1">Description (Optional)</label>
+            <label className="block font-bold text-slate-700 mb-1">Description (Optional)</label>
             <textarea
-              value={form.description}
-              onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))}
-              className="w-full px-4 py-2 border rounded-xl"
+              value={categoryForm.description}
+              onChange={(e) => setCategoryForm(p => ({ ...p, description: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none"
               rows={3}
+              placeholder="Brief summary of services included"
             />
           </div>
+
           <button
-            onClick={handleSave}
+            onClick={handleSaveCategory}
             disabled={loading}
-            className="w-full py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 disabled:opacity-50"
+            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md disabled:opacity-50"
           >
-            {loading ? "Saving..." : "Save Service"}
+            {loading ? "Saving..." : "Save Category"}
           </button>
         </div>
       </Modal>
+
+      {/* VENDOR FORM BUILDER MODAL */}
+      <VendorFormBuilderModal
+        isOpen={Boolean(formBuilderCategory)}
+        onClose={() => setFormBuilderCategory(null)}
+        category={formBuilderCategory}
+        onSaveSuccess={(updatedCat) => {
+          setCategories(prev => prev.map(c => (c.id === updatedCat.id || c._id === updatedCat.id) ? { ...c, vendorFormSchema: updatedCat.vendorFormSchema } : c));
+        }}
+      />
     </div>
   );
 };

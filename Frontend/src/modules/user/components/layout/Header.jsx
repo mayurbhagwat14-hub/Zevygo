@@ -1,65 +1,77 @@
-import React, { useRef } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { FiMapPin, FiChevronDown } from 'react-icons/fi';
 import Logo from '../../../../components/common/Logo';
-import { PANEL_NAV } from '../../../../components/ui';
+import SearchBar from '../../pages/Home/components/SearchBar';
 
-const Header = ({ location, onLocationClick }) => {
-  const logoRef = useRef(null);
+const formatDisplayLocation = (rawLocation) => {
+  if (!rawLocation || rawLocation === '...' || typeof rawLocation !== 'string') {
+    return { mainLoc: 'Pune', subLoc: 'Maharashtra' };
+  }
 
-  const locParts = location && location !== '...' ? location.split(',') : ['Select Location'];
-  const mainLoc = locParts[0]?.trim();
-  const subLoc = locParts.slice(1).join(',')?.trim() || 'Tap to select location';
+  const trimmed = rawLocation.trim();
+
+  if (/^[\d\s.,\-+]+$/.test(trimmed)) {
+    return { mainLoc: 'Pune', subLoc: 'Maharashtra' };
+  }
+
+  const parts = trimmed.split(',').map(p => p.trim()).filter(Boolean);
+  const textParts = parts.filter(p => !/^\d+$/.test(p));
+
+  if (textParts.length === 0) {
+    return { mainLoc: 'Pune', subLoc: 'Maharashtra' };
+  }
+
+  if (textParts.length === 1) {
+    return { mainLoc: textParts[0], subLoc: 'Maharashtra' };
+  }
+
+  return {
+    mainLoc: textParts[0],
+    subLoc: textParts.slice(1).join(', ')
+  };
+};
+
+const Header = ({ location, onLocationClick, onMenuClick, onSearchClick }) => {
+  const { mainLoc, subLoc } = formatDisplayLocation(location);
 
   return (
-    <header className="bg-transparent">
-      <div className="relative z-10 max-w-screen-xl mx-auto">
-        <div className="px-5 py-3 flex items-center justify-between gap-3">
-          <Link to="/user" className="cursor-pointer shrink-0" aria-label="Home">
-            <Logo ref={logoRef} className="h-9 sm:h-12 w-auto" />
+    <>
+      {/* Top Header Row: Logo & Location */}
+      <div className="bg-[#0B1528] text-white relative z-30">
+        {/* Background Ambient Glow */}
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-80 h-24 bg-blue-600/20 blur-[50px] pointer-events-none rounded-full" />
+
+        <div className="max-w-screen-xl mx-auto flex items-center justify-between gap-3 px-2.5 sm:px-6 pt-3 pb-2 relative z-10">
+          {/* Logo on Left */}
+          <Link to="/user" className="flex items-center group py-0.5 shrink-0">
+            <Logo className="h-8 sm:h-9 w-auto object-contain filter drop-shadow-[0_2px_8px_rgba(37,99,235,0.4)] transition-transform duration-300 group-hover:scale-105" />
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-7 ml-6" aria-label="Primary">
-            {PANEL_NAV.user.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/user'}
-                className={({ isActive }) =>
-                  [
-                    'font-semibold transition-colors',
-                    isActive ? 'text-primary-600' : 'text-neutral-700 hover:text-primary-500',
-                  ].join(' ')
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-
+          {/* Location Selector Pill */}
           <button
             type="button"
-            className="flex flex-col items-end gap-0.5 flex-1 min-w-0 ml-2 text-left"
             onClick={onLocationClick}
-            aria-label="Change location"
+            className="bg-white/10 hover:bg-white/15 backdrop-blur-md rounded-full px-3 py-1 flex items-center gap-1.5 text-white border border-white/10 shadow-xs transition-all active:scale-95 cursor-pointer max-w-[210px] shrink-0"
           >
-            <div className="flex items-center gap-1.5">
-              <FiMapPin className="w-4 h-4 shrink-0 text-primary-500" aria-hidden />
-              <span className="text-sm font-bold text-neutral-900 truncate max-w-[160px]">
-                {mainLoc}
-              </span>
-            </div>
-            <div className="flex items-center gap-1 pr-0.5">
-              <span className="text-[11px] font-medium text-neutral-500 truncate max-w-[140px]">
-                {subLoc}
-              </span>
-              <FiChevronDown className="w-3.5 h-3.5 text-neutral-400" aria-hidden />
-            </div>
+            <FiMapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <span className="text-[11.5px] font-bold text-white truncate tracking-tight">
+              {mainLoc}{subLoc ? `, ${subLoc}` : ''}
+            </span>
+            <FiChevronDown className="w-3 h-3 text-blue-300/80 shrink-0" />
           </button>
         </div>
       </div>
-    </header>
+
+      {/* Sticky Search Bar Row */}
+      <div className="sticky top-0 z-40 bg-[#0B1528] -mt-0.5 pt-2 pb-3 px-2.5 sm:px-6 shadow-[0_8px_25px_rgba(0,0,0,0.25)] rounded-b-2xl">
+        <div className="max-w-screen-xl mx-auto">
+          <SearchBar onInputClick={onSearchClick} />
+        </div>
+      </div>
+    </>
   );
 };
 
 export default Header;
+

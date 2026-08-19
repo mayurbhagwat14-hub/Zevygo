@@ -96,19 +96,12 @@ const ServiceCard = memo(({ image, title, onClick, gif, youtubeUrl }) => {
   return (
     <div
       ref={cardRef}
-      className="relative min-w-[200px] md:min-w-[240px] h-[350px] md:h-[420px] rounded-2xl overflow-hidden cursor-pointer transition-transform duration-300 ease-out hover:scale-[1.02] hover:-translate-y-1 active:scale-[0.98]"
-      style={{
-        boxShadow: themeColors.cardShadow,
-        border: themeColors.cardBorder,
-        willChange: 'transform',
-        backfaceVisibility: 'hidden',
-        WebkitBackfaceVisibility: 'hidden',
-      }}
+      className="relative w-[160px] sm:w-[200px] md:w-[240px] h-[220px] sm:h-[280px] md:h-[350px] shrink-0 snap-start rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 ease-out hover:scale-[1.02] hover:-translate-y-1 active:scale-[0.98] border border-gray-100/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)]"
       onClick={onClick}
     >
       {renderMedia()}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-        <h3 className="text-white font-semibold text-base">{title}</h3>
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 sm:p-4">
+        <h3 className="text-white font-semibold text-xs sm:text-sm line-clamp-2 leading-snug">{title}</h3>
       </div>
     </div>
   );

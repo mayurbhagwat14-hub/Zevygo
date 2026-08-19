@@ -10,9 +10,13 @@ const getAllCategories = async (req, res) => {
   try {
     const { status, showOnHome, isPopular, cityId } = req.query;
 
-    // Build query
+    // Build query - exclude DELETED by default unless status is specified
     const query = {};
-    if (status) query.status = status;
+    if (status) {
+      query.status = status;
+    } else {
+      query.status = { $ne: SERVICE_STATUS.DELETED };
+    }
     if (showOnHome !== undefined) query.showOnHome = showOnHome === 'true';
     if (isPopular !== undefined) query.isPopular = isPopular === 'true';
     if (cityId) query.cityIds = cityId;
@@ -39,6 +43,12 @@ const getAllCategories = async (req, res) => {
         status: cat.status,
         isPopular: cat.isPopular,
         cityIds: cat.cityIds || [],
+        supportedBookingTypes: cat.supportedBookingTypes || ['scheduled'],
+        bookingMode: cat.bookingMode || 'BOTH',
+        defaultPricingModel: cat.defaultPricingModel || 'FIXED',
+        allowMultiSelect: Boolean(cat.allowMultiSelect),
+        formSchema: cat.formSchema || [],
+        vendorFormSchema: cat.vendorFormSchema || [],
         metaTitle: cat.metaTitle,
         metaDescription: cat.metaDescription,
         createdAt: cat.createdAt,
@@ -86,6 +96,9 @@ const getCategoryById = async (req, res) => {
         imageUrl: category.imageUrl,
         status: category.status,
         isPopular: category.isPopular,
+        supportedBookingTypes: category.supportedBookingTypes || ['scheduled'],
+        allowMultiSelect: Boolean(category.allowMultiSelect),
+        formSchema: category.formSchema || [],
         metaTitle: category.metaTitle,
         metaDescription: category.metaDescription,
         createdAt: category.createdAt,
@@ -451,12 +464,147 @@ const updateCategoryOrder = async (req, res) => {
   }
 };
 
+/**
+ * Get category form schema and booking configuration
+ * GET /api/admin/categories/:id/form-schema
+ */
+const getCategoryFormSchema = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const category = await Category.findById(id).select('title slug supportedBookingTypes bookingMode defaultPricingModel formSchema vendorFormSchema allowMultiSelect');
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Category not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      categoryId: category._id,
+      title: category.title,
+      slug: category.slug,
+      supportedBookingTypes: category.supportedBookingTypes || ['scheduled'],
+      bookingMode: category.bookingMode || 'BOTH',
+      defaultPricingModel: category.defaultPricingModel || 'FIXED',
+      allowMultiSelect: Boolean(category.allowMultiSelect),
+      formSchema: category.formSchema || [],
+      vendorFormSchema: category.vendorFormSchema || []
+    });
+  } catch (error) {
+    console.error('Get category form schema error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch category form schema.'
+    });
+  }
+};
+
+/**
+ * Update category form schema and booking configuration
+ * PUT /api/admin/categories/:id/form-schema
+ */
+const updateCategoryFormSchema = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { supportedBookingTypes, bookingMode, defaultPricingModel, allowMultiSelect, formSchema, vendorFormSchema } = req.body;
+
+    const category = await Category.findById(id);
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Category not found'
+      });
+    }
+
+    if (supportedBookingTypes !== undefined) {
+      if (!Array.isArray(supportedBookingTypes) || supportedBookingTypes.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'At least one supported booking type (instant or scheduled) is required'
+        });
+      }
+      category.supportedBookingTypes = supportedBookingTypes;
+    }
+
+    if (bookingMode !== undefined) category.bookingMode = bookingMode;
+    if (defaultPricingModel !== undefined) category.defaultPricingModel = defaultPricingModel;
+
+    if (allowMultiSelect !== undefined) {
+      category.allowMultiSelect = Boolean(allowMultiSelect);
+    }
+
+    if (formSchema !== undefined) {
+      if (!Array.isArray(formSchema)) {
+        return res.status(400).json({
+          success: false,
+          message: 'formSchema must be an array'
+        });
+      }
+      category.formSchema = formSchema;
+    }
+
+    if (vendorFormSchema !== undefined) {
+      if (!Array.isArray(vendorFormSchema)) {
+        return res.status(400).json({
+          success: false,
+          message: 'vendorFormSchema must be an array'
+        });
+      }
+      category.vendorFormSchema = vendorFormSchema;
+    }
+
+    await category.save();
+
+    // Broadcast real-time socket event so vendor form updates instantly
+    try {
+      const { getIO } = require('../../sockets');
+      const io = getIO();
+      if (io) {
+        io.emit('category_schema_updated', {
+          categoryId: category._id.toString(),
+          title: category.title,
+          vendorFormSchema: category.vendorFormSchema
+        });
+      }
+    } catch (sErr) {
+      console.warn('Socket emit warning:', sErr.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Category form schemas updated successfully',
+      category: {
+        id: category._id,
+        title: category.title,
+        supportedBookingTypes: category.supportedBookingTypes,
+        bookingMode: category.bookingMode,
+        defaultPricingModel: category.defaultPricingModel,
+        allowMultiSelect: category.allowMultiSelect,
+        formSchema: category.formSchema,
+        vendorFormSchema: category.vendorFormSchema
+      }
+    });
+  } catch (error) {
+    console.error('Update category form schema error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update category form schema. Please try again.'
+    });
+  }
+};
+
 module.exports = {
   getAllCategories,
   getCategoryById,
   createCategory,
   updateCategory,
   deleteCategory,
-  updateCategoryOrder
+  updateCategoryOrder,
+  getCategoryFormSchema,
+  updateCategoryFormSchema
 };
+
 

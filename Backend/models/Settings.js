@@ -151,7 +151,7 @@ const settingsSchema = new mongoose.Schema({
   },
   appName: {
     type: String,
-    default: 'Zevgo'
+    default: 'Zevygo'
   },
   appLogo: {
     type: String,

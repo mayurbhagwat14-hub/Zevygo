@@ -46,7 +46,7 @@ const SearchLocationBar = ({
 
   return (
     <div
-      className={`relative flex items-center w-full rounded-full bg-white border border-neutral-200 shadow-sm h-[52px] transition-all hover:border-primary-500 hover:shadow-md focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/15 ${className}`}
+      className={`relative flex items-center w-full rounded-2xl bg-white border border-white/70 shadow-xs h-[40px] sm:h-[42px] transition-all hover:shadow-md hover:border-blue-500 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 ${className}`}
       onClick={readOnly ? onClick : undefined}
       onKeyDown={
         readOnly
@@ -58,7 +58,7 @@ const SearchLocationBar = ({
       role={readOnly ? 'button' : undefined}
       tabIndex={readOnly ? 0 : undefined}
     >
-      <FiSearch className="absolute left-4 w-5 h-5 text-primary-500 pointer-events-none" aria-hidden />
+      <FiSearch className="absolute left-3.5 w-4 h-4 text-blue-600 shrink-0 pointer-events-none drop-shadow-xs" aria-hidden />
       <input
         type="search"
         value={value}
@@ -68,14 +68,14 @@ const SearchLocationBar = ({
         onClick={onClick}
         placeholder={hint ? undefined : placeholder}
         aria-label={placeholder}
-        className={`w-full h-full pl-11 pr-4 rounded-full border-none outline-none bg-transparent text-[15px] text-neutral-800 placeholder:text-neutral-400 ${
+        className={`w-full h-full pl-9.5 pr-3 rounded-2xl border-none outline-none bg-transparent text-[13px] text-slate-900 placeholder:text-slate-400 font-semibold ${
           readOnly ? 'cursor-pointer caret-transparent' : ''
         }`}
       />
       {!value && hint && (
-        <span className="pointer-events-none absolute left-11 right-4 text-[15px] text-neutral-400 truncate">
-          Search for <span className="text-primary-500 font-bold">{hint}</span>
-          <span className="animate-pulse ml-0.5 text-primary-500">|</span>
+        <span className="pointer-events-none absolute left-9.5 right-3 text-[13px] text-slate-500 truncate font-medium">
+          Search for <span className="text-blue-600 font-bold">{hint}</span>
+          <span className="animate-pulse ml-0.5 text-blue-600 font-black">|</span>
         </span>
       )}
     </div>

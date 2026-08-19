@@ -93,16 +93,17 @@ const MostBookedServices = React.memo(({ services, onServiceClick, onAddClick })
   }
 
   return (
-    <div ref={sectionRef} className="mb-6">
-      <div ref={titleRef} className="px-4 mb-5" style={{ opacity: 1 }}>
-        <h2
-          className="text-xl font-bold text-gray-900 tracking-tight"
-        >
+    <div ref={sectionRef} className="mb-8">
+      <div ref={titleRef} className="px-1 sm:px-2 mb-3 flex items-center justify-between" style={{ opacity: 1 }}>
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
           Most booked services
         </h2>
       </div>
 
-      <div ref={cardsRef} className="flex gap-2 overflow-x-auto px-6 lg:px-4 pb-2 scrollbar-hide lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible">
+      <div
+        ref={cardsRef}
+        className="flex gap-3.5 sm:gap-5 overflow-x-auto px-1 sm:px-2 pb-3 pt-1 scrollbar-hide snap-x snap-mandatory lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible lg:snap-none"
+      >
         {serviceList.map((service, index) => (
           <DetailedServiceCard
             key={service.id || index}

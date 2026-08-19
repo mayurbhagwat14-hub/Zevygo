@@ -24,6 +24,7 @@ const Profile = () => {
   };
 
   const menuItems = [
+    { id: 1, label: 'My Services & Pricing', icon: FiLayers, path: '/vendor/my-services' },
     { id: 2, label: 'Wallet', icon: FaWallet, path: '/vendor/wallet' },
     { id: 5, label: 'My Ratings', icon: FiStar, path: '/vendor/my-ratings' },
     { id: 6, label: 'Manage Payment Methods', icon: FiCreditCard, path: '/vendor/manage-payment-methods' },
@@ -247,6 +248,20 @@ const Profile = () => {
               >
                 <FiArrowRight className="w-5 h-5 text-white" style={{ fontWeight: 'bold' }} />
               </button>
+            </div>
+
+            {/* Profile Completion Bar */}
+            <div className="mt-4 pt-3 border-t border-white/20">
+              <div className="flex items-center justify-between text-xs text-white font-bold mb-1">
+                <span>Profile Completion</span>
+                <span>{profile.profileCompletion || 75}%</span>
+              </div>
+              <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                  style={{ width: `${profile.profileCompletion || 75}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>

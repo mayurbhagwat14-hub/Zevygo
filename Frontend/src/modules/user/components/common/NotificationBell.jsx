@@ -44,12 +44,12 @@ const NotificationBell = ({ notificationCount = 0 }) => {
       ref={bellButtonRef}
       className="relative rounded-full cursor-pointer group active:scale-95 transition-transform duration-300 z-50 shrink-0"
       style={{
-        width: '42px',
-        height: '42px',
+        width: '38px',
+        height: '38px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        margin: '2px'
+        margin: '0px'
       }}
       onClick={(e) => {
         e.stopPropagation();
@@ -58,7 +58,7 @@ const NotificationBell = ({ notificationCount = 0 }) => {
       onMouseEnter={() => {
         if (bellButtonRef.current && bellRef.current) {
           const btn = bellButtonRef.current.querySelector('button');
-          gsap.to(bellButtonRef.current, { scale: 1.1, duration: 0.3, ease: 'power2.out' });
+          gsap.to(bellButtonRef.current, { scale: 1.08, duration: 0.3, ease: 'power2.out' });
           if (btn) {
             gsap.to(btn, {
               boxShadow: count > 0
@@ -68,7 +68,7 @@ const NotificationBell = ({ notificationCount = 0 }) => {
               ease: 'power2.out',
             });
           }
-          gsap.to(bellRef.current, { rotation: 15, scale: 1.1, duration: 0.3, ease: 'power2.out' });
+          gsap.to(bellRef.current, { rotation: 15, scale: 1.08, duration: 0.3, ease: 'power2.out' });
         }
       }}
       onMouseLeave={() => {
@@ -89,7 +89,7 @@ const NotificationBell = ({ notificationCount = 0 }) => {
       }}
     >
       {/* Outer Shadow Container */}
-      <div className="absolute inset-0 rounded-full z-0 bg-[#2563EB] shadow-md hover:shadow-lg transition-shadow" />
+      <div className="absolute inset-0 rounded-full z-0 bg-[#2563EB] shadow-xs hover:shadow-md transition-shadow" />
 
       {/* Inner Button */}
       <button
@@ -97,7 +97,7 @@ const NotificationBell = ({ notificationCount = 0 }) => {
       >
         <FiBell
           ref={bellRef}
-          className="w-[22px] h-[22px] text-white transition-all duration-300"
+          className="w-[18px] h-[18px] text-white transition-all duration-300"
         />
       </button>
 

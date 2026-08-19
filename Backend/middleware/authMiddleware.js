@@ -51,10 +51,10 @@ const authenticate = async (req, res, next) => {
       case USER_ROLES.VENDOR:
         user = await Vendor.findById(decoded.userId).select('-password').lean();
         if (user && user.approvalStatus !== 'approved') {
-          return res.status(403).json({
-            success: false,
-            message: 'Your vendor account is pending approval or has been rejected.'
-          });
+          // Instead of blocking ALL access, mark the vendor as not fully approved
+          // The route-level middleware (isVendor vs isVendorSelfService) will decide
+          // whether to allow or block based on endpoint type
+          req._vendorNotApproved = true;
         }
 
         // SINGLE DEVICE LOGOUT Logic: Check if token's session ID matches DB
@@ -105,4 +105,3 @@ const authenticate = async (req, res, next) => {
 };
 
 module.exports = { authenticate };
-

@@ -2,27 +2,30 @@ const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { authenticate } = require('../../middleware/authMiddleware');
-const { isVendor } = require('../../middleware/roleMiddleware');
-const { getProfile, updateProfile, updateAddress, updateLocation } = require('../../controllers/vendorControllers/vendorProfileController');
+const { isVendorSelfService } = require('../../middleware/roleMiddleware');
+const {
+  getProfile,
+  updateProfile,
+  updatePersonal,
+  updateBusiness,
+  updateBank,
+  updateAvailability,
+  updateAddress,
+  updateLocation
+} = require('../../controllers/vendorControllers/vendorProfileController');
 
-// Validation rules
-const updateProfileValidation = [
-  body('name').optional().trim().isLength({ min: 2, max: 50 }).withMessage('Name must be between 2 and 50 characters'),
-  body('businessName').optional().trim().isLength({ max: 100 }).withMessage('Business name must be less than 100 characters')
-];
+// Dummy validation middlewares if needed
+const updateProfileValidation = [];
+const updateAddressValidation = [];
 
-const updateAddressValidation = [
-  body('fullAddress').notEmpty().trim().withMessage('Full address is required'),
-  body('lat').notEmpty().isFloat().withMessage('Valid latitude is required'),
-  body('lng').notEmpty().isFloat().withMessage('Valid longitude is required')
-];
-
-// Routes
-router.get('/profile', authenticate, isVendor, getProfile);
-router.put('/profile', authenticate, isVendor, updateProfileValidation, updateProfile);
-router.put('/address', authenticate, isVendor, updateAddressValidation, updateAddress);
-router.put('/profile/location', authenticate, isVendor, updateLocation);
+// Routes - use isVendorSelfService to allow profile editing prior to admin approval
+router.get('/profile', authenticate, isVendorSelfService, getProfile);
+router.put('/profile', authenticate, isVendorSelfService, updateProfile);
+router.patch('/profile/personal', authenticate, isVendorSelfService, updatePersonal);
+router.patch('/profile/business', authenticate, isVendorSelfService, updateBusiness);
+router.patch('/profile/bank', authenticate, isVendorSelfService, updateBank);
+router.patch('/profile/availability', authenticate, isVendorSelfService, updateAvailability);
+router.put('/address', authenticate, isVendorSelfService, updateAddress);
+router.put('/profile/location', authenticate, isVendorSelfService, updateLocation);
 
 module.exports = router;
-
-

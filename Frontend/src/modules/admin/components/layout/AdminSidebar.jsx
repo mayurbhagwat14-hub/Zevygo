@@ -20,6 +20,7 @@ import {
 } from "react-icons/fi";
 import adminMenu from "../../config/adminMenu.json";
 import dashboardService from "../../services/dashboardService";
+import { useBranding } from "../../../../context/BrandingContext";
 
 // Icon mapping for menu items
 const iconMap = {
@@ -53,6 +54,7 @@ const getChildRoute = (parentRoute, childName) => {
     "/admin/vendors": {
       "All Vendors": "/admin/vendors/all",
       "Vendor Bookings": "/admin/vendors/bookings",
+      "Service Listings": "/admin/service-listings",
       "Vendor Analytics": "/admin/vendors/analytics",
       "Vendor Payments": "/admin/vendors/payments",
     },
@@ -109,6 +111,7 @@ const getChildRoute = (parentRoute, childName) => {
 };
 
 const AdminSidebar = ({ isOpen, onClose }) => {
+  const { branding } = useBranding();
   const location = useLocation();
   const navigate = useNavigate();
   const [expandedItems, setExpandedItems] = useState({});
@@ -276,8 +279,8 @@ const AdminSidebar = ({ isOpen, onClose }) => {
           className={`
             flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 cursor-pointer
             ${active
-              ? "bg-primary-600 text-white shadow-sm"
-              : "text-gray-300 hover:bg-slate-700"
+              ? "bg-slate-800 text-white font-bold shadow-md border border-slate-700/80"
+              : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
             }
           `}
           onClick={() => {
@@ -288,7 +291,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
             }
           }}>
           <Icon
-            className={`text-xl flex-shrink-0 ${active ? "text-white" : "text-gray-400"
+            className={`text-xl flex-shrink-0 ${active ? "text-white" : "text-slate-400"
               }`}
           />
           <span className="font-semibold flex-1 text-base">{item.title}</span>
@@ -319,7 +322,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
             <motion.div
               animate={{ rotate: isExpanded ? 180 : 0 }}
               transition={{ duration: 0.2 }}>
-              <FiChevronDown className="text-gray-400 text-sm" />
+              <FiChevronDown className="text-slate-400 text-sm" />
             </motion.div>
           )}
         </div>
@@ -333,7 +336,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="overflow-hidden">
-              <div className="ml-4 mt-1 pl-4 border-l-2 border-slate-600 space-y-1">
+              <div className="ml-4 mt-1.5 pl-3 border-l-2 border-slate-800 space-y-1">
                 {item.children.map((child, index) => {
                   const childRoute = getChildRoute(item.route, child);
                   const isChildActive =
@@ -350,8 +353,8 @@ const AdminSidebar = ({ isOpen, onClose }) => {
                       className={`
                         px-3 py-2 text-sm rounded-lg transition-colors cursor-pointer flex justify-between items-center
                         ${isChildActive
-                          ? "bg-primary-50 text-white font-medium"
-                          : "text-gray-400 hover:bg-slate-700"
+                          ? "bg-slate-800 text-white font-bold border-l-2 border-sky-400 pl-3.5 shadow-xs"
+                          : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
                         }
                       `}>
                       <span>{child}</span>
@@ -378,35 +381,41 @@ const AdminSidebar = ({ isOpen, onClose }) => {
 
   // Sidebar content
   const sidebarContent = (
-    <div className="h-full w-full flex flex-col bg-slate-800">
-      {/* Header Section */}
-      <div className="px-4 py-6 border-b border-slate-700 bg-slate-900">
+    <div className="h-full w-full flex flex-col bg-[#0B1528]">
+      {/* Header Section: Reference Logo Badge & Admin Panel Title */}
+      <div className="px-4 py-5 border-b border-slate-800/80 bg-[#0B1528]">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center shadow-md flex-shrink-0"
-              style={{
-                background: 'linear-gradient(135deg, #2874F0 0%, #4787F7 100%)',
-              }}
-            >
-              <FiUser className="text-white text-xl" />
+          <div className="flex items-center gap-3.5 flex-1 min-w-0">
+            {/* White-bordered Glossy Logo Container */}
+            <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-[16px] bg-[#0B1528] border-2 border-white shadow-xl overflow-hidden flex items-center justify-center shrink-0 p-1">
+              <img
+                src={branding?.appLogo || '/Homster-logo.png'}
+                alt="Zevygo"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = '/Homster-logo.png';
+                }}
+              />
             </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-white text-base truncate">
-                {adminUser.name}
+
+            {/* Brand Name & ADMIN PANEL Subtitle */}
+            <div className="flex flex-col min-w-0 justify-center py-0.5">
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-snug drop-shadow-sm">
+                {(branding?.appName && branding.appName.toLowerCase() === 'zevgo') ? 'Zevygo' : (branding?.appName || 'Zevygo')}
               </h2>
-              <p className="text-xs text-gray-400 truncate">
-                {adminUser.role === 'super_admin' ? '⭐ Super Admin' : 'Admin'}
-              </p>
+              <span className="text-[11px] font-black text-sky-400 tracking-[0.25em] uppercase leading-normal mt-0.5 block">
+                ADMIN PANEL
+              </span>
             </div>
           </div>
 
           {/* Close Button - Mobile Only */}
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 lg:hidden"
+            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 lg:hidden"
             aria-label="Close sidebar">
-            <FiX className="text-xl text-gray-300" />
+            <FiX className="text-xl text-slate-300" />
           </button>
         </div>
       </div>

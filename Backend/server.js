@@ -51,8 +51,12 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // Allow allowedOrigins or any Vercel preview URL for this project
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('.vercel.app')) {
+    // Allow allowedOrigins, Vercel preview URLs, or any localhost/127.0.0.1 port
+    if (
+      allowedOrigins.indexOf(origin) !== -1 ||
+      origin.includes('.vercel.app') ||
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+    ) {
       callback(null, true);
     } else {
       console.log('BLOCKED CORS ORIGIN:', origin);
@@ -207,6 +211,7 @@ app.use('/api/admin', require('./routes/admin-routes/reviewManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/reportManagement.routes'));
 app.use('/api/admin/settlements', require('./routes/admin-routes/settlementManagement.routes'));
 app.use('/api/admin/admins', require('./routes/admin-routes/adminManagement.routes'));
+app.use('/api/admin', require('./routes/admin-routes/serviceListingManagement.routes'));
 app.use('/api/image', require('./routes/admin-routes/image.routes'));
 app.use('/api', require('./routes/admin-routes/upload.routes')); // Generic upload access
 
@@ -225,6 +230,9 @@ app.use('/api/payments', require('./routes/payment-routes/payment.routes'));
 
 // Notification routes
 app.use('/api/notifications', require('./routes/notification.routes'));
+
+// Quote routes
+app.use('/api', require('./routes/quote.routes'));
 
 // Public routes (no authentication required)
 app.use('/api/public', require('./routes/public-routes/catalog.routes'));
