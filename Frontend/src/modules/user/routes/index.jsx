@@ -79,6 +79,8 @@ const Signup = lazyLoad(() => import('../pages/signup'));
 const Notifications = lazyLoad(() => import('../pages/Notifications'));
 const HelpSupport = lazyLoad(() => import('../pages/HelpSupport'));
 const CancellationPolicy = lazyLoad(() => import('../pages/CancellationPolicy'));
+const CategoryListings = lazyLoad(() => import('../pages/Listings/CategoryListings'));
+const ListingDetail = lazyLoad(() => import('../pages/Listings/ListingDetail'));
 
 // Loading fallback component
 import LogoLoader from '../../../components/common/LogoLoader';
@@ -122,6 +124,8 @@ const UserRoutes = () => {
 
               {/* Protected routes (auth required) */}
               <Route path="/" element={<ProtectedRoute userType="user"><Home /></ProtectedRoute>} />
+              <Route path="/category/:categoryId" element={<ProtectedRoute userType="user"><CategoryListings /></ProtectedRoute>} />
+              <Route path="/listings/:id" element={<ProtectedRoute userType="user"><ListingDetail /></ProtectedRoute>} />
               <Route path="/native" element={<ProtectedRoute userType="user"><Native /></ProtectedRoute>} />
 
               <Route path="/rewards" element={<ProtectedRoute userType="user"><Rewards /></ProtectedRoute>} />

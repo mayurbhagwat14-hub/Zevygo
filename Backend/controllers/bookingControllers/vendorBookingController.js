@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Booking = require('../../models/Booking');
+const ServiceListing = require('../../models/ServiceListing');
 
 const { validationResult } = require('express-validator');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
@@ -33,7 +34,13 @@ const getVendorBookings = async (req, res) => {
           vendorId: null,
           status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
           serviceCategory: { $in: vendorCategories },
-          'potentialVendors.vendorId': vId // Only show jobs where THIS vendor is within range
+          'potentialVendors.vendorId': vId
+        },
+        {
+          vendorId: null,
+          serviceListingId: { $ne: null },
+          status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
+          'potentialVendors.vendorId': vId
         }
       ]
     };
@@ -108,6 +115,7 @@ const getVendorBookings = async (req, res) => {
                 userId: 1,
                 workerId: 1,
                 serviceId: 1,
+                serviceListingId: 1,
                 acceptedAt: 1,
                 assignedAt: 1,
                 brandName: 1,
@@ -133,7 +141,8 @@ const getVendorBookings = async (req, res) => {
         select: 'title iconUrl categoryId',
         populate: { path: 'categoryId', select: 'title' },
         options: { lean: true }
-      }
+      },
+      { path: 'serviceListingId', select: 'title categoryName', options: { lean: true } }
     ]);
 
     res.status(200).json({
@@ -174,6 +183,7 @@ const getBookingById = async (req, res) => {
       .populate('userId', 'name phone email profilePhoto')
       .populate('vendorId', 'name businessName phone email')
       .populate('serviceId', 'title description iconUrl images')
+      .populate('serviceListingId', 'title categoryName status pricing pricingModel')
       .populate('categoryId', 'title slug');
 
     if (!booking) {
@@ -181,6 +191,15 @@ const getBookingById = async (req, res) => {
         success: false,
         message: 'Booking not found'
       });
+    }
+
+    if (booking.serviceListingId) {
+      const listing = await ServiceListing.findById(
+        booking.serviceListingId._id || booking.serviceListingId
+      ).select('vendorId');
+      if (!listing || listing.vendorId.toString() !== vendorId.toString()) {
+        return res.status(404).json({ success: false, message: 'Booking not found' });
+      }
     }
 
     res.status(200).json({
@@ -203,6 +222,17 @@ const acceptBooking = async (req, res) => {
   try {
     const vendorId = req.user.id;
     const { id } = req.params;
+
+    const existingBooking = await Booking.findById(id).select('serviceListingId vendorId status');
+    if (existingBooking?.serviceListingId) {
+      const listing = await ServiceListing.findById(existingBooking.serviceListingId).select('vendorId');
+      if (!listing || listing.vendorId.toString() !== vendorId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'This booking is assigned to another provider\'s listing.'
+        });
+      }
+    }
 
     // ATOMIC UPDATE: Check status and vendorId in query to prevent race conditions
     // Only accept if status is REQUESTED/SEARCHING and NO vendor is assigned yet

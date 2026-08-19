@@ -504,37 +504,47 @@ const getPublicServiceListings = async (req, res) => {
   try {
     const { categoryId, categorySlug, city, search, page = 1, limit = 20 } = req.query;
     const ServiceListing = require('../../models/ServiceListing');
+    const Vendor = require('../../models/Vendor');
+    const { LIVE_PUBLIC_QUERY, toPublicListingDto } = require('../../utils/serviceListingPublic');
 
-    const query = { status: 'APPROVED' };
+    const andClauses = [LIVE_PUBLIC_QUERY];
 
-    if (categoryId) query.categoryId = categoryId;
+    if (categoryId) andClauses.push({ categoryId });
     if (categorySlug) {
       const Category = require('../../models/Category');
       const cat = await Category.findOne({ slug: categorySlug });
-      if (cat) query.categoryId = cat._id;
+      if (cat) andClauses.push({ categoryId: cat._id });
     }
     if (city) {
-      query.$or = [
-        { 'serviceArea.city': { $regex: city, $options: 'i' } },
-        { 'serviceArea.areas': { $regex: city, $options: 'i' } }
-      ];
+      andClauses.push({
+        $or: [
+          { 'serviceArea.city': { $regex: city, $options: 'i' } },
+          { 'serviceArea.areas': { $regex: city, $options: 'i' } }
+        ]
+      });
     }
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
+      andClauses.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { shortDescription: { $regex: search, $options: 'i' } }
+        ]
+      });
     }
 
+    const activeVendors = await Vendor.find({
+      approvalStatus: 'approved',
+      accountStatus: { $nin: ['SUSPENDED', 'BLOCKED'] }
+    }).select('_id').lean();
+    andClauses.push({ vendorId: { $in: activeVendors.map((v) => v._id) } });
+
+    const query = { $and: andClauses };
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const [listings, total] = await Promise.all([
       ServiceListing.find(query)
-        .populate({
-          path: 'vendorId',
-          select: 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus',
-          match: { approvalStatus: 'approved', accountStatus: { $ne: 'SUSPENDED' } }
-        })
+        .populate('vendorId', 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus')
         .populate('categoryId', 'title slug homeIconUrl defaultPricingModel vendorFormSchema')
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -543,38 +553,7 @@ const getPublicServiceListings = async (req, res) => {
       ServiceListing.countDocuments(query)
     ]);
 
-    // Filter out any listings where vendor is unapproved/null
-    const validListings = listings.filter(l => l.vendorId).map(l => ({
-      id: l._id.toString(),
-      title: l.title,
-      description: l.description,
-      experience: l.experience,
-      languages: l.languages,
-      pricingModel: l.pricingModel,
-      bookingMode: l.bookingMode,
-      pricing: l.pricing,
-      availability: l.availability,
-      serviceArea: l.serviceArea,
-      cancellation: l.cancellation,
-      dynamicFormAnswers: l.dynamicFormAnswers,
-      portfolioPhotos: l.portfolioPhotos || [],
-      documents: (l.documents || []).filter(d => d.verified),
-      category: {
-        id: l.categoryId?._id?.toString(),
-        title: l.categoryId?.title,
-        slug: l.categoryId?.slug,
-        icon: l.categoryId?.homeIconUrl
-      },
-      provider: {
-        id: l.vendorId._id.toString(),
-        name: l.vendorId.name,
-        photo: l.vendorId.profilePhoto,
-        rating: l.vendorId.rating || 4.8,
-        reviews: l.vendorId.totalReviews || 0,
-        completedJobs: l.vendorId.completedJobs || 0,
-        city: l.vendorId.address?.city
-      }
-    }));
+    const validListings = listings.map(toPublicListingDto).filter(Boolean);
 
     res.status(200).json({
       success: true,
@@ -582,12 +561,47 @@ const getPublicServiceListings = async (req, res) => {
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: validListings.length
+        total,
+        pages: Math.ceil(total / parseInt(limit))
       }
     });
   } catch (error) {
     console.error('Get public service listings error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch provider services' });
+  }
+};
+
+/**
+ * Get a single live provider listing (approved snapshot if an edit is under review)
+ * GET /api/public/provider-services/:id
+ */
+const getPublicServiceListingById = async (req, res) => {
+  try {
+    const ServiceListing = require('../../models/ServiceListing');
+    const { isListingBookable, toPublicListingDto } = require('../../utils/serviceListingPublic');
+
+    const listing = await ServiceListing.findById(req.params.id)
+      .populate('vendorId', 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus')
+      .populate('categoryId', 'title slug homeIconUrl defaultPricingModel vendorFormSchema')
+      .lean();
+
+    if (!listing || !isListingBookable(listing)) {
+      return res.status(404).json({ success: false, message: 'Service listing not found' });
+    }
+
+    const dto = toPublicListingDto(listing);
+    if (!dto) {
+      return res.status(404).json({ success: false, message: 'Service listing not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      listing: dto,
+      vendorFormSchema: listing.categoryId?.vendorFormSchema || []
+    });
+  } catch (error) {
+    console.error('Get public service listing detail error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch provider service' });
   }
 };
 
@@ -598,5 +612,6 @@ module.exports = {
   getPublicServices,
   getPublicHomeContent,
   getPublicHomeData,
-  getPublicServiceListings
+  getPublicServiceListings,
+  getPublicServiceListingById
 };

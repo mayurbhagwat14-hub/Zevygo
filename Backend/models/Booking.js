@@ -27,6 +27,13 @@ const bookingSchema = new mongoose.Schema({
     required: false,
     index: true
   },
+  serviceListingId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ServiceListing',
+    required: false,
+    default: null,
+    index: true
+  },
   workerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Vendor',
@@ -65,7 +72,8 @@ const bookingSchema = new mongoose.Schema({
   serviceId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'UserService',
-    required: [true, 'Service is required'],
+    required: false,
+    default: null,
     index: true
   },
   categoryId: {
@@ -377,7 +385,12 @@ bookingSchema.pre('validate', function (next) {
   next();
 });
 
-// Generate unique booking number
+bookingSchema.pre('validate', function (next) {
+  if (!this.serviceId && !this.serviceListingId) {
+    return next(new Error('Either serviceId or serviceListingId is required'));
+  }
+  next();
+});
 bookingSchema.pre('save', async function (next) {
   if (this.isNew && !this.bookingNumber) {
     const timestamp = Date.now().toString().slice(-8);

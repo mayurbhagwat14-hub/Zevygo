@@ -50,6 +50,7 @@ const getAllBookings = async (req, res) => {
       .populate('userId', 'name phone email')
       .populate('vendorId', 'name businessName phone')
       .populate('serviceId', 'title iconUrl')
+      .populate('serviceListingId', 'title categoryName status pricing pricingModel')
       .populate('categoryId', 'title slug')
 
       .sort({ createdAt: -1 })
@@ -89,6 +90,7 @@ const getBookingById = async (req, res) => {
       .populate('userId', 'name phone email addresses')
       .populate('vendorId', 'name businessName phone email address')
       .populate('serviceId', 'title description iconUrl images')
+      .populate('serviceListingId', 'title categoryName status portfolioPhotos pricing pricingModel bookingMode')
       .populate('categoryId', 'title slug');
 
     if (!booking) {

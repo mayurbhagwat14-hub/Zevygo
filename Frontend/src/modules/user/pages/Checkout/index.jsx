@@ -32,6 +32,7 @@ const Checkout = () => {
   const { branding } = useBranding();
   const navigate = useNavigate();
   const location = useLocation();
+  const listing = location.state?.listing || null;
   const category = location.state?.category || null;
   const plan = location.state?.plan || null;
   const { fetchCart: fetchCartGlobal, clearCart: clearCartGlobal, removeCategoryItems: removeCategoryGlobal } = useCart();
@@ -113,7 +114,46 @@ const Checkout = () => {
       try {
         setLoading(true);
 
-        if (plan) {
+        if (listing) {
+          const price = listing.displayPrice || listing.pricing?.basePrice || listing.pricing?.hourlyRate || listing.pricing?.dailyRate || 0;
+          setCartItems([{
+            id: listing.id,
+            serviceListingId: listing.id,
+            title: listing.title,
+            price,
+            categoryTitle: listing.category?.title || '',
+            categoryIcon: listing.category?.icon || listing.portfolioPhotos?.[0] || '',
+            icon: listing.portfolioPhotos?.[0] || '',
+            description: listing.description || '',
+            serviceCount: 1,
+            card: {
+              title: listing.title,
+              price,
+              imageUrl: listing.portfolioPhotos?.[0] || '',
+              description: listing.description || ''
+            }
+          }]);
+
+          const response = await userAuthService.getCheckoutData();
+          if (response.success) {
+            setVisitedFee(response.settings?.visitedCharges || 0);
+            setGstPercentage(response.settings?.serviceGstPercentage || 18);
+            if (response.user?.addresses?.length > 0) {
+              const defaultAddr = response.user.addresses.find(a => a.isDefault) || response.user.addresses[0];
+              setAddress(defaultAddr.addressLine1);
+              setHouseNumber(defaultAddr.addressLine2 || '');
+              setAddressDetails({
+                address: defaultAddr.addressLine1,
+                lat: defaultAddr.lat,
+                lng: defaultAddr.lng,
+                type: defaultAddr.type,
+                city: defaultAddr.city,
+                state: defaultAddr.state,
+                pincode: defaultAddr.pincode
+              });
+            }
+          }
+        } else if (plan) {
           setCartItems([{
             id: plan.id,
             name: plan.name,
@@ -187,7 +227,7 @@ const Checkout = () => {
     };
 
     fetchData();
-  }, [category, plan]);
+  }, [category, plan, listing]);
 
   const loadCart = async () => {
     try {
@@ -335,7 +375,9 @@ const Checkout = () => {
 
       const response = await bookingService.create({
         bookingType, // 'instant' or 'scheduled'
-        serviceId,
+        ...(firstItem.serviceListingId
+          ? { serviceListingId: firstItem.serviceListingId }
+          : { serviceId }),
         address: {
           type: addressDetails?.type || 'home',
           addressLine1: addressDetails?.addressLine1 || address,
@@ -507,7 +549,7 @@ const Checkout = () => {
 
       // Get first service
       const firstItem = cartItems[0];
-      if (!firstItem.serviceId) {
+      if (!firstItem.serviceId && !firstItem.serviceListingId) {
         toast.error('Service information missing. Please try again.');
         setCurrentStep('details');
         setSearchingVendors(false);
@@ -575,7 +617,9 @@ const Checkout = () => {
 
       const bookingResponse = await bookingService.create({
         bookingType, // 'instant' or 'scheduled'
-        serviceId: serviceId,
+        ...(firstItem.serviceListingId
+          ? { serviceListingId: firstItem.serviceListingId }
+          : { serviceId }),
         address: addressObj,
         scheduledDate: finalDate.toISOString(),
         scheduledTime: finalTimeDisplay,

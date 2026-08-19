@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiSearch, FiLoader, FiCalendar, FiClock, FiUser, FiBriefcase } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
@@ -6,6 +7,7 @@ import CardShell from '../UserCategories/components/CardShell';
 import adminVendorService from '../../../../services/adminVendorService';
 
 const VendorBookings = () => {
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -107,7 +109,7 @@ const VendorBookings = () => {
                       </div>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-bold text-gray-900">{booking.serviceId?.title || 'General Service'}</h4>
+                          <h4 className="font-bold text-gray-900">{booking.serviceListingId?.title || booking.serviceName || booking.serviceId?.title || 'General Service'}</h4>
                           <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusStyle(booking.status)}`}>
                             {booking.status.toUpperCase()}
                           </span>
@@ -134,7 +136,13 @@ const VendorBookings = () => {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <div className="text-lg font-bold text-gray-900">₹{booking.finalAmount}</div>
-                      <button className="text-sm text-blue-600 font-semibold hover:underline">View Details</button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/admin/bookings/${booking._id}`)}
+                        className="text-sm text-primary-600 font-semibold hover:underline"
+                      >
+                        View Details
+                      </button>
                     </div>
                   </div>
                 </motion.div>

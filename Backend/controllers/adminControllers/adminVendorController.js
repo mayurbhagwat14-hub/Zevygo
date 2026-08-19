@@ -302,6 +302,7 @@ const getVendorBookings = async (req, res) => {
     const bookings = await Booking.find(query)
       .populate('userId', 'name phone')
       .populate('serviceId', 'title iconUrl')
+      .populate('serviceListingId', 'title categoryName status')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -411,6 +412,7 @@ const getAllVendorBookings = async (req, res) => {
       .populate('vendorId', 'name businessName phone profileImage')
       .populate('userId', 'name phone')
       .populate('serviceId', 'title iconUrl')
+      .populate('serviceListingId', 'title categoryName status')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));

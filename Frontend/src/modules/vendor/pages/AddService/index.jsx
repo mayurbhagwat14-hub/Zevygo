@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import api from '../../../../services/api';
+import { FormInput, FormTextarea, DynamicFormFields } from '../../components/common/DynamicField';
 
 // ─── STEP DEFINITIONS ───
 const STEPS = [
@@ -176,7 +177,7 @@ const AddService = () => {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <FiLoader className="w-8 h-8 text-blue-600 animate-spin" />
+          <FiLoader className="w-8 h-8 text-primary-600 animate-spin" />
           <p className="text-sm text-slate-500 font-medium">Loading...</p>
         </div>
       </div>
@@ -193,10 +194,10 @@ const AddService = () => {
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-black text-slate-900 truncate">
-              {isEdit ? 'Edit Service' : 'Add New Service'}
+              {isEdit ? 'Edit Listing Block' : 'Create Listing Block'}
             </h1>
             {selectedCategory && (
-              <p className="text-[10px] font-bold text-blue-600 truncate">{selectedCategory.title}</p>
+              <p className="text-[10px] font-bold text-primary-600 truncate">{selectedCategory.title}</p>
             )}
           </div>
           <span className="text-xs font-bold text-slate-400">{step + 1}/{STEPS.length}</span>
@@ -205,11 +206,11 @@ const AddService = () => {
         {/* Step Progress Bar */}
         <div className="mt-3 flex gap-1">
           {STEPS.map((s, i) => (
-            <div key={s.key} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i < step ? 'bg-blue-500' : i === step ? 'bg-blue-400' : 'bg-slate-200'}`} />
+            <div key={s.key} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i < step ? 'bg-primary-500' : i === step ? 'bg-primary-400' : 'bg-slate-200'}`} />
           ))}
         </div>
         <div className="mt-1.5 flex items-center gap-1.5">
-          {React.createElement(STEPS[step].icon, { className: 'w-3.5 h-3.5 text-blue-600' })}
+          {React.createElement(STEPS[step].icon, { className: 'w-3.5 h-3.5 text-primary-600' })}
           <span className="text-xs font-bold text-slate-700">{STEPS[step].label}</span>
         </div>
       </header>
@@ -243,7 +244,7 @@ const AddService = () => {
                 <FiSave className="w-3.5 h-3.5 inline mr-1" />Save Draft
               </button>
               <button onClick={goNext} disabled={!canGoNext()}
-                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-40 shadow-sm">
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 active:scale-95 transition-all disabled:opacity-40 shadow-sm">
                 Next <FiChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -254,7 +255,7 @@ const AddService = () => {
                 <FiSave className="w-3.5 h-3.5 inline mr-1" />Save Draft
               </button>
               <button onClick={() => handleSubmit(false)} disabled={submitting || !form.categoryId || !form.title}
-                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 active:scale-95 transition-all disabled:opacity-40 shadow-sm">
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 active:scale-95 transition-all disabled:opacity-40 shadow-sm">
                 {submitting ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiSend className="w-4 h-4" />}
                 {submitting ? 'Submitting...' : 'Submit for Approval'}
               </button>
@@ -271,9 +272,9 @@ const AddService = () => {
 // ════════════════════════════════════════════════════════════════
 const StepCategory = ({ categories, form, updateForm }) => (
   <div className="space-y-4">
-    <div className="bg-blue-50 rounded-xl p-3.5 border border-blue-100">
-      <h3 className="text-sm font-black text-blue-900">Select Your Service Category</h3>
-      <p className="text-xs text-blue-700 mt-0.5">Choose the category that best matches the service you want to offer.</p>
+    <div className="bg-primary-50 rounded-xl p-3.5 border border-primary-100">
+      <h3 className="text-sm font-black text-primary-900">Select Your Service Category</h3>
+      <p className="text-xs text-primary-700 mt-0.5">Choose the category that best matches the listing block you want to publish.</p>
     </div>
     <div className="grid grid-cols-2 gap-3">
       {categories.map(cat => {
@@ -283,13 +284,13 @@ const StepCategory = ({ categories, form, updateForm }) => (
         return (
           <button key={catId} onClick={() => !hasListing && updateForm('categoryId', catId)} disabled={!!hasListing}
             className={`relative p-3.5 rounded-xl border-2 text-left transition-all active:scale-[0.97] ${
-              isSelected ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-200' :
+              isSelected ? 'border-primary-500 bg-primary-50 shadow-md ring-2 ring-primary-200' :
               hasListing ? 'border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed' :
-              'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'
+              'border-slate-200 bg-white hover:border-primary-300 hover:shadow-sm'
             }`}>
-            {isSelected && <div className="absolute top-2 right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center"><FiCheck className="w-3 h-3 text-white" /></div>}
+            {isSelected && <div className="absolute top-2 right-2 w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center"><FiCheck className="w-3 h-3 text-white" /></div>}
             {cat.iconUrl && <img src={cat.iconUrl} alt="" className="w-8 h-8 rounded-lg mb-2 object-contain bg-white" />}
-            <h4 className={`text-xs font-black ${isSelected ? 'text-blue-900' : 'text-slate-800'}`}>{cat.title}</h4>
+            <h4 className={`text-xs font-black ${isSelected ? 'text-primary-900' : 'text-slate-800'}`}>{cat.title}</h4>
             {hasListing && <span className="text-[9px] font-bold text-amber-600 mt-1 block">Already Added</span>}
             {cat.defaultPricingModel && !hasListing && (
               <span className="text-[9px] font-medium text-slate-400 mt-0.5 block">{cat.defaultPricingModel}</span>
@@ -325,86 +326,16 @@ const StepDetails = ({ form, updateForm, updateDynamic, toggleDynamicMulti, cate
       {/* Dynamic Category-Specific Fields */}
       {vendorSchema.length > 0 && (
         <SectionCard title={`${category?.title || 'Service'} Details`} icon="⚙️">
-          <div className="space-y-3">
-            {vendorSchema.sort((a, b) => (a.order || 0) - (b.order || 0)).map(field => (
-              <DynamicField key={field.key} field={field} value={form.dynamicFormAnswers[field.key]}
-                onChange={v => updateDynamic(field.key, v)} onToggleMulti={v => toggleDynamicMulti(field.key, v)} />
-            ))}
-          </div>
+          <DynamicFormFields
+            schema={vendorSchema}
+            values={form.dynamicFormAnswers}
+            onChange={updateDynamic}
+            onToggleMulti={toggleDynamicMulti}
+          />
         </SectionCard>
       )}
     </div>
   );
-};
-
-// ════════════════════════════════════════════════════════════════
-// DYNAMIC FIELD RENDERER
-// ════════════════════════════════════════════════════════════════
-const DynamicField = ({ field, value, onChange, onToggleMulti }) => {
-  const { key, label, type, options = [], required, helpText } = field;
-
-  switch (type) {
-    case 'text':
-      return <FormInput label={`${label}${required ? ' *' : ''}`} value={value || ''} onChange={onChange} placeholder={helpText || ''} />;
-    case 'number':
-      return <FormInput label={`${label}${required ? ' *' : ''}`} type="number" value={value || ''} onChange={onChange} placeholder={helpText || ''} />;
-    case 'textarea':
-      return <FormTextarea label={`${label}${required ? ' *' : ''}`} value={value || ''} onChange={onChange} placeholder={helpText || ''} />;
-    case 'date':
-      return <FormInput label={`${label}${required ? ' *' : ''}`} type="date" value={value || ''} onChange={onChange} />;
-    case 'time':
-      return <FormInput label={`${label}${required ? ' *' : ''}`} type="time" value={value || ''} onChange={onChange} />;
-    case 'select':
-      return (
-        <div>
-          <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">{label}{required && ' *'}</label>
-          {helpText && <p className="text-[10px] text-slate-400 mb-1.5">{helpText}</p>}
-          <select value={value || ''} onChange={e => onChange(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none">
-            <option value="">Select...</option>
-            {options.map(o => <option key={o} value={o}>{o}</option>)}
-          </select>
-        </div>
-      );
-    case 'multiselect':
-      const selectedValues = Array.isArray(value) ? value : [];
-      return (
-        <div>
-          <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">{label}{required && ' *'}</label>
-          {helpText && <p className="text-[10px] text-slate-400 mb-1.5">{helpText}</p>}
-          <div className="flex flex-wrap gap-1.5">
-            {options.map(o => {
-              const sel = selectedValues.includes(o);
-              return (
-                <button key={o} type="button" onClick={() => onToggleMulti(o)}
-                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all active:scale-95 ${
-                    sel ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
-                  }`}>
-                  {sel && <FiCheck className="w-3 h-3 inline mr-0.5" />}{o}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      );
-    case 'toggle':
-      return (
-        <div className="flex items-center justify-between py-2">
-          <div>
-            <span className="text-xs font-bold text-slate-700">{label}</span>
-            {helpText && <p className="text-[10px] text-slate-400">{helpText}</p>}
-          </div>
-          <button type="button" onClick={() => onChange(!value)}
-            className={`w-11 h-6 rounded-full transition-all relative ${value ? 'bg-blue-600' : 'bg-slate-300'}`}>
-            <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow-sm ${value ? 'left-[22px]' : 'left-0.5'}`} />
-          </button>
-        </div>
-      );
-    case 'file':
-      return <FormInput label={`${label}${required ? ' *' : ''}`} type="file" value="" onChange={() => {}} />;
-    default:
-      return <FormInput label={label} value={value || ''} onChange={onChange} />;
-  }
 };
 
 // ════════════════════════════════════════════════════════════════
@@ -709,12 +640,12 @@ const StepPreview = ({ form, category }) => {
         </SectionCard>
       )}
 
-      <div className="bg-emerald-50 rounded-xl p-3.5 border border-emerald-200">
+      <div className="bg-primary-50 rounded-xl p-3.5 border border-primary-200">
         <div className="flex items-start gap-2">
-          <FiAlertCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+          <FiAlertCircle className="w-4 h-4 text-primary-600 mt-0.5 shrink-0" />
           <div>
-            <h4 className="text-xs font-black text-emerald-800">Ready to Submit?</h4>
-            <p className="text-[10px] text-emerald-700 mt-0.5">Your service will be reviewed by our team. You'll be notified once it's approved and live for customers.</p>
+            <h4 className="text-xs font-black text-primary-800">Ready to Submit?</h4>
+            <p className="text-[10px] text-primary-700 mt-0.5">Your listing block will be reviewed by our team. The live version stays up if you are editing an already-approved listing.</p>
           </div>
         </div>
       </div>
@@ -734,28 +665,11 @@ const SectionCard = ({ title, icon, children }) => (
   </div>
 );
 
-const FormInput = ({ label, type = 'text', value, onChange, placeholder, ...props }) => (
-  <div>
-    <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">{label}</label>
-    <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-      {...props} />
-  </div>
-);
-
-const FormTextarea = ({ label, value, onChange, placeholder, rows = 2 }) => (
-  <div>
-    <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">{label}</label>
-    <textarea rows={rows} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none" />
-  </div>
-);
-
 const ToggleRow = ({ label, value, onChange }) => (
   <div className="flex items-center justify-between py-1.5">
     <span className="text-xs font-bold text-slate-700">{label}</span>
     <button type="button" onClick={() => onChange(!value)}
-      className={`w-11 h-6 rounded-full transition-all relative ${value ? 'bg-blue-600' : 'bg-slate-300'}`}>
+      className={`w-11 h-6 rounded-full transition-all relative ${value ? 'bg-primary-600' : 'bg-slate-300'}`}>
       <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow-sm ${value ? 'left-[22px]' : 'left-0.5'}`} />
     </button>
   </div>

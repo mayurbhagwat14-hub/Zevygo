@@ -17,7 +17,7 @@ const requestQuote = async (req, res) => {
     }
 
     const listing = await ServiceListing.findById(serviceListingId);
-    if (!listing || listing.status !== 'APPROVED') {
+    if (!listing || !require('../../utils/serviceListingPublic').isListingBookable(listing)) {
       return res.status(404).json({ success: false, message: 'Service listing not found or not active.' });
     }
 

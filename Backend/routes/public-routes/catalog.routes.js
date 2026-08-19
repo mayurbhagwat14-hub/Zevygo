@@ -7,7 +7,8 @@ const {
   getPublicServices,
   getPublicHomeContent,
   getPublicHomeData,
-  getPublicServiceListings
+  getPublicServiceListings,
+  getPublicServiceListingById
 } = require('../../controllers/publicControllers/catalogController');
 
 // Public routes - no authentication required
@@ -16,6 +17,7 @@ router.get('/brands', getPublicBrands); // Formerly services
 router.get('/brands/slug/:slug', getPublicBrandBySlug);
 router.get('/services', getPublicServices); // New services
 router.get('/provider-services', getPublicServiceListings);
+router.get('/provider-services/:id', getPublicServiceListingById);
 router.get('/home-content', getPublicHomeContent);
 router.get('/home-data', getPublicHomeData);
 

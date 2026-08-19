@@ -12,6 +12,7 @@ const {
   getAvailableCategories,
   applyCategoryEnrollment,
   getVendorCategoryEnrollments,
+  updateCategoryEnrollmentAnswers,
   getServicePreview
 } = require('../../controllers/vendorControllers/vendorServiceController');
 
@@ -28,5 +29,6 @@ router.delete('/services/:id', authenticate, isVendorSelfService, deleteServiceL
 router.get('/categories', authenticate, isVendorSelfService, getAvailableCategories);
 router.get('/category-enrollments', authenticate, isVendorSelfService, getVendorCategoryEnrollments);
 router.post('/category-enrollment', authenticate, isVendorSelfService, applyCategoryEnrollment);
+router.patch('/category-enrollment/:categoryId/answers', authenticate, isVendorSelfService, updateCategoryEnrollmentAnswers);
 
 module.exports = router;

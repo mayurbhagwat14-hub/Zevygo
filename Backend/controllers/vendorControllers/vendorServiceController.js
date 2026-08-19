@@ -609,6 +609,98 @@ const getVendorCategoryEnrollments = async (req, res) => {
 };
 
 /**
+ * Update admin-defined service-form answers after signup (does not reset enrollment approval)
+ * PATCH /api/vendors/category-enrollment/:categoryId/answers
+ */
+const updateCategoryEnrollmentAnswers = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { categoryId } = req.params;
+    const { dynamicAnswers = {}, documents } = req.body;
+
+    const [vendor, category] = await Promise.all([
+      Vendor.findById(vendorId),
+      Category.findById(categoryId)
+    ]);
+
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: 'Vendor not found' });
+    }
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
+    let uploadedDocuments;
+    if (Array.isArray(documents)) {
+      uploadedDocuments = [];
+      for (const doc of documents) {
+        if (!doc.url) continue;
+        let finalUrl = doc.url;
+        if (doc.url.startsWith('data:')) {
+          const uploadRes = await cloudinaryService.uploadFile(doc.url, {
+            folder: `vendors/category_documents/${vendorId}/${category.slug}`
+          });
+          if (uploadRes.success) finalUrl = uploadRes.url;
+        }
+        uploadedDocuments.push({
+          label: doc.label || 'Document',
+          url: finalUrl
+        });
+      }
+    }
+
+    const existingIndex = (vendor.categoryEnrollments || []).findIndex(
+      (e) => e.categoryId && e.categoryId.toString() === categoryId.toString()
+    );
+
+    if (existingIndex === -1) {
+      vendor.categoryEnrollments.push({
+        categoryId: category._id,
+        status: vendor.approvalStatus === VENDOR_STATUS.APPROVED ? VENDOR_STATUS.APPROVED : VENDOR_STATUS.PENDING,
+        documents: uploadedDocuments || [],
+        dynamicAnswers,
+        appliedAt: new Date(),
+        approvedAt: vendor.approvalStatus === VENDOR_STATUS.APPROVED ? new Date() : null
+      });
+    } else {
+      vendor.categoryEnrollments[existingIndex].dynamicAnswers = {
+        ...(vendor.categoryEnrollments[existingIndex].dynamicAnswers || {}),
+        ...dynamicAnswers
+      };
+      if (uploadedDocuments) {
+        vendor.categoryEnrollments[existingIndex].documents = uploadedDocuments;
+      }
+    }
+
+    await vendor.save();
+
+    const enrollment = vendor.categoryEnrollments.find(
+      (e) => e.categoryId && e.categoryId.toString() === categoryId.toString()
+    );
+
+    await logAudit({
+      actorId: vendorId,
+      actorType: 'VENDOR',
+      action: 'VENDOR_SERVICE_FORM_UPDATED',
+      entity: 'Vendor',
+      entityId: vendorId,
+      newValue: { categoryId, categoryTitle: category.title },
+      req
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Service form answers updated',
+      enrollment,
+      vendorFormSchema: category.vendorFormSchema || []
+    });
+  } catch (error) {
+    console.error('Update category enrollment answers error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update service form answers' });
+  }
+};
+
+/**
  * Get service preview (compiled full data before submission)
  * GET /api/vendors/services/:id/preview
  */
@@ -660,5 +752,6 @@ module.exports = {
   getAvailableCategories,
   applyCategoryEnrollment,
   getVendorCategoryEnrollments,
+  updateCategoryEnrollmentAnswers,
   getServicePreview
 };

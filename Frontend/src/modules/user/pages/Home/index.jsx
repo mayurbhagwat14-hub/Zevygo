@@ -317,8 +317,14 @@ const Home = () => {
   };
 
   const handleCategoryClick = (category) => {
-    setSelectedCategory(category);
-    setIsCategoryModalOpen(true);
+    if (category?.initialBrand) {
+      setSelectedCategory(category);
+      setIsCategoryModalOpen(true);
+      return;
+    }
+    const id = category?.id || category?._id;
+    if (!id) return;
+    navigate(`/user/category/${id}`, { state: { category } });
   };
 
   const handlePromoClick = (promo) => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FiSearch, FiCalendar, FiDownload, FiMoreVertical,
@@ -22,6 +23,7 @@ const BookingStatsCard = ({ title, count, icon: Icon, colorClass, bgClass }) => 
 );
 
 const Bookings = () => {
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -107,7 +109,7 @@ const Bookings = () => {
     const rows = bookings.map(b => [
       b.bookingNumber,
       b.userId?.name || 'Unknown',
-      b.serviceId?.title || 'Service',
+      b.serviceListingId?.title || b.serviceName || b.serviceId?.title || 'Service',
       b.finalAmount,
       b.status,
       new Date(b.createdAt).toLocaleDateString()
@@ -200,7 +202,7 @@ const Bookings = () => {
               <tr className="border-b border-gray-100 bg-gray-50/50">
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Order ID</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Customer</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Items</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Listing</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total (₹)</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Payment</th>
@@ -219,7 +221,11 @@ const Bookings = () => {
                 </tr>
               ) : (
                 bookings.map((booking) => (
-                  <tr key={booking._id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={booking._id}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/admin/bookings/${booking._id}`)}
+                  >
                     <td className="px-4 py-3">
                       <span className="font-bold text-gray-900 text-xs">#{booking.bookingNumber || booking._id.slice(-6).toUpperCase()}</span>
                     </td>
@@ -230,9 +236,12 @@ const Bookings = () => {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-blue-600 text-[11px] font-bold">
-                        {booking.items?.length || 1} items
+                      <div className="text-primary-600 text-[11px] font-bold">
+                        {booking.serviceListingId?.title || booking.serviceName || booking.serviceId?.title || 'Service'}
                       </div>
+                      {booking.serviceListingId?.categoryName && (
+                        <p className="text-[10px] text-neutral-400 font-medium">{booking.serviceListingId.categoryName}</p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className="font-bold text-gray-900 text-xs">₹{booking.finalAmount?.toLocaleString()}</span>
@@ -257,7 +266,14 @@ const Bookings = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/admin/bookings/${booking._id}`);
+                        }}
+                        className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                      >
                         <FiMoreVertical className="w-4 h-4" />
                       </button>
                     </td>

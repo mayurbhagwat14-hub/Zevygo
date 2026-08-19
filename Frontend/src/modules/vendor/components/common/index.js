@@ -1,5 +1,6 @@
 // Common Components Exports
 export { default as StatusBadge } from './StatusBadge';
+export { default as DynamicField, DynamicFormFields, FormInput, FormTextarea } from './DynamicField';
 export { default as PriceDisplay } from './PriceDisplay';
 export { default as MapEmbed } from './MapEmbed';
 export { default as ImageUploader } from './ImageUploader';

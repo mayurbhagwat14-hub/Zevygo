@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiBriefcase, FiStar, FiBell, FiArrowRight, FiUser, FiClock, FiMapPin, FiCheckCircle, FiTrendingUp, FiChevronRight } from 'react-icons/fi';
+import { FiBriefcase, FiStar, FiBell, FiArrowRight, FiUser, FiClock, FiMapPin, FiCheckCircle, FiTrendingUp, FiChevronRight, FiLayers, FiPlus } from 'react-icons/fi';
 import { FaWallet } from 'react-icons/fa';
 import { vendorTheme as themeColors, gradients } from '../../../../theme';
 import { Button } from '../../../../components/ui';
@@ -10,6 +10,7 @@ import { acceptBooking, rejectBooking, assignWorker } from '../../services/booki
 // Booking alert handled globally
 import { toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
+import api from '../../../../services/api';
 
 import { registerFCMToken } from '../../../../services/pushNotificationService';
 import LogoLoader from '../../../../components/common/LogoLoader';
@@ -51,6 +52,7 @@ const Dashboard = memo(() => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [globalConfig, setGlobalConfig] = useState({ maxSearchTime: 5, waveDuration: 60 });
+  const [listingStats, setListingStats] = useState({ total: 0, live: 0, pending: 0 });
 
   const ignoredBookingIds = useRef(new Set());
 
@@ -208,6 +210,19 @@ const Dashboard = memo(() => {
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
+
+  useEffect(() => {
+    api.get('/vendors/services', { params: { limit: 50 } })
+      .then((res) => {
+        const items = res.data?.data || [];
+        setListingStats({
+          total: res.data?.pagination?.total ?? items.length,
+          live: items.filter((s) => s.status === 'APPROVED').length,
+          pending: items.filter((s) => s.status === 'PENDING_REVIEW' || s.status === 'CHANGES_REQUESTED').length
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   // Check for redirected state (to open a specific alert modal)
   useEffect(() => {
@@ -508,6 +523,29 @@ const Dashboard = memo(() => {
             </div>
           </div>
         )}
+
+        <div className="px-4 pt-3">
+          <button
+            type="button"
+            onClick={() => navigate('/vendor/my-services')}
+            className="w-full bg-white rounded-[24px] p-4 border border-neutral-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center gap-3 text-left active:scale-[0.98] transition-all"
+          >
+            <div className="w-11 h-11 rounded-2xl bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
+              <FiLayers className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-black text-neutral-900">Listing Blocks</p>
+              <p className="text-[11px] text-neutral-500 font-medium mt-0.5">
+                {listingStats.total === 0
+                  ? 'Create a listing so customers can book you'
+                  : `${listingStats.live} live · ${listingStats.pending} in review`}
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-primary-600 shrink-0">
+              {listingStats.total === 0 ? <><FiPlus className="w-3.5 h-3.5" /> Create</> : <>Manage <FiChevronRight className="w-4 h-4" /></>}
+            </span>
+          </button>
+        </div>
 
         {/* Stats Cards - Optimized Component */}
         <StatsCards stats={stats} />

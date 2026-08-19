@@ -4,6 +4,7 @@ import { FiSearch, FiCheckCircle, FiTruck, FiPackage, FiClipboard, FiClock } fro
 import { useNavigate } from 'react-router-dom';
 import { adminBookingService } from '../../../../services/adminBookingService';
 import { toast } from 'react-hot-toast';
+import BookingListingOrigin from '../../components/BookingListingOrigin';
 
 const Tracking = () => {
   const navigate = useNavigate();
@@ -188,10 +189,14 @@ const Tracking = () => {
                 <p className="text-lg font-bold text-gray-900">#{selectedOrder.bookingNumber || selectedOrder._id.slice(-6).toUpperCase()}</p>
               </div>
 
-              <div className="mb-8">
+              <div className="mb-6">
                 <p className="text-sm text-gray-500 mb-1">Customer</p>
                 <p className="text-base font-semibold text-gray-900">{selectedOrder.userId?.name || 'Unknown'}</p>
                 <p className="text-xs text-gray-500">{selectedOrder.userId?.email}</p>
+              </div>
+
+              <div className="mb-8">
+                <BookingListingOrigin booking={selectedOrder} />
               </div>
 
               {/* Timeline */}
@@ -226,7 +231,7 @@ const Tracking = () => {
               <div className="pt-6 border-t border-gray-100 mt-auto">
                 <button
                   onClick={() => navigate(`/admin/bookings/${selectedOrder._id}`)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors text-sm"
+                  className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-2.5 rounded-lg transition-colors text-sm"
                 >
                   View Full Details
                 </button>

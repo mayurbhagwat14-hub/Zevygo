@@ -11,6 +11,243 @@ const { validationResult } = require('express-validator');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 const { createNotification } = require('../notificationControllers/notificationController');
 const { sendNotificationToUser, sendNotificationToVendor, sendNotificationToWorker } = require('../../services/firebaseAdmin');
+const ServiceListing = require('../../models/ServiceListing');
+const { isListingBookable, overlayApprovedVersion, listingDisplayPrice } = require('../../utils/serviceListingPublic');
+
+const LISTING_BOOKING_POPULATE = 'title categoryName status portfolioPhotos pricing pricingModel bookingMode';
+
+const notifySingleVendorOfBooking = async ({
+  booking,
+  vendorId,
+  user,
+  serviceTitle,
+  scheduledDate,
+  scheduledTime,
+  finalAmount,
+  address
+}) => {
+  const BookingRequest = require('../../models/BookingRequest');
+  try {
+    await BookingRequest.create({
+      bookingId: booking._id,
+      vendorId,
+      status: 'PENDING',
+      wave: 1,
+      sentAt: new Date(),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    });
+  } catch (err) {
+    if (err.code !== 11000) console.error('[CreateListingBooking] BookingRequest insert error:', err);
+  }
+
+  const { getIO } = require('../../sockets');
+  const io = getIO();
+  if (io) {
+    io.to(`vendor_${vendorId.toString()}`).emit('new_booking_request', {
+      bookingId: booking._id,
+      serviceName: serviceTitle,
+      customerName: user.name,
+      customerPhone: user.phone,
+      scheduledDate,
+      scheduledTime,
+      price: finalAmount,
+      address,
+      serviceCategory: booking.serviceCategory,
+      brandName: booking.brandName,
+      brandIcon: booking.brandIcon,
+      categoryIcon: booking.categoryIcon,
+      createdAt: booking.createdAt || new Date(),
+      playSound: true,
+      message: `New booking request for ${serviceTitle}`
+    });
+  }
+
+  await createNotification({
+    vendorId,
+    type: 'booking_request',
+    title: 'New Booking Request',
+    message: `New service request for ${serviceTitle} from ${user.name}`,
+    relatedId: booking._id,
+    relatedType: 'booking',
+    data: {
+      bookingId: booking._id,
+      serviceName: serviceTitle,
+      customerName: user.name,
+      scheduledDate,
+      scheduledTime,
+      location: address,
+      price: finalAmount,
+      serviceListingId: booking.serviceListingId
+    },
+    pushData: {
+      type: 'new_booking',
+      dataOnly: false,
+      link: `/vendor/bookings/${booking._id}`
+    }
+  });
+};
+
+/**
+ * Book a specific vendor listing (skips nearby-vendor wave search).
+ */
+const createListingBooking = async (req, res) => {
+  const userId = req.user.id;
+  const {
+    serviceListingId,
+    address,
+    scheduledDate,
+    scheduledTime,
+    timeSlot,
+    paymentMethod,
+    amount,
+    bookedItems,
+    visitingCharges: reqVisitingCharges,
+    visitationFee: reqVisitationFee,
+    basePrice: reqBasePrice,
+    discount: reqDiscount,
+    tax: reqTax,
+    bookingType,
+    serviceCategory: reqServiceCategory,
+    categoryIcon: reqCategoryIcon
+  } = req.body;
+
+  const listingDoc = await ServiceListing.findById(serviceListingId)
+    .populate('vendorId', 'name approvalStatus accountStatus')
+    .populate('categoryId', 'title icon image slug homeIconUrl');
+
+  if (!listingDoc || !isListingBookable(listingDoc)) {
+    return res.status(404).json({ success: false, message: 'This listing is not available for booking.' });
+  }
+
+  const vendor = listingDoc.vendorId;
+  if (!vendor || vendor.approvalStatus !== 'approved' || ['SUSPENDED', 'BLOCKED'].includes(vendor.accountStatus)) {
+    return res.status(400).json({ success: false, message: 'This provider is not currently available.' });
+  }
+
+  const live = overlayApprovedVersion(listingDoc);
+  const user = await User.findById(userId).select('name phone wallet plans');
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  const pendingPenalty = user.wallet?.penalty || 0;
+  let visitingCharges = reqVisitingCharges !== undefined ? reqVisitingCharges : (reqVisitationFee || 0);
+  let basePrice;
+  let discount;
+  let tax;
+  let finalAmount;
+
+  if (amount && amount > 0 && reqBasePrice !== undefined && reqTax !== undefined) {
+    basePrice = reqBasePrice;
+    discount = reqDiscount || 0;
+    tax = reqTax;
+    visitingCharges = reqVisitingCharges !== undefined ? reqVisitingCharges : (visitingCharges || 0);
+    finalAmount = (basePrice - discount + tax + visitingCharges) + pendingPenalty;
+  } else {
+    basePrice = listingDisplayPrice(live.pricing);
+    discount = 0;
+    tax = 0;
+    visitingCharges = visitingCharges || 0;
+    finalAmount = (amount && amount > 0 ? amount : basePrice + visitingCharges) + pendingPenalty;
+  }
+
+  if (pendingPenalty > 0) {
+    user.wallet.penalty = 0;
+    await user.save();
+  }
+
+  const bookingNumber = `BK${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+  const category = listingDoc.categoryId;
+  const formattedBookedItems = (Array.isArray(bookedItems) && bookedItems.length > 0)
+    ? bookedItems.map((item) => ({
+      brandName: item.brandName || item.sectionTitle || item.brand || '',
+      brandIcon: item.brandIcon || item.sectionIcon || item.icon || null,
+      card: item.card || item,
+      quantity: item.quantity || 1
+    }))
+    : [];
+
+  const booking = await Booking.create({
+    bookingNumber,
+    userId,
+    vendorId: null,
+    serviceId: null,
+    serviceListingId: listingDoc._id,
+    categoryId: listingDoc.categoryId?._id || listingDoc.categoryId,
+    serviceName: live.title,
+    serviceCategory: reqServiceCategory || live.categoryName || category?.title || 'General',
+    categoryIcon: reqCategoryIcon || category?.homeIconUrl || category?.icon || category?.image || null,
+    bookingType: bookingType || 'scheduled',
+    description: live.description,
+    serviceImages: live.portfolioPhotos || [],
+    bookedItems: formattedBookedItems,
+    basePrice,
+    discount,
+    tax,
+    visitingCharges,
+    finalAmount,
+    userPayableAmount: finalAmount,
+    address: {
+      type: address.type || 'home',
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2 || '',
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+      landmark: address.landmark || '',
+      lat: address.lat || null,
+      lng: address.lng || null
+    },
+    scheduledDate: new Date(scheduledDate),
+    scheduledTime,
+    timeSlot: {
+      start: timeSlot.start,
+      end: timeSlot.end
+    },
+    paymentMethod: paymentMethod || null,
+    status: BOOKING_STATUS.REQUESTED,
+    paymentStatus: PAYMENT_STATUS.PENDING,
+    potentialVendors: [{ vendorId: vendor._id, distance: 0 }],
+    currentWave: 1,
+    waveStartedAt: new Date(),
+    notifiedVendors: [vendor._id]
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Booking request sent to this provider.',
+    data: {
+      _id: booking._id,
+      bookingNumber: booking.bookingNumber,
+      status: booking.status,
+      paymentStatus: booking.paymentStatus,
+      finalAmount: booking.finalAmount,
+      scheduledDate: booking.scheduledDate,
+      scheduledTime: booking.scheduledTime,
+      address: booking.address,
+      serviceName: booking.serviceName,
+      serviceListingId: booking.serviceListingId,
+      categoryIcon: booking.categoryIcon
+    }
+  });
+
+  setImmediate(async () => {
+    try {
+      await notifySingleVendorOfBooking({
+        booking,
+        vendorId: vendor._id,
+        user,
+        serviceTitle: live.title,
+        scheduledDate,
+        scheduledTime,
+        finalAmount,
+        address
+      });
+    } catch (err) {
+      console.error('[CreateListingBooking] Background notify failed:', err);
+    }
+  });
+};
 
 /**
  * Create a new booking
@@ -24,6 +261,10 @@ const createBooking = async (req, res) => {
         message: 'Validation failed',
         errors: errors.array()
       });
+    }
+
+    if (req.body.serviceListingId) {
+      return await createListingBooking(req, res);
     }
 
     const userId = req.user.id;
@@ -585,6 +826,7 @@ const getUserBookings = async (req, res) => {
     const bookings = await Booking.find(query)
       .populate('vendorId', 'name businessName phone profilePhoto')
       .populate('serviceId', 'title iconUrl')
+      .populate('serviceListingId', LISTING_BOOKING_POPULATE)
       .populate('categoryId', 'title slug')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -626,6 +868,7 @@ const getBookingById = async (req, res) => {
       .populate('userId', 'name phone email')
       .populate('vendorId', 'name businessName phone email address profilePhoto')
       .populate('serviceId', 'title description iconUrl images')
+      .populate('serviceListingId', LISTING_BOOKING_POPULATE)
       .populate('categoryId', 'title slug')
       .lean();
 

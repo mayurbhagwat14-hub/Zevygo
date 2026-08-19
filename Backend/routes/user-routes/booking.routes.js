@@ -15,7 +15,20 @@ const {
 
 // Validation rules
 const createBookingValidation = [
-  body('serviceId').isMongoId().withMessage('Valid service ID is required'),
+  body('serviceListingId').optional().isMongoId().withMessage('Valid listing ID is required'),
+  body('serviceId').optional().custom((value) => {
+    if (value && typeof value === 'object' && value._id) return true;
+    if (value && !/^[0-9a-fA-F]{24}$/.test(value)) {
+      throw new Error('Valid service ID is required');
+    }
+    return true;
+  }),
+  body().custom((_, { req }) => {
+    if (!req.body.serviceId && !req.body.serviceListingId) {
+      throw new Error('Either serviceId or serviceListingId is required');
+    }
+    return true;
+  }),
   body('vendorId').optional().custom((value) => {
     if (value && !/^[0-9a-fA-F]{24}$/.test(value)) {
       throw new Error('Valid vendor ID is required');

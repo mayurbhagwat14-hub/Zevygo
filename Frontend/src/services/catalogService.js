@@ -364,6 +364,24 @@ export const publicCatalogService = {
     return response.data;
   },
 
+  getProviderListings: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.categoryId) queryParams.append('categoryId', params.categoryId);
+    if (params.categorySlug) queryParams.append('categorySlug', params.categorySlug);
+    if (params.city) queryParams.append('city', params.city);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+
+    const response = await api.get(`/public/provider-services${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
+    return response.data;
+  },
+
+  getProviderListingById: async (id) => {
+    const response = await api.get(`/public/provider-services/${id}`);
+    return response.data;
+  },
+
   // Invalidate all public caches (useful after admin updates)
   invalidateCache: () => {
     apiCache.invalidatePrefix('public:');
