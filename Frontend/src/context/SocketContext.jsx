@@ -249,13 +249,21 @@ export const SocketProvider = ({ children }) => {
         // Note: Even though we are moving to backend, keeping this for immediate UI responsiveness before potential refresh lag
         const newJob = {
           id: data.bookingId,
+          _id: data.bookingId,
           serviceType: data.serviceName,
+          serviceName: data.serviceName,
           customerName: data.customerName,
           customerPhone: data.customerPhone,
+          bookingType: data.bookingType || 'scheduled',
+          isDirectRequest: data.isDirectRequest || Boolean(data.serviceListingId),
+          serviceListingId: data.serviceListingId,
           location: {
-            address: data.address?.addressLine1 || 'Location shared',
+            address: data.address?.addressLine1
+              ? `${data.address.addressLine1}${data.address.addressLine2 ? `, ${data.address.addressLine2}` : ''}, ${data.address.city || ''}`
+              : 'Location shared',
             distance: data.distance ? `${data.distance.toFixed(1)} km` : 'Near you'
           },
+          address: data.address,
           price: data.price,
           vendorEarnings: data.vendorEarnings,
           serviceCategory: data.serviceCategory,
@@ -264,9 +272,11 @@ export const SocketProvider = ({ children }) => {
           categoryIcon: data.categoryIcon,
           scheduledDate: data.scheduledDate,
           scheduledTime: data.scheduledTime,
-          timeSlot: {
-            date: new Date(data.scheduledDate).toLocaleDateString(),
-            time: data.scheduledTime
+          timeSlot: data.timeSlot || {
+            date: data.scheduledDate ? new Date(data.scheduledDate).toLocaleDateString('en-IN') : '',
+            time: data.scheduledTime,
+            start: data.timeSlot?.start,
+            end: data.timeSlot?.end
           },
           status: 'requested',
           createdAt: data.createdAt || new Date().toISOString(),

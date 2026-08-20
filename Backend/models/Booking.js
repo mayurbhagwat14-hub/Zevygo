@@ -34,6 +34,15 @@ const bookingSchema = new mongoose.Schema({
     default: null,
     index: true
   },
+  catalogItemId: {
+    type: String,
+    default: null,
+    index: true
+  },
+  catalogItemTitle: {
+    type: String,
+    default: null
+  },
   workerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Vendor',
@@ -201,6 +210,21 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  /** none → advance_pending → advance_paid → final_pending → fully_paid */
+  paymentPhase: {
+    type: String,
+    enum: ['none', 'advance_pending', 'advance_paid', 'final_pending', 'fully_paid'],
+    default: 'none'
+  },
+  advanceAmount: { type: Number, default: 0, min: 0 },
+  balanceAmount: { type: Number, default: 0, min: 0 },
+  requireAdvancePayment: { type: Boolean, default: false },
+  advancePaymentPercent: { type: Number, default: 0, min: 0, max: 100 },
+  platformFeeAmount: { type: Number, default: 0, min: 0 },
+  convenienceFeeAmount: { type: Number, default: 0, min: 0 },
+  advancePaidAt: { type: Date, default: null },
+  advancePaymentId: { type: String, default: null },
+  pendingPaymentType: { type: String, default: null }, // advance | final | full
   razorpayQrId: {
     type: String,
     default: null,

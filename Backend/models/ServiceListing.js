@@ -177,6 +177,31 @@ const serviceListingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: {}
   },
+  pricingFormAnswers: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  availabilityFormAnswers: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  serviceAreaFormAnswers: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  bookingRulesFormAnswers: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  documentsFormAnswers: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  // Answers keyed by listingForm id/key: { [formId]: { fieldKey: value } }
+  listingFormAnswers: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
 
   // ─── DOCUMENTS (Service-Specific Certificates, Licenses) ───
   documents: [{
@@ -194,6 +219,9 @@ const serviceListingSchema = new mongoose.Schema({
   portfolioVideos: [{
     type: String
   }],
+
+  // ─── CATALOG ITEMS (Zomato-Style Sub-Services/Menu) ───
+  catalogItems: [mongoose.Schema.Types.Mixed],
 
   // ─── VERSIONING: Keeps approved version live while edits are reviewed ───
   approvedVersion: {

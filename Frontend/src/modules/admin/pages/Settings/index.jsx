@@ -14,6 +14,8 @@ const AdminSettings = () => {
 
   const [financialSettings, setFinancialSettings] = useState({
     visitedCharges: 0,
+    convenienceFee: 20,
+    advancePaymentPercent: 30,
     serviceGstPercentage: 18,
     partsGstPercentage: 18,
     servicePayoutPercentage: 90,
@@ -120,6 +122,8 @@ const AdminSettings = () => {
         if (res.success && res.settings) {
           setFinancialSettings({
             visitedCharges: res.settings.visitedCharges || 0,
+            convenienceFee: res.settings.convenienceFee ?? res.settings.visitedCharges ?? 20,
+            advancePaymentPercent: res.settings.advancePaymentPercent ?? 30,
             serviceGstPercentage: res.settings.serviceGstPercentage ?? 18,
             partsGstPercentage: res.settings.partsGstPercentage ?? 18,
             servicePayoutPercentage: res.settings.servicePayoutPercentage ?? 90,
@@ -625,9 +629,24 @@ const AdminSettings = () => {
                 <form onSubmit={handleFinancialSave} className="space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Convenience Fee (₹)</label>
+                      <input type="number" name="convenienceFee" value={financialSettings.convenienceFee} onChange={handleFinancialChange}
+                        min="0"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
+                      <p className="text-[10px] text-gray-400 mt-1">Flat fee added to every booking checkout</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Default Advance % (fallback)</label>
+                      <input type="number" name="advancePaymentPercent" value={financialSettings.advancePaymentPercent} onChange={handleFinancialChange}
+                        min="0" max="100"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
+                      <p className="text-[10px] text-gray-400 mt-1">Default % when advance is enabled on a category/service</p>
+                    </div>
+                    <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Visit Charges (₹)</label>
                       <input type="number" name="visitedCharges" value={financialSettings.visitedCharges} onChange={handleFinancialChange}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
+                      <p className="text-[10px] text-gray-400 mt-1">Legacy visit charge (use Convenience Fee for checkout)</p>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Vendor Cash Limit (₹)</label>
@@ -671,7 +690,7 @@ const AdminSettings = () => {
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Platform Fee (%)</label>
                       <input type="number" name="platformFeePercentage" value={financialSettings.platformFeePercentage} onChange={handleFinancialChange}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
-                      <p className="text-[10px] text-gray-400 mt-1">Fee charged on vendor withdrawals</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Platform fee on booking total (checkout) and vendor withdrawals</p>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Cancellation Penalty (₹)</label>

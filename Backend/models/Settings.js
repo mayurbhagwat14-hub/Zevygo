@@ -1,5 +1,21 @@
 const mongoose = require('mongoose');
 
+const formFieldSchema = new mongoose.Schema({
+  key: { type: String, required: true, trim: true },
+  label: { type: String, required: true, trim: true },
+  type: {
+    type: String,
+    enum: ['text', 'number', 'select', 'multiselect', 'date', 'time', 'textarea', 'file', 'toggle'],
+    required: true
+  },
+  options: [{ type: String, trim: true }],
+  required: { type: Boolean, default: false },
+  helpText: { type: String, default: null, trim: true },
+  minValue: { type: Number, default: null },
+  maxValue: { type: Number, default: null },
+  order: { type: Number, default: 0 }
+}, { _id: false });
+
 const settingsSchema = new mongoose.Schema({
   type: {
     type: String,
@@ -188,7 +204,34 @@ const settingsSchema = new mongoose.Schema({
   isOnlinePaymentEnabled: {
     type: Boolean,
     default: true
-  }
+  },
+  /** Percent of total charged as advance after vendor accepts (rest after service). */
+  advancePaymentPercent: {
+    type: Number,
+    default: 30,
+    min: 0,
+    max: 100
+  },
+  /** Flat convenience / platform handling fee added to checkout total. */
+  convenienceFee: {
+    type: Number,
+    default: 20,
+    min: 0
+  },
+  /**
+   * Reusable listing wizard forms applied across all service categories.
+   * Admin creates once; vendors see them on every category (when applyToAll is true).
+   */
+  commonListingForms: [{
+    id: { type: String, required: true },
+    key: { type: String, required: true, trim: true },
+    title: { type: String, required: true, trim: true },
+    type: { type: String, enum: ['fields', 'menu', 'photos'], default: 'fields' },
+    enabled: { type: Boolean, default: true },
+    applyToAll: { type: Boolean, default: true },
+    order: { type: Number, default: 0 },
+    fields: [formFieldSchema]
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Settings', settingsSchema);

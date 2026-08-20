@@ -71,18 +71,32 @@ const BookingTrack = () => {
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
+  const getChargeAmount = (b) => {
+    if (!b) return 0;
+    if (b.status?.toLowerCase() === 'awaiting_payment' && b.paymentPhase === 'advance_pending') {
+      return b.advanceAmount || 0;
+    }
+    if (b.paymentPhase === 'final_pending' || b.status?.toLowerCase() === 'work_done') {
+      return b.balanceAmount || b.userPayableAmount || b.finalAmount || 0;
+    }
+    return b.finalAmount || 0;
+  };
+
   const handleOnlinePayment = async () => {
     if (paying) return;
 
     // If a Razorpay order already exists for this booking, reuse it
     if (booking.razorpayOrderId) {
+      const chargeAmount = getChargeAmount(booking);
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: Math.round((booking.finalAmount || 0) * 100),
+        amount: Math.round(chargeAmount * 100),
         currency: 'INR',
         order_id: booking.razorpayOrderId,
         name: branding.appName,
-        description: `Payment for ${booking.serviceName}`,
+        description: booking.paymentPhase === 'advance_pending'
+          ? `Advance — ${booking.serviceName}`
+          : `Final payment — ${booking.serviceName}`,
         handler: async function (response) {
           toast.loading('Verifying payment...');
           const verifyResponse = await paymentService.verifyPayment({
@@ -93,7 +107,7 @@ const BookingTrack = () => {
           toast.dismiss();
           if (verifyResponse.success) {
             toast.success('Payment successful!');
-            navigate(`/user/booking/${booking._id || booking.id}`);
+            await refreshBooking(false);
           } else {
             toast.error('Payment verification failed');
           }
@@ -127,9 +141,12 @@ const BookingTrack = () => {
 
       const options = {
         key: orderResponse.data.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: Math.round((orderResponse.data.amount || getChargeAmount(booking)) * 100),
         order_id: orderResponse.data.orderId,
         name: branding.appName,
-        description: `Payment for ${booking.serviceName}`,
+        description: orderResponse.data.paymentType === 'advance'
+          ? `Advance — ${booking.serviceName}`
+          : `Final payment — ${booking.serviceName}`,
         handler: async function (response) {
           toast.loading('Verifying payment...');
           const verifyResponse = await paymentService.verifyPayment({
@@ -141,7 +158,7 @@ const BookingTrack = () => {
 
           if (verifyResponse.success) {
             toast.success('Payment successful!');
-            navigate(`/user/booking/${booking._id || booking.id}`);
+            await refreshBooking(false);
           } else {
             toast.error('Payment verification failed');
           }
@@ -834,6 +851,31 @@ const BookingTrack = () => {
           </div>
         )}
 
+        {/* Advance Payment — provider accepted, pay to confirm */}
+        {booking?.status?.toLowerCase() === 'awaiting_payment'
+          && booking?.paymentPhase === 'advance_pending' && (
+          <div className="mb-4 relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-5 shadow-lg">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16 blur-2xl" />
+            <div className="relative z-10">
+              <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Advance Payment Required</p>
+              <p className="text-white text-lg font-black mb-1">
+                ₹{(booking.advanceAmount || 0).toLocaleString('en-IN')}
+              </p>
+              <p className="text-xs text-white/70 mb-4">
+                Provider accepted your request. Pay advance to start service. Balance ₹{(booking.balanceAmount || 0).toLocaleString('en-IN')} after completion.
+              </p>
+              <button
+                onClick={handleOnlinePayment}
+                disabled={paying}
+                className="w-full py-4 bg-white text-blue-600 rounded-xl font-black text-sm shadow-xl hover:bg-blue-50 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                <FiDollarSign className="w-4 h-4" />
+                {paying ? 'Processing...' : 'Pay Advance Now'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Waiting for Vendor to initiate Payment */}
         {!booking?.customerConfirmationOTP && booking?.status?.toLowerCase() === 'work_done' && !booking?.cashCollected && (
           <div className="bg-white rounded-2xl p-4 shadow-lg border border-primary-100 mb-4 flex items-center gap-4 relative overflow-hidden">
@@ -871,7 +913,9 @@ const BookingTrack = () => {
                     {booking?.paymentStatus === 'success' ? 'Payment Received' : 'Final Payment'}
                   </p>
                   <p className="text-white text-xs font-medium">
-                    {booking?.paymentStatus === 'success' ? 'Verified Successfully' : `Service amount: ₹${(booking?.finalAmount || 0).toLocaleString()}`}
+                    {booking?.paymentStatus === 'success'
+                      ? 'Verified Successfully'
+                      : `Balance due: ₹${getChargeAmount(booking).toLocaleString('en-IN')}`}
                   </p>
                 </div>
               </div>

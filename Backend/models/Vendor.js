@@ -59,6 +59,11 @@ const vendorSchema = new mongoose.Schema({
     enum: ['vendor'],
     default: 'vendor'
   },
+  gender: {
+    type: String,
+    enum: ['Male', 'Female', 'Other'],
+    default: 'Male'
+  },
   password: {
     type: String,
     select: false

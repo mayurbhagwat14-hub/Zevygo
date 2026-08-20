@@ -2,9 +2,10 @@ import React from 'react';
 import { FiMapPin, FiStar } from 'react-icons/fi';
 
 const ListingCard = ({ listing, onClick }) => {
-  const cover = listing.portfolioPhotos?.[0];
+  const cover = listing.portfolioPhotos?.[0] || listing.provider?.photo;
   const price = listing.displayPrice || listing.pricing?.basePrice || listing.pricing?.hourlyRate || listing.pricing?.dailyRate || 0;
   const provider = listing.provider || {};
+  const itemCount = listing.itemCount || listing.catalogItems?.length || 0;
 
   return (
     <button
@@ -17,8 +18,8 @@ const ListingCard = ({ listing, onClick }) => {
           {cover ? (
             <img src={cover} alt="" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-neutral-400">
-              No photo
+            <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-neutral-400 bg-primary-50 text-primary-700">
+              {(provider.name || listing.title || 'P').charAt(0)}
             </div>
           )}
         </div>
@@ -26,25 +27,31 @@ const ListingCard = ({ listing, onClick }) => {
           <p className="text-[10px] font-black uppercase tracking-wider text-primary-600 truncate">
             {listing.category?.title || 'Service'}
           </p>
-          <h3 className="text-sm font-black text-neutral-900 mt-0.5 line-clamp-2 leading-snug">{listing.title}</h3>
-          <p className="text-[11px] text-neutral-500 font-medium truncate mt-0.5">{provider.name}</p>
+          <h3 className="text-sm font-black text-neutral-900 mt-0.5 line-clamp-1 leading-snug">
+            {provider.name || listing.title}
+          </h3>
+          <p className="text-[11px] text-neutral-500 font-medium truncate mt-0.5">
+            {listing.title}
+          </p>
           <div className="flex items-center justify-between mt-2">
             <span className="text-sm font-black text-neutral-900">
-              ₹{price}
-              <span className="text-[10px] font-bold text-neutral-400 ml-1">
-                / {(listing.pricingModel || 'FIXED').toLowerCase().replace('_', ' ')}
-              </span>
+              {price ? <>From ₹{price}</> : 'View menu'}
             </span>
             <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-neutral-600">
               <FiStar className="w-3 h-3 text-primary-500" />
               {provider.rating || '—'}
             </span>
           </div>
-          {listing.serviceArea?.city && (
-            <p className="text-[10px] text-neutral-400 font-medium mt-1 flex items-center gap-1">
-              <FiMapPin className="w-3 h-3" /> {listing.serviceArea.city}
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-[10px] text-neutral-400 font-medium">
+              {itemCount > 0 ? `${itemCount} item${itemCount === 1 ? '' : 's'} on menu` : 'Open shop'}
             </p>
-          )}
+            {listing.serviceArea?.city && (
+              <p className="text-[10px] text-neutral-400 font-medium flex items-center gap-1">
+                <FiMapPin className="w-3 h-3" /> {listing.serviceArea.city}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </button>

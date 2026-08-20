@@ -33,6 +33,11 @@ const ListingBlockPreview = ({ listing, vendorFormSchema = [] }) => {
   const photos = listing.portfolioPhotos || [];
   const cover = photos[0];
   const price = displayPrice(listing.pricing);
+  const menuPrices = (listing.catalogItems || [])
+    .filter((i) => i.isActive !== false)
+    .map((i) => Number(i.price) || 0)
+    .filter((p) => p > 0);
+  const fromPrice = menuPrices.length ? Math.min(...menuPrices) : price;
   const answers = listing.dynamicFormAnswers || {};
 
   return (
@@ -60,8 +65,8 @@ const ListingBlockPreview = ({ listing, vendorFormSchema = [] }) => {
             </div>
           )}
           <div className="min-w-0">
-            <h3 className="text-base font-black text-neutral-900 leading-tight">{listing.title}</h3>
-            <p className="text-xs text-neutral-500 font-medium truncate">{vendor.name || 'Provider'}</p>
+            <h3 className="text-base font-black text-neutral-900 leading-tight">{vendor.name || listing.title}</h3>
+            <p className="text-xs text-neutral-500 font-medium truncate">{listing.title}</p>
           </div>
         </div>
 
@@ -70,7 +75,10 @@ const ListingBlockPreview = ({ listing, vendorFormSchema = [] }) => {
         )}
 
         <div className="flex flex-wrap gap-3 text-[11px] font-bold text-neutral-600">
-          <span className="text-primary-700">₹{price} / {(listing.pricingModel || 'FIXED').toLowerCase().replace('_', ' ')}</span>
+          <span className="text-primary-700">
+            {menuPrices.length ? `From ₹${fromPrice}` : `₹${fromPrice}`}
+            {' / '}{(listing.pricingModel || 'FIXED').toLowerCase().replace('_', ' ')}
+          </span>
           {listing.serviceArea?.city && (
             <span className="inline-flex items-center gap-1"><FiMapPin className="w-3 h-3" />{listing.serviceArea.city}</span>
           )}
@@ -98,6 +106,27 @@ const ListingBlockPreview = ({ listing, vendorFormSchema = [] }) => {
                 <p className="text-[11px] font-bold text-neutral-800 break-words">{formatValue(v)}</p>
               </div>
             ))}
+          </div>
+        )}
+
+        {listing.catalogItems && listing.catalogItems.length > 0 && (
+          <div className="pt-2 border-t border-neutral-100 space-y-2">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Catalog / Menu Items ({listing.catalogItems.length})</h4>
+            <div className="grid grid-cols-1 gap-2">
+              {listing.catalogItems.map((item, i) => (
+                <div key={i} className={`flex items-start gap-2 p-2 rounded-lg border ${item.isActive ? 'border-neutral-100 bg-neutral-50' : 'border-red-100 bg-red-50'}`}>
+                  {item.photoUrl && <img src={item.photoUrl} alt="" className="w-10 h-10 rounded-md object-cover shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start">
+                      <p className="text-[11px] font-bold text-neutral-800 truncate">{item.title}</p>
+                      <p className="text-[11px] font-black text-neutral-900 shrink-0 ml-2">₹{item.price}</p>
+                    </div>
+                    {item.description && <p className="text-[9px] text-neutral-500 line-clamp-1">{item.description}</p>}
+                    {!item.isActive && <p className="text-[9px] font-bold text-red-600 mt-0.5">Inactive</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

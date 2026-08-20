@@ -1,57 +1,101 @@
-import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiBriefcase, FiMapPin, FiClock, FiUser, FiSearch } from 'react-icons/fi';
+import { FiBriefcase, FiMapPin, FiClock, FiUser, FiSearch, FiCreditCard } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { gradients } from '../../../../theme';
 import Header from '../../components/layout/Header';
 import BottomNav from '../../components/layout/BottomNav';
 import { Button, EmptyState, Loader } from '../../../../components/ui';
-
-import { getBookings, assignWorker as assignWorkerApi } from '../../services/bookingService';
+import PendingJobCard from '../../components/bookings/PendingJobCard';
+import { getBookings, assignWorker as assignWorkerApi, acceptBooking, rejectBooking } from '../../services/bookingService';
 import { ConfirmDialog } from '../../components/common';
+import { vendorDashboardService } from '../../services/dashboardService';
+
+const FILTER_TABS = [
+  { id: 'requests', label: 'Requests' },
+  { id: 'awaiting_payment', label: 'Advance Due' },
+  { id: 'in_progress', label: 'In Progress' },
+  { id: 'completed', label: 'Completed' },
+  { id: 'all', label: 'All' },
+];
+
+const formatSchedule = (job) => {
+  const instant =
+    job.bookingType === 'instant'
+    || String(job.scheduledTime || '').toUpperCase() === 'ASAP';
+  if (instant) return 'Today • ASAP';
+  const date = job.scheduledDate
+    ? new Date(job.scheduledDate).toLocaleDateString('en-IN', {
+      weekday: 'short', day: 'numeric', month: 'short'
+    })
+    : job.timeSlot?.date || '';
+  const time = job.scheduledTime || job.timeSlot?.time || '';
+  return [date, time].filter(Boolean).join(' • ');
+};
+
+const mapJobFromApi = (job) => ({
+  id: job._id || job.id,
+  _id: job._id || job.id,
+  serviceType: job.serviceName || 'Service',
+  serviceName: job.serviceName,
+  serviceCategory: job.serviceCategory,
+  categoryIcon: job.categoryIcon,
+  brandName: job.brandName,
+  brandIcon: job.brandIcon,
+  bookingType: job.bookingType,
+  serviceListingId: job.serviceListingId,
+  isDirectRequest: Boolean(job.serviceListingId),
+  finalAmount: job.finalAmount,
+  advanceAmount: job.advanceAmount,
+  balanceAmount: job.balanceAmount,
+  paymentPhase: job.paymentPhase,
+  createdAt: job.createdAt,
+  expiresAt: job.expiresAt,
+  user: { name: job.userId?.name || 'Customer' },
+  userId: job.userId,
+  customerName: job.userId?.name || 'Customer',
+  location: {
+    address: job.address?.addressLine1
+      ? `${job.address.addressLine1}${job.address.city ? `, ${job.address.city}` : ''}`
+      : 'Address not available'
+  },
+  address: job.address,
+  price: job.finalAmount,
+  status: job.status,
+  assignedTo: job.workerId ? { name: job.workerId.name } : (job.assignedAt ? { name: 'You (Self)' } : null),
+  timeSlot: {
+    date: job.scheduledDate ? new Date(job.scheduledDate).toLocaleDateString('en-IN') : '',
+    time: job.scheduledTime || ''
+  },
+  scheduledDate: job.scheduledDate,
+  scheduledTime: job.scheduledTime,
+});
 
 const ActiveJobs = memo(() => {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('in_progress'); // Default to showing active jobs
+  const [filter, setFilter] = useState('requests');
   const [searchQuery, setSearchQuery] = useState('');
+  const [maxSearchTime, setMaxSearchTime] = useState(5);
+  const [loadingAction, setLoadingAction] = useState({ id: null, type: null });
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => { }
+    onConfirm: () => {}
   });
 
-  // Memoize loadJobs to prevent recreation
   const loadJobs = useCallback(async (currentFilter, currentSearch) => {
     try {
       setLoading(true);
       const response = await getBookings({
         status: currentFilter,
         q: currentSearch,
-        limit: 50 // Fetch more than default since we removed client-side filter
+        limit: 50
       });
       const jobsData = response.data || [];
-      // Map API response to Component State structure
-      const mappedJobs = jobsData.map(job => ({
-        id: job._id || job.id,
-        serviceType: job.serviceName || 'Service',
-        user: {
-          name: job.userId?.name || 'Customer'
-        },
-        location: {
-          address: job.address?.addressLine1 || 'Address not available'
-        },
-        price: (job.finalAmount ? job.finalAmount * 0.9 : 0).toFixed(2),
-        status: job.status,
-        assignedTo: job.workerId ? { name: job.workerId.name } : (job.assignedAt ? { name: 'You (Self)' } : null),
-        timeSlot: {
-          date: job.scheduledDate ? new Date(job.scheduledDate).toLocaleDateString() : 'Date',
-          time: job.scheduledTime || 'Time'
-        }
-      }));
-      setJobs(mappedJobs);
+      setJobs(jobsData.map(mapJobFromApi));
     } catch (error) {
       console.error('Error loading jobs:', error);
       toast.error('Failed to load jobs');
@@ -60,24 +104,73 @@ const ActiveJobs = memo(() => {
     }
   }, []);
 
-  // Use a debounced search to avoid spamming the API
   useEffect(() => {
     const timer = setTimeout(() => {
       loadJobs(filter, searchQuery);
-    }, filter === 'all' && searchQuery === '' ? 0 : 500); // Only debounce if active searching
-
+    }, filter === 'requests' && searchQuery === '' ? 0 : 500);
     return () => clearTimeout(timer);
   }, [filter, searchQuery, loadJobs]);
 
   useEffect(() => {
-    window.addEventListener('vendorJobsUpdated', () => loadJobs(filter, searchQuery));
-    return () => {
-      window.removeEventListener('vendorJobsUpdated', () => loadJobs(filter, searchQuery));
-    };
+    const onUpdate = () => loadJobs(filter, searchQuery);
+    window.addEventListener('vendorJobsUpdated', onUpdate);
+    return () => window.removeEventListener('vendorJobsUpdated', onUpdate);
   }, [loadJobs, filter, searchQuery]);
 
-  // filteredJobs is now just the jobs from the server
-  const filteredJobs = jobs;
+  useEffect(() => {
+    vendorDashboardService.getDashboardStats()
+      .then((res) => {
+        if (res.success && res.data?.config?.maxSearchTime) {
+          setMaxSearchTime(res.data.config.maxSearchTime);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleAccept = async (e, booking) => {
+    e?.stopPropagation();
+    const bookingId = booking.id || booking._id;
+    if (loadingAction.id) return;
+    setLoadingAction({ id: bookingId, type: 'accept' });
+    try {
+      const res = await acceptBooking(bookingId);
+      const advance = res?.data?.advanceAmount || booking.advanceAmount;
+      toast.success(
+        advance
+          ? `Accepted! Waiting for customer to pay advance ₹${Number(advance).toLocaleString('en-IN')}`
+          : 'Booking accepted!'
+      );
+      const pending = JSON.parse(localStorage.getItem('vendorPendingJobs') || '[]')
+        .filter((j) => String(j.id || j._id) !== String(bookingId));
+      localStorage.setItem('vendorPendingJobs', JSON.stringify(pending));
+      window.dispatchEvent(new Event('vendorJobsUpdated'));
+      setFilter('awaiting_payment');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to accept booking');
+    } finally {
+      setLoadingAction({ id: null, type: null });
+    }
+  };
+
+  const handleReject = async (e, booking) => {
+    e?.stopPropagation();
+    const bookingId = booking.id || booking._id;
+    if (loadingAction.id) return;
+    setLoadingAction({ id: bookingId, type: 'reject' });
+    try {
+      await rejectBooking(bookingId, 'Declined by vendor');
+      toast.success('Request declined');
+      const pending = JSON.parse(localStorage.getItem('vendorPendingJobs') || '[]')
+        .filter((j) => String(j.id || j._id) !== String(bookingId));
+      localStorage.setItem('vendorPendingJobs', JSON.stringify(pending));
+      loadJobs(filter, searchQuery);
+      window.dispatchEvent(new Event('vendorJobsUpdated'));
+    } catch (error) {
+      toast.error('Failed to decline request');
+    } finally {
+      setLoadingAction({ id: null, type: null });
+    }
+  };
 
   const handleAssignToSelf = async (jobId) => {
     setConfirmDialog({
@@ -87,14 +180,12 @@ const ActiveJobs = memo(() => {
       onConfirm: async () => {
         try {
           const response = await assignWorkerApi(jobId, 'SELF');
-          if (response && response.success) {
-            toast.success("Assigned to yourself!");
-            // Refresh jobs list instead of full page reload
+          if (response?.success) {
+            toast.success('Assigned to yourself!');
             loadJobs(filter, searchQuery);
           }
         } catch (error) {
-          console.error("Error assigning to self:", error);
-          toast.error("Failed to assign to yourself");
+          toast.error('Failed to assign to yourself');
         }
       }
     });
@@ -110,230 +201,202 @@ const ActiveJobs = memo(() => {
 
   const getStatusColor = useCallback((status) => {
     const colors = {
-      'ACCEPTED': '#F59E0B',
-      'ASSIGNED': '#3B82F6',
-      'JOURNEY_STARTED': '#F59E0B',
-      'VISITED': '#8B5CF6',
-      'WORK_DONE': '#10B981',
-      'WORKER_PAID': '#06B6D4',
-      'SETTLEMENT_PENDING': '#F97316',
-      'COMPLETED': '#059669',
+      REQUESTED: '#F59E0B',
+      SEARCHING: '#F59E0B',
+      AWAITING_PAYMENT: '#3B82F6',
+      ACCEPTED: '#F59E0B',
+      ASSIGNED: '#3B82F6',
+      CONFIRMED: '#10B981',
+      JOURNEY_STARTED: '#F59E0B',
+      VISITED: '#8B5CF6',
+      IN_PROGRESS: '#6366F1',
+      WORK_DONE: '#10B981',
+      COMPLETED: '#059669',
     };
     return colors[status?.toUpperCase()] || '#6B7280';
   }, []);
+
+  const emptyMessages = {
+    requests: { title: 'No new requests', message: 'Customer booking requests will appear here.' },
+    awaiting_payment: { title: 'No pending advance', message: 'After you accept, customer advance payments show here.' },
+    in_progress: { title: 'No active jobs', message: 'Confirmed jobs in progress will appear here.' },
+    completed: { title: 'No completed jobs', message: 'Finished jobs will appear here.' },
+    all: { title: 'No jobs found', message: 'Your jobs will appear here.' },
+  };
+
+  const empty = emptyMessages[filter] || emptyMessages.all;
 
   return (
     <div className="min-h-screen pb-20 relative">
       <div className="fixed inset-0 z-0 pointer-events-none" style={{ background: gradients.pageSoft }} aria-hidden />
       <div className="relative z-10">
-      <Header title="Active Jobs" showSearch={true} />
+        <Header title="Jobs" showSearch={true} />
 
-      <main className="px-4 py-6 max-w-lg mx-auto">
-        {/* Search Bar */}
-        <div className="mb-4">
-          <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search jobs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
+        <main className="px-4 py-6 max-w-lg mx-auto">
+          <div className="mb-4">
+            <div className="relative">
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search jobs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-white rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Filter Buttons */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'assigned', label: 'Assigned' },
-            { id: 'in_progress', label: 'In Progress' },
-            { id: 'completed', label: 'Completed' },
-          ].map((filterOption) => (
-            <button
-              key={filterOption.id}
-              onClick={() => setFilter(filterOption.id)}
-              className={`px-4 py-2 rounded-full font-semibold text-sm whitespace-nowrap transition-all shadow-sm ${
-                filter === filterOption.id
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-white text-neutral-700'
-              }`}
-            >
-              {filterOption.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Jobs List */}
-        {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm animate-pulse">
-                <div className="flex justify-between mb-4 pb-4 border-b border-slate-50">
-                  <div className="space-y-2">
-                    <div className="h-3 w-20 bg-slate-100 rounded"></div>
-                    <div className="h-5 w-48 bg-slate-100 rounded"></div>
-                  </div>
-                  <div className="h-10 w-20 bg-slate-100 rounded-lg"></div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100"></div>
-                    <div className="h-4 w-32 bg-slate-100 rounded"></div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100"></div>
-                    <div className="h-4 w-40 bg-slate-100 rounded"></div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-slate-50 flex gap-3">
-                  <div className="h-10 flex-1 bg-slate-100 rounded-lg"></div>
-                  <div className="h-10 flex-1 bg-slate-100 rounded-lg"></div>
-                </div>
-              </div>
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+            {FILTER_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setFilter(tab.id)}
+                className={`px-4 py-2 rounded-full font-semibold text-sm whitespace-nowrap transition-all shadow-sm ${
+                  filter === tab.id ? 'bg-primary-600 text-white' : 'bg-white text-neutral-700'
+                }`}
+              >
+                {tab.label}
+              </button>
             ))}
           </div>
-        ) : filteredJobs.length === 0 ? (
-          <EmptyState
-            title="No jobs found"
-            message={searchQuery ? 'Try a different search term.' : 'No active jobs at the moment.'}
-            icon={FiBriefcase}
-          />
-        ) : (
-          <div className="space-y-3">
-            {filteredJobs.map((job) => {
-              const statusColor = getStatusColor(job.status);
 
-              return (
+          {filter === 'requests' && !loading && (
+            <p className="text-xs text-neutral-500 mb-4 -mt-2">
+              Review details, accept the request — customer pays advance, then service starts.
+            </p>
+          )}
+
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm animate-pulse h-32" />
+              ))}
+            </div>
+          ) : jobs.length === 0 ? (
+            <EmptyState title={empty.title} message={searchQuery ? 'Try a different search term.' : empty.message} icon={FiBriefcase} />
+          ) : filter === 'requests' ? (
+            <div className="space-y-3">
+              {jobs.map((job) => (
+                <PendingJobCard
+                  key={job.id}
+                  booking={job}
+                  showTimer
+                  maxSearchTimeMins={job.isDirectRequest ? 60 : maxSearchTime}
+                  loadingAction={loadingAction.id === job.id ? loadingAction.type : null}
+                  onClick={() => navigate(`/vendor/booking/${job.id}`)}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                />
+              ))}
+            </div>
+          ) : filter === 'awaiting_payment' ? (
+            <div className="space-y-3">
+              {jobs.map((job) => (
                 <div
                   key={job.id}
                   onClick={() => navigate(`/vendor/booking/${job.id}`)}
-                  className="rounded-xl p-4 shadow-lg cursor-pointer active:scale-98 transition-all duration-200 relative overflow-hidden"
-                  style={{
-                    background: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',
-                    boxShadow: `0 8px 24px ${hexToRgba(statusColor, 0.15)}, 0 4px 12px ${hexToRgba(statusColor, 0.1)}, 0 0 0 2px ${hexToRgba(statusColor, 0.2)}`,
-                    border: `2px solid ${hexToRgba(statusColor, 0.3)}`,
-                  }}
+                  className="bg-white rounded-2xl p-4 border-2 border-blue-100 shadow-md cursor-pointer active:scale-[0.99] transition-all"
                 >
-                  {/* Left border accent */}
-                  <div
-                    className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
-                    style={{
-                      background: `linear-gradient(180deg, ${statusColor} 0%, ${statusColor}dd 100%)`,
-                    }}
-                  />
-
-                  <div className="relative z-10 pl-2">
-                    {/* Header Section */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div
-                            className="p-1.5 rounded-lg"
-                            style={{
-                              background: `${statusColor}15`,
-                            }}
-                          >
-                            <FiBriefcase className="w-4 h-4" style={{ color: statusColor }} />
-                          </div>
-                          <h3 className="font-bold text-gray-800 text-base">{job.serviceType}</h3>
-                        </div>
-                        <div className="ml-8 mb-2">
-                          <span
-                            className="text-xs font-bold px-3 py-1.5 rounded-full"
-                            style={{
-                              background: `linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%)`,
-                              color: '#FFFFFF',
-                              boxShadow: `0 2px 8px ${hexToRgba(statusColor, 0.3)}`,
-                            }}
-                          >
-                            {job.status.replace('_', ' ')}
-                          </span>
-                        </div>
-                      </div>
-                      <div
-                        className="px-3 py-2 rounded-lg font-bold text-lg flex items-center justify-center min-w-[80px] bg-primary-50 text-primary-700 border border-primary-100"
-                      >
-                        {job.status?.toLowerCase() === 'completed' ? `₹${job.price}` : <FiClock className="w-5 h-5 opacity-40" title="Earnings visible after completion" />}
-                      </div>
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Awaiting Advance</p>
+                      <h3 className="font-bold text-gray-900">{job.serviceType}</h3>
+                      <p className="text-xs text-gray-500 mt-1">{job.customerName}</p>
                     </div>
-
-                    {/* Info Section */}
-                    <div className="space-y-2.5">
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className="p-1 rounded" style={{ background: 'rgba(0, 0, 0, 0.03)' }}>
-                          <FiUser className="w-4 h-4" style={{ color: statusColor }} />
-                        </div>
-                        <span className="text-gray-700 font-medium">{job.user?.name || 'Customer'}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className="p-1 rounded" style={{ background: 'rgba(0, 0, 0, 0.03)' }}>
-                          <FiMapPin className="w-4 h-4" style={{ color: statusColor }} />
-                        </div>
-                        <span className="text-gray-700 font-medium truncate">{job.location?.address || 'Address not available'}</span>
-                      </div>
-
-                      {job.assignedTo && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <div className="p-1 rounded" style={{ background: 'rgba(0, 0, 0, 0.03)' }}>
-                            <FiUser className="w-4 h-4" style={{ color: statusColor }} />
-                          </div>
-                          <span className="text-gray-700 font-medium">
-                            Assigned to: <span className="font-semibold">{job.assignedTo === 'SELF' ? 'Yourself' : job.assignedTo.name}</span>
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className="p-1 rounded" style={{ background: 'rgba(0, 0, 0, 0.03)' }}>
-                          <FiClock className="w-4 h-4" style={{ color: statusColor }} />
-                        </div>
-                        <span className="text-gray-700 font-medium">{job.timeSlot?.date} • {job.timeSlot?.time}</span>
-                      </div>
+                    <div className="text-right">
+                      <p className="text-lg font-black text-blue-600">
+                        ₹{(job.advanceAmount || 0).toLocaleString('en-IN')}
+                      </p>
+                      <p className="text-[10px] text-gray-400">advance due</p>
                     </div>
-
-                    {/* Quick Action Button for Unassigned Jobs */}
-                    {['ACCEPTED', 'CONFIRMED'].includes(job.status?.toUpperCase()) && !job.assignedTo && (
-                      <div className="mt-4 pt-3 border-t border-neutral-100">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          fullWidth
-                          className="flex-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAssignToSelf(job.id);
-                          }}
-                          icon={FiUser}
-                        >
-                          Do it myself
-                        </Button>
-                      </div>
-                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-600 bg-blue-50 rounded-lg p-2.5">
+                    <FiCreditCard className="w-4 h-4 text-blue-500 shrink-0" />
+                    <span>Customer must pay advance before service can start. Balance ₹{(job.balanceAmount || 0).toLocaleString('en-IN')} after service.</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500 mt-3">
+                    <FiClock className="w-3.5 h-3.5" />
+                    {formatSchedule(job)}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </main>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {jobs.map((job) => {
+                const statusColor = getStatusColor(job.status);
+                return (
+                  <div
+                    key={job.id}
+                    onClick={() => navigate(`/vendor/booking/${job.id}`)}
+                    className="rounded-xl p-4 shadow-lg cursor-pointer active:scale-98 transition-all duration-200 relative overflow-hidden"
+                    style={{
+                      background: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',
+                      boxShadow: `0 8px 24px ${hexToRgba(statusColor, 0.15)}`,
+                      border: `2px solid ${hexToRgba(statusColor, 0.3)}`,
+                    }}
+                  >
+                    <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: statusColor }} />
+                    <div className="relative z-10 pl-2">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <FiBriefcase className="w-4 h-4" style={{ color: statusColor }} />
+                            <h3 className="font-bold text-gray-800 text-base">{job.serviceType}</h3>
+                          </div>
+                          <span className="text-xs font-bold px-3 py-1 rounded-full text-white" style={{ background: statusColor }}>
+                            {(job.status || '').replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <FiUser className="w-4 h-4 text-gray-400" />
+                          <span>{job.user?.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FiMapPin className="w-4 h-4 text-gray-400" />
+                          <span className="truncate">{job.location?.address}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FiClock className="w-4 h-4 text-gray-400" />
+                          <span>{formatSchedule(job)}</span>
+                        </div>
+                      </div>
+                      {['ACCEPTED', 'CONFIRMED'].includes(job.status?.toUpperCase()) && !job.assignedTo && (
+                        <div className="mt-4 pt-3 border-t border-neutral-100">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            fullWidth
+                            onClick={(e) => { e.stopPropagation(); handleAssignToSelf(job.id); }}
+                            icon={FiUser}
+                          >
+                            Do it myself
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </main>
 
-      <ConfirmDialog
-        isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
-        onConfirm={confirmDialog.onConfirm}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-        type={confirmDialog.type}
-      />
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={confirmDialog.onConfirm}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+        />
 
-      <BottomNav />
+        <BottomNav />
       </div>
     </div>
   );
 });
 
 export default ActiveJobs;
-

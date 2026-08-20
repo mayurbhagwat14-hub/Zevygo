@@ -1,4 +1,5 @@
 const { LISTING_STATUS } = require('./constants');
+const { buildHighlights, pricingRows, toPublicCatalogItems } = require('./listingPayload');
 
 /**
  * Listings customers may see: currently approved, or pending re-review
@@ -64,29 +65,52 @@ const toPublicListingDto = (listing) => {
 
   if (!isVendorPubliclyActive(vendor)) return null;
 
+  const schema = category?.vendorFormSchema || [];
+  const answers = live.dynamicFormAnswers || {};
+  const catalogItems = toPublicCatalogItems(live.catalogItems || [], category?.catalogItemSchema || []);
+  const itemPrices = catalogItems.map((item) => item.price).filter((n) => n > 0);
+  const displayPrice = itemPrices.length ? Math.min(...itemPrices) : listingDisplayPrice(live.pricing);
+
   return {
     id: live._id.toString(),
     title: live.title,
     description: live.description,
     shortDescription: live.shortDescription || '',
-    experience: live.experience,
+    experience: live.experience || 0,
     languages: live.languages || [],
     pricingModel: live.pricingModel,
     bookingMode: live.bookingMode,
-    pricing: live.pricing,
-    displayPrice: listingDisplayPrice(live.pricing),
-    availability: live.availability,
-    serviceArea: live.serviceArea,
-    cancellation: live.cancellation,
-    dynamicFormAnswers: live.dynamicFormAnswers || {},
+    bookingConfig: live.bookingConfig || {},
+    pricing: live.pricing || {},
+    pricingRows: pricingRows(live.pricing),
+    displayPrice,
+    catalogItems,
+    itemCount: catalogItems.length,
+    availability: live.availability || {},
+    serviceArea: live.serviceArea || {},
+    cancellation: live.cancellation || {},
+    dynamicFormAnswers: answers,
+    highlights: [
+      ...buildHighlights(answers, schema),
+      ...buildHighlights(live.pricingFormAnswers || {}, category?.pricingFormSchema || []),
+      ...buildHighlights(live.availabilityFormAnswers || {}, category?.availabilityFormSchema || []),
+      ...buildHighlights(live.serviceAreaFormAnswers || {}, category?.serviceAreaFormSchema || []),
+      ...buildHighlights(live.bookingRulesFormAnswers || {}, category?.bookingRulesFormSchema || [])
+    ],
     portfolioPhotos: live.portfolioPhotos || [],
     portfolioVideos: live.portfolioVideos || [],
-    documents: (live.documents || []).filter((d) => d.verified),
+    documents: (live.documents || []).map((d) => ({
+      label: d.label,
+      url: d.url,
+      type: d.type
+    })),
+    serviceAreaRadiusKm: live.serviceAreaRadiusKm || live.serviceArea?.radiusKm || 10,
     category: {
       id: category?._id?.toString() || category?.id,
       title: category?.title || live.categoryName,
       slug: category?.slug,
-      icon: category?.homeIconUrl
+      icon: category?.homeIconUrl,
+      paymentConfig: category?.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: 0 }
     },
     provider: {
       id: vendor._id.toString(),

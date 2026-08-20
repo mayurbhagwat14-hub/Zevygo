@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Booking = require('../../models/Booking');
 const ServiceListing = require('../../models/ServiceListing');
+const Settings = require('../../models/Settings');
 
 const { validationResult } = require('express-validator');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
@@ -25,28 +26,52 @@ const getVendorBookings = async (req, res) => {
 
     const vId = new mongoose.Types.ObjectId(vendorId);
 
-    // ── Build Base Query ──
-    // This Or condition ensures vendors see their own jobs OR relevant unassigned alerts
-    const query = {
-      $or: [
-        { vendorId: vId, status: { $ne: BOOKING_STATUS.AWAITING_PAYMENT } },
-        {
-          vendorId: null,
-          status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
-          serviceCategory: { $in: vendorCategories },
-          'potentialVendors.vendorId': vId
-        },
-        {
-          vendorId: null,
-          serviceListingId: { $ne: null },
-          status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
-          'potentialVendors.vendorId': vId
-        }
-      ]
-    };
+    let query;
+
+    if (status === 'requests') {
+      query = {
+        $or: [
+          {
+            vendorId: null,
+            status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
+            serviceCategory: { $in: vendorCategories },
+            'potentialVendors.vendorId': vId
+          },
+          {
+            vendorId: null,
+            serviceListingId: { $ne: null },
+            status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
+            'potentialVendors.vendorId': vId
+          }
+        ]
+      };
+    } else if (status === 'awaiting_payment') {
+      query = {
+        vendorId: vId,
+        status: BOOKING_STATUS.AWAITING_PAYMENT
+      };
+    } else {
+      query = {
+        $or: [
+          { vendorId: vId, status: { $ne: BOOKING_STATUS.AWAITING_PAYMENT } },
+          {
+            vendorId: null,
+            status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
+            serviceCategory: { $in: vendorCategories },
+            'potentialVendors.vendorId': vId
+          },
+          {
+            vendorId: null,
+            serviceListingId: { $ne: null },
+            status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
+            'potentialVendors.vendorId': vId
+          }
+        ]
+      };
+    }
 
     // ── Apply Status Group Filters ──
-    if (status && status !== 'all') {
+    if (status && status !== 'all' && status !== 'requests' && status !== 'awaiting_payment') {
       if (status === 'in_progress') {
         query.status = {
           $in: [
@@ -116,6 +141,10 @@ const getVendorBookings = async (req, res) => {
                 workerId: 1,
                 serviceId: 1,
                 serviceListingId: 1,
+                bookingType: 1,
+                advanceAmount: 1,
+                balanceAmount: 1,
+                paymentPhase: 1,
                 acceptedAt: 1,
                 assignedAt: 1,
                 brandName: 1,
@@ -245,9 +274,7 @@ const acceptBooking = async (req, res) => {
       {
         $set: {
           vendorId: vendorId,
-          acceptedAt: new Date(),
-          // Check payment method for optimized status update logic
-          status: BOOKING_STATUS.CONFIRMED // Default to confirmed
+          acceptedAt: new Date()
         }
       },
       { new: true } // Return updated doc
@@ -268,8 +295,44 @@ const acceptBooking = async (req, res) => {
       });
     }
 
-    // Booking successfully accepted by THIS vendor
-    const booking = updatedBooking;
+    // Load payment settings — use per-booking advance config (category/listing/item)
+    const settingsDoc = await Settings.findOne({ type: 'global' }).lean();
+    const total = Number(updatedBooking.finalAmount) || 0;
+    const requiresAdvance = updatedBooking.requireAdvancePayment === true
+      && (updatedBooking.advanceAmount > 0 || updatedBooking.advancePaymentPercent > 0);
+
+    let advanceAmount = updatedBooking.advanceAmount || 0;
+    let balanceAmount = updatedBooking.balanceAmount || total;
+
+    if (requiresAdvance && !advanceAmount) {
+      const pct = updatedBooking.advancePaymentPercent
+        || settingsDoc?.advancePaymentPercent
+        || 30;
+      advanceAmount = Math.round((total * pct) / 100);
+      balanceAmount = Math.max(0, total - advanceAmount);
+    }
+
+    if (!requiresAdvance) {
+      advanceAmount = 0;
+      balanceAmount = total;
+    }
+
+    const nextStatus = requiresAdvance ? BOOKING_STATUS.AWAITING_PAYMENT : BOOKING_STATUS.CONFIRMED;
+    const nextPhase = requiresAdvance ? 'advance_pending' : 'advance_paid';
+
+    const booking = await Booking.findByIdAndUpdate(
+      updatedBooking._id,
+      {
+        $set: {
+          advanceAmount,
+          balanceAmount,
+          requireAdvancePayment: requiresAdvance,
+          paymentPhase: nextPhase,
+          status: nextStatus
+        }
+      },
+      { new: true }
+    );
 
     // Update vendor availability to ON_JOB
     const Vendor = require('../../models/Vendor');
@@ -317,11 +380,17 @@ const acceptBooking = async (req, res) => {
 
     // Emit real-time updates to USER
     if (io) {
-      const message = 'Vendor has accepted your request. Your booking is confirmed!';
+      const message = requiresAdvance
+        ? 'Vendor accepted! Pay advance to confirm your booking.'
+        : 'Vendor has accepted your request. Your booking is confirmed!';
 
       io.to(`user_${booking.userId}`).emit('booking_accepted', {
         bookingId: booking._id,
         bookingNumber: booking.bookingNumber,
+        status: booking.status,
+        requiresAdvancePayment: requiresAdvance,
+        advanceAmount,
+        balanceAmount,
         vendor: {
           id: vendorId,
           name: req.user.name,
@@ -333,25 +402,29 @@ const acceptBooking = async (req, res) => {
       io.to(`user_${booking.userId}`).emit('booking_updated', {
         bookingId: booking._id,
         status: booking.status,
-        message: 'Vendor has accepted your request'
+        paymentPhase: booking.paymentPhase,
+        message: requiresAdvance ? 'Pay advance to start service' : 'Vendor has accepted your request'
       });
     }
 
     // Send notification to user
-    const notificationMessage = `Your booking ${booking.bookingNumber} is confirmed! ${req.user.businessName || req.user.name} will arrive at scheduled time.`;
+    const notificationMessage = requiresAdvance
+      ? `Your provider accepted! Pay advance ₹${advanceAmount} to confirm booking ${booking.bookingNumber}.`
+      : `Your booking ${booking.bookingNumber} is confirmed! ${req.user.businessName || req.user.name} will arrive at scheduled time.`;
 
     await createNotification({
       userId: booking.userId,
       type: 'booking_accepted',
-      title: 'Booking Confirmed!',
+      title: requiresAdvance ? 'Pay Advance to Confirm' : 'Booking Confirmed!',
       message: notificationMessage,
       relatedId: booking._id,
       relatedType: 'booking',
       pushData: {
         type: 'booking_accepted',
         bookingId: booking._id.toString(),
-        link: `/user/booking/${booking._id}`
-        // dataOnly: true // Ensure user sees this
+        link: requiresAdvance
+          ? `/user/booking-confirmation/${booking._id}`
+          : `/user/booking/${booking._id}`
       }
     });
 
@@ -1209,7 +1282,13 @@ const completeSelfJob = async (req, res) => {
 
     booking.status = BOOKING_STATUS.WORK_DONE;
     booking.finalAmount = grandTotal;
-    booking.userPayableAmount = grandTotal; // Ensure consistency
+    const advancePaid = booking.paymentPhase === 'advance_paid' && (booking.advanceAmount || 0) > 0;
+    const balanceDue = advancePaid
+      ? Math.max(0, grandTotal - booking.advanceAmount)
+      : grandTotal;
+    booking.balanceAmount = balanceDue;
+    booking.userPayableAmount = balanceDue;
+    booking.paymentPhase = balanceDue > 0 ? 'final_pending' : 'fully_paid';
     booking.vendorBillId = bill._id;
 
     // Reuse existing Payment OTP for cash collection or generate new one

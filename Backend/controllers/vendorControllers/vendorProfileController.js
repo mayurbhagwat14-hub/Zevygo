@@ -1,6 +1,9 @@
+const mongoose = require('mongoose');
 const { formatVendorResponse } = require('../../utils/masking.util');
 const { logAudit } = require('../../utils/auditLogger');
 const ServiceListing = require('../../models/ServiceListing');
+const Vendor = require('../../models/Vendor');
+const cloudinaryService = require('../../services/cloudinaryService');
 
 /**
  * Calculate dynamic profile completion percentage

@@ -197,15 +197,21 @@ const register = async (req, res) => {
     }
 
     // Check existing
-    const existing = await Vendor.findOne({ $or: [{ phone }, { email }] });
-    if (existing) {
-      return res.status(400).json({ success: false, message: 'Vendor already exists. Login.' });
+    const existingPhone = await Vendor.findOne({ phone });
+    if (existingPhone) {
+      return res.status(400).json({ success: false, message: 'This phone number is already registered. Please login.' });
+    }
+    
+    const existingEmail = await Vendor.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({ success: false, message: 'This email address is already registered to another account.' });
     }
 
     // Upload documents with fallback placeholders to prevent schema validation failure
     let aadharUrl = req.body.aadharDocument || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400';
     let aadharBackUrl = req.body.aadharBackDocument || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400';
     let panUrl = req.body.panDocument || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400';
+    let profilePhotoUrl = req.body.profilePhoto || null;
     let otherUrls = req.body.otherDocuments || [];
 
     if (aadharUrl && aadharUrl.startsWith('data:')) {
@@ -236,6 +242,16 @@ const register = async (req, res) => {
       }
     }
 
+    if (profilePhotoUrl && profilePhotoUrl.startsWith('data:')) {
+      try {
+        const uploadRes = await cloudinaryService.uploadFile(profilePhotoUrl, { folder: 'vendors/profile_photos' });
+        if (uploadRes && uploadRes.success) profilePhotoUrl = uploadRes.url;
+      } catch (cErr) {
+        console.warn('Cloudinary upload warning (Profile Photo):', cErr.message);
+        profilePhotoUrl = null;
+      }
+    }
+
     if (otherUrls && otherUrls.length > 0) {
       const uploadedOthers = [];
       for (const doc of otherUrls) {
@@ -257,7 +273,7 @@ const register = async (req, res) => {
     const providerType = req.body.providerType === 'BUSINESS' ? 'BUSINESS' : 'INDIVIDUAL';
 
     const vendor = await Vendor.create({
-      name, email, phone,
+      name, email, phone, gender: req.body.gender || 'Male',
       providerType,
       businessDetails: providerType === 'BUSINESS' ? {
         businessName: req.body.businessName || name,
@@ -274,6 +290,9 @@ const register = async (req, res) => {
         backDocument: aadharBackUrl
       },
       pan: { number: pan, document: panUrl },
+      address: req.body.address || {},
+      bankDetails: req.body.bankDetails || {},
+      profilePhoto: profilePhotoUrl,
       otherDocuments: otherUrls,
       isPhoneVerified: true,
       profileCompletion: 60

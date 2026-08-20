@@ -11,10 +11,10 @@ const StatsCards = memo(({ stats }) => {
       title: "Today's Earnings",
       value: `₹${stats.todayEarnings.toLocaleString()}`,
       icon: FaRegMoneyBillAlt,
-      iconBg: 'bg-[#e6f7f5]',
-      iconColor: 'text-[#00bfa5]',
+      iconBg: 'bg-[var(--color-primary-50)]',
+      iconColor: 'text-[var(--color-primary-600)]',
       subtitle: (
-        <span className="flex items-center text-[#00bfa5] font-semibold text-[11px]">
+        <span className="flex items-center text-[var(--color-primary-600)] font-semibold text-[11px]">
           <FiArrowUp className="w-3 h-3 mr-0.5" strokeWidth={3} /> 12.5% <span className="text-gray-400 ml-1 font-medium">from yesterday</span>
         </span>
       ),
@@ -24,8 +24,8 @@ const StatsCards = memo(({ stats }) => {
       title: 'Pending Alerts',
       value: stats.pendingAlerts,
       icon: FiClock,
-      iconBg: 'bg-[#e6f7f5]',
-      iconColor: 'text-[#00bfa5]',
+      iconBg: 'bg-[var(--color-primary-50)]',
+      iconColor: 'text-[var(--color-primary-600)]',
       subtitle: <span className="text-gray-400 text-[11px] font-medium">No new alerts</span>,
       onClick: () => navigate('/vendor/booking-alerts'),
     },
@@ -33,8 +33,8 @@ const StatsCards = memo(({ stats }) => {
       title: 'Active Jobs',
       value: stats.activeJobs,
       icon: FiBriefcase,
-      iconBg: 'bg-[#e6f7f5]',
-      iconColor: 'text-[#00bfa5]',
+      iconBg: 'bg-[var(--color-primary-50)]',
+      iconColor: 'text-[var(--color-primary-600)]',
       subtitle: <span className="text-gray-400 text-[11px] font-medium">{stats.activeJobs === 0 ? 'No active jobs' : 'All active jobs'}</span>,
       onClick: () => navigate('/vendor/jobs'),
     },
@@ -42,8 +42,8 @@ const StatsCards = memo(({ stats }) => {
       title: 'Completed Jobs',
       value: stats.completedJobs,
       icon: FiCheckCircle,
-      iconBg: 'bg-[#e6f7f5]',
-      iconColor: 'text-[#00bfa5]',
+      iconBg: 'bg-[var(--color-primary-50)]',
+      iconColor: 'text-[var(--color-primary-600)]',
       subtitle: <span className="text-gray-400 text-[11px] font-medium">All time completed</span>,
       onClick: () => navigate('/vendor/jobs'),
     },

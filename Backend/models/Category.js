@@ -33,6 +33,14 @@ const formFieldSchema = new mongoose.Schema({
     default: null,
     trim: true
   },
+  minValue: {
+    type: Number,
+    default: null
+  },
+  maxValue: {
+    type: Number,
+    default: null
+  },
   order: {
     type: Number,
     default: 0
@@ -109,10 +117,51 @@ const categorySchema = new mongoose.Schema({
   formSchema: [formFieldSchema],
   // Dynamic form schema per category for Provider onboarding/service setup
   vendorFormSchema: [formFieldSchema],
+  // Dynamic form schema for individual catalog/menu items
+  catalogItemSchema: [formFieldSchema],
+  // Dynamic form schemas for listing wizard sections (admin-defined per category)
+  pricingFormSchema: [formFieldSchema],
+  availabilityFormSchema: [formFieldSchema],
+  serviceAreaFormSchema: [formFieldSchema],
+  bookingRulesFormSchema: [formFieldSchema],
+  documentsFormSchema: [formFieldSchema],
+  // Which listing wizard sections are enabled for vendors in this category
+  listingSectionConfig: {
+    profile: { enabled: { type: Boolean, default: true }, title: { type: String, default: 'Service Details' } },
+    menu: { enabled: { type: Boolean, default: true }, title: { type: String, default: 'Menu' } },
+    pricing: { enabled: { type: Boolean, default: false }, title: { type: String, default: 'Pricing' } },
+    availability: { enabled: { type: Boolean, default: false }, title: { type: String, default: 'Availability' } },
+    serviceArea: { enabled: { type: Boolean, default: false }, title: { type: String, default: 'Service Area' } },
+    documents: { enabled: { type: Boolean, default: false }, title: { type: String, default: 'Photos & Documents' } },
+    bookingRules: { enabled: { type: Boolean, default: false }, title: { type: String, default: 'Booking Rules' } }
+  },
+  /**
+   * Admin-created listing wizard forms (each becomes one vendor step).
+   * type: fields = dynamic fields, menu = catalog items, photos = portfolio upload
+   */
+  listingForms: [{
+    id: { type: String, required: true },
+    key: { type: String, required: true, trim: true },
+    title: { type: String, required: true, trim: true },
+    type: { type: String, enum: ['fields', 'menu', 'photos'], default: 'fields' },
+    enabled: { type: Boolean, default: true },
+    order: { type: Number, default: 0 },
+    fields: [formFieldSchema]
+  }],
   // Multi-select allowed (e.g., Worker/Helper booking multiple roles)
   allowMultiSelect: {
     type: Boolean,
     default: false
+  },
+  // Pricing limits (set by Admin)
+  pricingLimits: {
+    minPrice: { type: Number, default: 0 },
+    maxPrice: { type: Number, default: 999999 }
+  },
+  /** Per-category advance payment (only services in this category) */
+  paymentConfig: {
+    requireAdvancePayment: { type: Boolean, default: false },
+    advancePaymentPercent: { type: Number, default: 0, min: 0, max: 100 }
   },
   // Additional backend fields
   description: {

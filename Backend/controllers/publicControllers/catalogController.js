@@ -545,7 +545,7 @@ const getPublicServiceListings = async (req, res) => {
     const [listings, total] = await Promise.all([
       ServiceListing.find(query)
         .populate('vendorId', 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus')
-        .populate('categoryId', 'title slug homeIconUrl defaultPricingModel vendorFormSchema')
+        .populate('categoryId', 'title slug homeIconUrl defaultPricingModel vendorFormSchema catalogItemSchema pricingFormSchema availabilityFormSchema serviceAreaFormSchema bookingRulesFormSchema documentsFormSchema')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
@@ -554,6 +554,14 @@ const getPublicServiceListings = async (req, res) => {
     ]);
 
     const validListings = listings.map(toPublicListingDto).filter(Boolean);
+    validListings.sort((a, b) => {
+      const ratingA = Number(a.provider?.rating) || 0;
+      const ratingB = Number(b.provider?.rating) || 0;
+      const reviewsA = Number(a.provider?.reviews) || 0;
+      const reviewsB = Number(b.provider?.reviews) || 0;
+      if (ratingB !== ratingA) return ratingB - ratingA;
+      return reviewsB - reviewsA;
+    });
 
     res.status(200).json({
       success: true,
@@ -582,7 +590,7 @@ const getPublicServiceListingById = async (req, res) => {
 
     const listing = await ServiceListing.findById(req.params.id)
       .populate('vendorId', 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus')
-      .populate('categoryId', 'title slug homeIconUrl defaultPricingModel vendorFormSchema')
+      .populate('categoryId', 'title slug homeIconUrl defaultPricingModel vendorFormSchema catalogItemSchema')
       .lean();
 
     if (!listing || !isListingBookable(listing)) {
@@ -597,7 +605,8 @@ const getPublicServiceListingById = async (req, res) => {
     res.status(200).json({
       success: true,
       listing: dto,
-      vendorFormSchema: listing.categoryId?.vendorFormSchema || []
+      vendorFormSchema: listing.categoryId?.vendorFormSchema || [],
+      catalogItemSchema: listing.categoryId?.catalogItemSchema || []
     });
   } catch (error) {
     console.error('Get public service listing detail error:', error);

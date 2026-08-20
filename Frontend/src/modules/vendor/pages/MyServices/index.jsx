@@ -75,9 +75,16 @@ const MyServices = () => {
   }, {});
 
   const getPrice = (item) => {
+    const activeItems = (item.catalogItems || []).filter((i) => i.isActive !== false && i.title);
+    if (activeItems.length) {
+      const prices = activeItems.map((i) => Number(i.price) || 0).filter((p) => p > 0);
+      if (prices.length) return Math.min(...prices);
+    }
     const p = item.pricing || {};
     return p.basePrice || p.hourlyRate || p.dailyRate || p.monthlyRent || p.perGuardRate || p.packagePrice || 0;
   };
+
+  const getMenuCount = (item) => (item.catalogItems || []).filter((i) => i.isActive !== false && i.title).length;
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-20">
@@ -153,7 +160,6 @@ const MyServices = () => {
           filteredServices.map((item) => {
             const statusInfo = STATUS_CONFIG[item.status] || STATUS_CONFIG.DRAFT;
             const StatusIcon = statusInfo.icon;
-            const price = getPrice(item);
             const reason = item.rejectedReason || item.adminNotes;
 
             return (
@@ -204,12 +210,17 @@ const MyServices = () => {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-3 text-[10px] text-neutral-500 mb-3">
-                    <span className="flex items-center gap-1">
+                  <div className="flex items-center gap-3 text-[10px] text-neutral-500 mb-3 flex-wrap">
+                    <span className="flex items-center gap-1 font-black text-neutral-800">
                       <FiDollarSign className="w-3 h-3" />
-                      <span className="font-black text-neutral-800">₹{price}</span>
-                      <span className="font-medium">/{(item.pricingModel || 'FIXED').toLowerCase().replace('_', ' ')}</span>
+                      {getMenuCount(item) > 0 ? `From ₹${getPrice(item)}` : `₹${getPrice(item)}`}
                     </span>
+                    {getMenuCount(item) > 0 && (
+                      <span className="flex items-center gap-1">
+                        <FiLayers className="w-3 h-3" />
+                        {getMenuCount(item)} menu item{getMenuCount(item) === 1 ? '' : 's'}
+                      </span>
+                    )}
                     {item.serviceArea?.city && (
                       <span className="flex items-center gap-1">
                         <FiMapPin className="w-3 h-3" /> {item.serviceArea.city}

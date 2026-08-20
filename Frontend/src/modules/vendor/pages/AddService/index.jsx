@@ -3,26 +3,37 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   FiArrowLeft, FiCheck, FiChevronRight, FiChevronLeft, FiSave, FiSend,
   FiInfo, FiFileText, FiDollarSign, FiClock, FiMapPin, FiImage, FiSettings, FiEye,
-  FiAlertCircle, FiLoader
+  FiAlertCircle, FiLoader, FiLayers, FiPlus, FiTrash2
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import api from '../../../../services/api';
-import { FormInput, FormTextarea, DynamicFormFields } from '../../components/common/DynamicField';
-
-// ─── STEP DEFINITIONS ───
-const STEPS = [
-  { key: 'category', label: 'Category', icon: FiInfo },
-  { key: 'details', label: 'Details', icon: FiFileText },
-  { key: 'pricing', label: 'Pricing', icon: FiDollarSign },
-  { key: 'availability', label: 'Availability', icon: FiClock },
-  { key: 'area', label: 'Service Area', icon: FiMapPin },
-  { key: 'documents', label: 'Docs & Photos', icon: FiImage },
-  { key: 'config', label: 'Booking Rules', icon: FiSettings },
-  { key: 'preview', label: 'Preview', icon: FiEye },
-];
+import DynamicField, { FormInput, FormTextarea, DynamicFormFields } from '../../components/common/DynamicField';
+import {
+  buildListingSteps,
+  validateDynamicSchema,
+  extractListingTitle,
+  isSectionEnabled
+} from '../../utils/listingFormConfig';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABELS = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
+
+const EMPTY_FORM = {
+  categoryId: '',
+  title: '',
+  description: '',
+  shortDescription: '',
+  dynamicFormAnswers: {},
+  pricingFormAnswers: {},
+  availabilityFormAnswers: {},
+  serviceAreaFormAnswers: {},
+  bookingRulesFormAnswers: {},
+  documentsFormAnswers: {},
+  listingFormAnswers: {},
+  portfolioPhotos: [],
+  documents: [],
+  catalogItems: [],
+};
 
 // ─── MAIN COMPONENT ───
 const AddService = () => {
@@ -32,49 +43,23 @@ const AddService = () => {
 
   const [step, setStep] = useState(0);
   const [categories, setCategories] = useState([]);
+  const [commonListingForms, setCommonListingForms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   // ─── FORM STATE ───
-  const [form, setForm] = useState({
-    categoryId: '',
-    title: '',
-    description: '',
-    shortDescription: '',
-    experience: '',
-    languages: [],
-    bookingMode: 'BOTH',
-    pricingModel: 'FIXED',
-    pricing: {},
-    availability: {
-      isAvailableNow: true,
-      workingDays: DAYS.reduce((acc, d) => ({
-        ...acc,
-        [d]: { isOpen: d !== 'sunday', shifts: [{ start: '09:00', end: '18:00' }] }
-      }), {}),
-      breakTimes: [],
-      blockedDates: [],
-      holidays: []
-    },
-    serviceArea: { city: '', areas: [], pincodes: [], radiusKm: 10 },
-    cancellation: {
-      cancellationAllowed: true, cancellationWindowHours: 24, cancellationFeePercent: 0,
-      reschedulingAllowed: true, reschedulingWindowHours: 12
-    },
-    bookingConfig: {
-      minAdvanceBookingMinutes: 30, maxAdvanceBookingDays: 30,
-      minServiceDurationMinutes: 30, maxServiceDurationMinutes: 480,
-      autoAcceptBookings: false, requireAdvancePayment: false, advancePaymentPercent: 0
-    },
-    dynamicFormAnswers: {},
-    portfolioPhotos: [],
-    documents: [],
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
 
   const selectedCategory = useMemo(
     () => categories.find(c => (c.id || c._id) === form.categoryId),
     [categories, form.categoryId]
   );
+
+  const steps = useMemo(
+    () => buildListingSteps(selectedCategory, commonListingForms),
+    [selectedCategory, commonListingForms]
+  );
+  const currentStep = steps[step] || steps[0];
 
   // ─── LOAD DATA ───
   useEffect(() => {
@@ -84,6 +69,7 @@ const AddService = () => {
         const catRes = await api.get('/vendors/categories');
         if (catRes.data?.categories) {
           setCategories(catRes.data.categories);
+          setCommonListingForms(catRes.data.commonListingForms || []);
           // Auto-select if slug provided
           if (categorySlug) {
             const match = catRes.data.categories.find(c => c.slug === categorySlug);
@@ -97,22 +83,21 @@ const AddService = () => {
           if (svcRes.data?.service) {
             const s = svcRes.data.service;
             setForm({
+              ...EMPTY_FORM,
               categoryId: s.categoryId?._id || s.categoryId || '',
               title: s.title || '',
               description: s.description || '',
               shortDescription: s.shortDescription || '',
-              experience: s.experience || '',
-              languages: s.languages || [],
-              bookingMode: s.bookingMode || 'BOTH',
-              pricingModel: s.pricingModel || 'FIXED',
-              pricing: s.pricing || {},
-              availability: s.availability || form.availability,
-              serviceArea: s.serviceArea || form.serviceArea,
-              cancellation: s.cancellation || form.cancellation,
-              bookingConfig: s.bookingConfig || form.bookingConfig,
               dynamicFormAnswers: s.dynamicFormAnswers || {},
+              pricingFormAnswers: s.pricingFormAnswers || {},
+              availabilityFormAnswers: s.availabilityFormAnswers || {},
+              serviceAreaFormAnswers: s.serviceAreaFormAnswers || {},
+              bookingRulesFormAnswers: s.bookingRulesFormAnswers || {},
+              documentsFormAnswers: s.documentsFormAnswers || {},
+              listingFormAnswers: s.listingFormAnswers || {},
               portfolioPhotos: s.portfolioPhotos || [],
               documents: s.documents || [],
+              catalogItems: s.catalogItems || [],
             });
             setStep(1); // Skip category selection when editing
           }
@@ -129,6 +114,27 @@ const AddService = () => {
 
   // ─── FORM HELPERS ───
   const updateForm = (key, value) => setForm(p => ({ ...p, [key]: value }));
+  const selectCategory = (cat) => {
+    const catId = cat.id || cat._id;
+    const enrollmentAnswers = cat.enrollment?.dynamicAnswers || {};
+    setForm((p) => ({
+      ...p,
+      categoryId: catId,
+      dynamicFormAnswers: Object.keys(p.dynamicFormAnswers || {}).length && p.categoryId === catId
+        ? p.dynamicFormAnswers
+        : enrollmentAnswers,
+      catalogItems: (p.catalogItems?.length && p.categoryId === catId)
+        ? p.catalogItems
+        : (isSectionEnabled(cat, 'menu') ? [{
+          id: crypto.randomUUID(),
+          title: '',
+          description: '',
+          price: '',
+          photoUrl: null,
+          isActive: true
+        }] : [])
+    }));
+  };
   const updateNested = (parent, key, value) => setForm(p => ({ ...p, [parent]: { ...p[parent], [key]: value } }));
   const updateDynamic = (key, value) => setForm(p => ({ ...p, dynamicFormAnswers: { ...p.dynamicFormAnswers, [key]: value } }));
   const toggleDynamicMulti = (key, value) => {
@@ -140,19 +146,97 @@ const AddService = () => {
   };
 
   // ─── NAVIGATION ───
+  const updateSectionAnswer = (answersKey, key, value) => {
+    setForm((p) => ({ ...p, [answersKey]: { ...p[answersKey], [key]: value } }));
+  };
+  const toggleSectionMulti = (answersKey, key, value) => {
+    setForm((p) => {
+      const current = Array.isArray(p[answersKey]?.[key]) ? p[answersKey][key] : [];
+      const updated = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
+      return { ...p, [answersKey]: { ...p[answersKey], [key]: updated } };
+    });
+  };
+
+  const getStepAnswers = (stepDef) => {
+    if (!stepDef) return {};
+    if (stepDef.answersKey) return form[stepDef.answersKey] || {};
+    if (stepDef.formId) return form.listingFormAnswers?.[stepDef.formId] || {};
+    return {};
+  };
+
+  const updateListingFormAnswer = (formId, key, value) => {
+    setForm((p) => ({
+      ...p,
+      listingFormAnswers: {
+        ...p.listingFormAnswers,
+        [formId]: { ...(p.listingFormAnswers?.[formId] || {}), [key]: value }
+      }
+    }));
+  };
+
+  const toggleListingFormMulti = (formId, key, value) => {
+    setForm((p) => {
+      const bucket = p.listingFormAnswers?.[formId] || {};
+      const current = Array.isArray(bucket[key]) ? bucket[key] : [];
+      const updated = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+      return {
+        ...p,
+        listingFormAnswers: {
+          ...p.listingFormAnswers,
+          [formId]: { ...bucket, [key]: updated }
+        }
+      };
+    });
+  };
+
   const canGoNext = () => {
-    if (step === 0 && !form.categoryId) return false;
-    if (step === 1 && !form.title.trim()) return false;
+    if (!currentStep) return false;
+    if (currentStep.key === 'category') return Boolean(form.categoryId);
+    if (currentStep.type === 'menu' || currentStep.key === 'menu') {
+      return form.catalogItems.some((item) => (item.title || '').trim());
+    }
+    if (currentStep.schema?.length && currentStep.type !== 'photos') {
+      const err = validateDynamicSchema(currentStep.schema, getStepAnswers(currentStep));
+      if (err) return false;
+    }
     return true;
   };
-  const goNext = () => { if (canGoNext() && step < STEPS.length - 1) setStep(s => s + 1); };
+  const goNext = () => {
+    if (!canGoNext()) {
+      if (currentStep?.schema?.length) {
+        const err = validateDynamicSchema(currentStep.schema, getStepAnswers(currentStep));
+        if (err) toast.error(err);
+      } else if (currentStep?.type === 'menu' || currentStep?.key === 'menu') {
+        toast.error('Add at least one menu item with a name');
+      }
+      return;
+    }
+    if (step < steps.length - 1) setStep(s => s + 1);
+  };
   const goBack = () => { if (step > 0) setStep(s => s - 1); };
 
   // ─── SUBMIT ───
   const handleSubmit = async (isDraft = false) => {
     try {
       setSubmitting(true);
-      const payload = { ...form, isDraft };
+      const resolvedTitle = extractListingTitle(form.dynamicFormAnswers, form.catalogItems, form.listingFormAnswers);
+      const payload = {
+        categoryId: form.categoryId,
+        title: resolvedTitle,
+        description: form.dynamicFormAnswers.description || form.dynamicFormAnswers.about || form.description || '',
+        shortDescription: form.dynamicFormAnswers.shortDescription || form.dynamicFormAnswers.tagline || form.shortDescription || '',
+        dynamicFormAnswers: form.dynamicFormAnswers,
+        pricingFormAnswers: form.pricingFormAnswers,
+        availabilityFormAnswers: form.availabilityFormAnswers,
+        serviceAreaFormAnswers: form.serviceAreaFormAnswers,
+        bookingRulesFormAnswers: form.bookingRulesFormAnswers,
+        documentsFormAnswers: form.documentsFormAnswers,
+        listingFormAnswers: form.listingFormAnswers,
+        portfolioPhotos: form.portfolioPhotos,
+        documents: form.documents,
+        catalogItems: form.catalogItems,
+        isDraft
+      };
       
       let res;
       if (isEdit) {
@@ -200,31 +284,61 @@ const AddService = () => {
               <p className="text-[10px] font-bold text-primary-600 truncate">{selectedCategory.title}</p>
             )}
           </div>
-          <span className="text-xs font-bold text-slate-400">{step + 1}/{STEPS.length}</span>
+          <span className="text-xs font-bold text-slate-400">{step + 1}/{steps.length}</span>
         </div>
 
-        {/* Step Progress Bar */}
         <div className="mt-3 flex gap-1">
-          {STEPS.map((s, i) => (
-            <div key={s.key} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i < step ? 'bg-primary-500' : i === step ? 'bg-primary-400' : 'bg-slate-200'}`} />
+          {steps.map((s, i) => (
+            <div key={s.key + i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i < step ? 'bg-primary-500' : i === step ? 'bg-primary-400' : 'bg-slate-200'}`} />
           ))}
         </div>
         <div className="mt-1.5 flex items-center gap-1.5">
-          {React.createElement(STEPS[step].icon, { className: 'w-3.5 h-3.5 text-primary-600' })}
-          <span className="text-xs font-bold text-slate-700">{STEPS[step].label}</span>
+          {currentStep?.icon && React.createElement(currentStep.icon, { className: 'w-3.5 h-3.5 text-primary-600' })}
+          <span className="text-xs font-bold text-slate-700">{currentStep?.label}</span>
         </div>
       </header>
 
-      {/* Step Content */}
       <main className="p-4 max-w-lg mx-auto">
-        {step === 0 && <StepCategory categories={categories} form={form} updateForm={updateForm} />}
-        {step === 1 && <StepDetails form={form} updateForm={updateForm} updateDynamic={updateDynamic} toggleDynamicMulti={toggleDynamicMulti} category={selectedCategory} />}
-        {step === 2 && <StepPricing form={form} updateForm={updateForm} updateNested={updateNested} category={selectedCategory} />}
-        {step === 3 && <StepAvailability form={form} setForm={setForm} />}
-        {step === 4 && <StepServiceArea form={form} updateNested={updateNested} />}
-        {step === 5 && <StepDocuments form={form} setForm={setForm} />}
-        {step === 6 && <StepBookingConfig form={form} updateForm={updateForm} updateNested={updateNested} />}
-        {step === 7 && <StepPreview form={form} category={selectedCategory} />}
+        {currentStep?.key === 'category' && <StepCategory categories={categories} form={form} onSelectCategory={selectCategory} />}
+        {(currentStep?.type === 'menu' || currentStep?.key === 'menu') && (
+          <StepMenuItems form={form} setForm={setForm} category={selectedCategory} itemSchema={currentStep.schema} stepTitle={currentStep.label} />
+        )}
+        {(currentStep?.type === 'photos' || currentStep?.key === 'documents') && (
+          <>
+            {currentStep.schema?.length > 0 && (
+              <StepDynamicSection
+                title={currentStep.label}
+                schema={currentStep.schema}
+                values={getStepAnswers(currentStep)}
+                onChange={(k, v) => {
+                  if (currentStep.formId) updateListingFormAnswer(currentStep.formId, k, v);
+                  else updateSectionAnswer(currentStep.answersKey || 'documentsFormAnswers', k, v);
+                }}
+                onToggleMulti={(k, v) => {
+                  if (currentStep.formId) toggleListingFormMulti(currentStep.formId, k, v);
+                  else toggleSectionMulti(currentStep.answersKey || 'documentsFormAnswers', k, v);
+                }}
+              />
+            )}
+            <StepDocuments form={form} setForm={setForm} />
+          </>
+        )}
+        {currentStep?.type === 'fields' && currentStep.schema?.length > 0 && (
+          <StepDynamicSection
+            title={currentStep.label}
+            schema={currentStep.schema}
+            values={getStepAnswers(currentStep)}
+            onChange={(k, v) => {
+              if (currentStep.formId) updateListingFormAnswer(currentStep.formId, k, v);
+              else if (currentStep.answersKey) updateSectionAnswer(currentStep.answersKey, k, v);
+            }}
+            onToggleMulti={(k, v) => {
+              if (currentStep.formId) toggleListingFormMulti(currentStep.formId, k, v);
+              else if (currentStep.answersKey) toggleSectionMulti(currentStep.answersKey, k, v);
+            }}
+          />
+        )}
+        {currentStep?.key === 'preview' && <StepPreview form={form} category={selectedCategory} />}
       </main>
 
       {/* Bottom Navigation */}
@@ -237,9 +351,9 @@ const AddService = () => {
           )}
           <div className="flex-1" />
 
-          {step < STEPS.length - 1 ? (
+          {step < steps.length - 1 ? (
             <div className="flex items-center gap-2">
-              <button onClick={() => handleSubmit(true)} disabled={submitting || !form.categoryId || !form.title}
+              <button onClick={() => handleSubmit(true)} disabled={submitting || !form.categoryId}
                 className="px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 active:scale-95 transition-all disabled:opacity-40">
                 <FiSave className="w-3.5 h-3.5 inline mr-1" />Save Draft
               </button>
@@ -254,7 +368,7 @@ const AddService = () => {
                 className="px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 active:scale-95 transition-all disabled:opacity-40">
                 <FiSave className="w-3.5 h-3.5 inline mr-1" />Save Draft
               </button>
-              <button onClick={() => handleSubmit(false)} disabled={submitting || !form.categoryId || !form.title}
+              <button onClick={() => handleSubmit(false)} disabled={submitting || !form.categoryId || !extractListingTitle(form.dynamicFormAnswers, form.catalogItems, form.listingFormAnswers)}
                 className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 active:scale-95 transition-all disabled:opacity-40 shadow-sm">
                 {submitting ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiSend className="w-4 h-4" />}
                 {submitting ? 'Submitting...' : 'Submit for Approval'}
@@ -268,9 +382,28 @@ const AddService = () => {
 };
 
 // ════════════════════════════════════════════════════════════════
+// DYNAMIC SECTION (admin-defined fields only)
+// ════════════════════════════════════════════════════════════════
+const StepDynamicSection = ({ title, schema, values, onChange, onToggleMulti }) => (
+  <div className="space-y-4">
+    <div className="bg-primary-50 rounded-xl p-3.5 border border-primary-100">
+      <h3 className="text-sm font-black text-primary-900">{title}</h3>
+      <p className="text-xs text-primary-700 mt-0.5">Fields configured by admin for this service category.</p>
+    </div>
+    {schema.length === 0 ? (
+      <p className="text-xs text-slate-500">No fields configured yet. Ask admin to add fields for this section.</p>
+    ) : (
+      <SectionCard title={title} icon="⚙️">
+        <DynamicFormFields schema={schema} values={values} onChange={onChange} onToggleMulti={onToggleMulti} />
+      </SectionCard>
+    )}
+  </div>
+);
+
+// ════════════════════════════════════════════════════════════════
 // STEP 1: CATEGORY SELECTION
 // ════════════════════════════════════════════════════════════════
-const StepCategory = ({ categories, form, updateForm }) => (
+const StepCategory = ({ categories, form, onSelectCategory }) => (
   <div className="space-y-4">
     <div className="bg-primary-50 rounded-xl p-3.5 border border-primary-100">
       <h3 className="text-sm font-black text-primary-900">Select Your Service Category</h3>
@@ -282,7 +415,7 @@ const StepCategory = ({ categories, form, updateForm }) => (
         const isSelected = form.categoryId === catId;
         const hasListing = cat.existingListing;
         return (
-          <button key={catId} onClick={() => !hasListing && updateForm('categoryId', catId)} disabled={!!hasListing}
+          <button key={catId} onClick={() => !hasListing && onSelectCategory(cat)} disabled={!!hasListing}
             className={`relative p-3.5 rounded-xl border-2 text-left transition-all active:scale-[0.97] ${
               isSelected ? 'border-primary-500 bg-primary-50 shadow-md ring-2 ring-primary-200' :
               hasListing ? 'border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed' :
@@ -312,7 +445,8 @@ const StepDetails = ({ form, updateForm, updateDynamic, toggleDynamicMulti, cate
     <div className="space-y-4">
       {/* Basic Fields */}
       <SectionCard title="Basic Information" icon="📝">
-        <FormInput label="Service Title *" value={form.title} onChange={v => updateForm('title', v)} placeholder="e.g. Full House Wiring & Repair" />
+        <FormInput label="Shop / Business Name *" value={form.title} onChange={v => updateForm('title', v)} placeholder="e.g. Sharma Tiffin Centre / Raj Driver Service" />
+        <FormInput label="Short Tagline" value={form.shortDescription} onChange={v => updateForm('shortDescription', v)} placeholder="One line for the list card" />
         <FormTextarea label="Description" value={form.description} onChange={v => updateForm('description', v)} placeholder="Describe your service in detail..." rows={3} />
         <FormInput label="Years of Experience" type="number" value={form.experience} onChange={v => updateForm('experience', v)} placeholder="e.g. 5" />
         <div>
@@ -385,7 +519,123 @@ const StepPricing = ({ form, updateForm, updateNested, category }) => {
 };
 
 // ════════════════════════════════════════════════════════════════
-// STEP 4: AVAILABILITY
+// STEP 4: MENU ITEMS (Catalog Sub-Services)
+// ════════════════════════════════════════════════════════════════
+const StepMenuItems = ({ form, setForm, category, itemSchema, stepTitle }) => {
+  const schema = itemSchema || category?.catalogItemSchema || [];
+  const categoryTitle = category?.title || 'this service';
+  const heading = stepTitle || 'Your menu';
+
+  const addItem = () => {
+    setForm(p => ({
+      ...p,
+      catalogItems: [...p.catalogItems, {
+        id: crypto.randomUUID(),
+        title: '',
+        description: '',
+        price: '',
+        photoUrl: null,
+        isActive: true
+      }]
+    }));
+  };
+
+  const updateItem = (index, field, value) => {
+    setForm(p => {
+      const newItems = [...p.catalogItems];
+      newItems[index] = { ...newItems[index], [field]: value };
+      return { ...p, catalogItems: newItems };
+    });
+  };
+
+  const removeItem = (index) => {
+    setForm(p => ({
+      ...p,
+      catalogItems: p.catalogItems.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handlePhotoUpload = (e, index) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateItem(index, 'photoUrl', reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const toggleMulti = (index, key, value) => {
+    setForm(p => {
+      const newItems = [...p.catalogItems];
+      const current = Array.isArray(newItems[index][key]) ? newItems[index][key] : [];
+      const updated = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
+      newItems[index] = { ...newItems[index], [key]: updated };
+      return { ...p, catalogItems: newItems };
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-primary-50 rounded-xl p-3.5 border border-primary-100 mb-4">
+        <h3 className="text-sm font-black text-primary-900">{heading}</h3>
+        <p className="text-xs text-primary-700 mt-0.5">
+          Like dishes in a restaurant — add every item you offer for {categoryTitle}. Example: Tiffin → Mini, Regular, Premium. Driver → Day, Night, Outstation.
+        </p>
+      </div>
+
+      {form.catalogItems.map((item, index) => (
+        <SectionCard key={item.id || index} title={`Item ${index + 1}`} icon="🏷️">
+          <div className="flex gap-3">
+            <div className="flex-1 space-y-3">
+              <FormInput label="Item name *" value={item.title || ''} onChange={v => updateItem(index, 'title', v)} placeholder="e.g. Regular Tiffin / Outstation Driver" />
+              <FormInput label="Price (₹) *" type="number" value={item.price || ''} onChange={v => updateItem(index, 'price', v)} placeholder="e.g. 500" />
+              <FormTextarea label="Description" value={item.description || ''} onChange={v => updateItem(index, 'description', v)} placeholder="What is included..." rows={2} />
+              {schema.length > 0 && (
+                [...schema]
+                  .filter((field) => !['title', 'price', 'description'].includes(field.key))
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map((field) => (
+                    <DynamicField
+                      key={field.key}
+                      field={field}
+                      value={item[field.key]}
+                      onChange={(v) => updateItem(index, field.key, v)}
+                      onToggleMulti={(v) => toggleMulti(index, field.key, v)}
+                    />
+                  ))
+              )}
+            </div>
+            <div className="w-24 shrink-0 flex flex-col items-center space-y-2">
+              <label className="w-full aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:border-primary-400 overflow-hidden relative">
+                {item.photoUrl ? (
+                  <img src={item.photoUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    <FiImage className="w-5 h-5 text-slate-400 mb-1" />
+                    <span className="text-[10px] font-bold text-slate-400">Photo</span>
+                  </>
+                )}
+                <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(e, index)} />
+              </label>
+              <ToggleRow label="Active" value={item.isActive} onChange={v => updateItem(index, 'isActive', v)} />
+              <button type="button" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700 p-2">
+                <FiTrash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </SectionCard>
+      ))}
+
+      <button type="button" onClick={addItem} className="w-full py-3 rounded-xl border-2 border-dashed border-primary-300 text-primary-600 font-bold flex items-center justify-center gap-2 hover:bg-primary-50 transition-colors">
+        <FiPlus className="w-4 h-4" /> Add another item
+      </button>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
+// STEP 5: AVAILABILITY
 // ════════════════════════════════════════════════════════════════
 const StepAvailability = ({ form, setForm }) => {
   const toggleDay = (day) => {
@@ -444,7 +694,7 @@ const StepAvailability = ({ form, setForm }) => {
 };
 
 // ════════════════════════════════════════════════════════════════
-// STEP 5: SERVICE AREA
+// STEP 6: SERVICE AREA
 // ════════════════════════════════════════════════════════════════
 const StepServiceArea = ({ form, updateNested }) => (
   <div className="space-y-4">
@@ -469,7 +719,7 @@ const StepServiceArea = ({ form, updateNested }) => (
 );
 
 // ════════════════════════════════════════════════════════════════
-// STEP 6: DOCUMENTS & PORTFOLIO
+// STEP 7: DOCUMENTS & PORTFOLIO
 // ════════════════════════════════════════════════════════════════
 const StepDocuments = ({ form, setForm }) => {
   const handlePhotoUpload = (e) => {
@@ -499,8 +749,8 @@ const StepDocuments = ({ form, setForm }) => {
 
   return (
     <div className="space-y-4">
-      <SectionCard title="Portfolio Photos" icon="📸">
-        <p className="text-[10px] text-slate-500 mb-2">Upload photos showcasing your work quality (max 10)</p>
+      <SectionCard title="Service Showing Photos" icon="📸">
+        <p className="text-[10px] text-slate-500 mb-2">Upload photos showcasing your service (max 10)</p>
         <div className="grid grid-cols-3 gap-2">
           {form.portfolioPhotos.map((photo, i) => (
             <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200">
@@ -539,7 +789,7 @@ const StepDocuments = ({ form, setForm }) => {
 };
 
 // ════════════════════════════════════════════════════════════════
-// STEP 7: BOOKING CONFIG
+// STEP 8: BOOKING CONFIG
 // ════════════════════════════════════════════════════════════════
 const StepBookingConfig = ({ form, updateForm, updateNested }) => (
   <div className="space-y-4">
@@ -577,61 +827,77 @@ const StepBookingConfig = ({ form, updateForm, updateNested }) => (
 );
 
 // ════════════════════════════════════════════════════════════════
-// STEP 8: PREVIEW
+// STEP 9: PREVIEW
 // ════════════════════════════════════════════════════════════════
 const StepPreview = ({ form, category }) => {
-  const mainPrice = form.pricing.basePrice || form.pricing.hourlyRate || form.pricing.dailyRate || form.pricing.monthlyRent || 0;
-  const openDays = DAYS.filter(d => form.availability.workingDays[d]?.isOpen);
+  const title = extractListingTitle(form.dynamicFormAnswers, form.catalogItems) || 'Untitled';
+  const menuPrices = (form.catalogItems || []).map((i) => Number(i.price) || 0).filter((p) => p > 0);
+  const fromPrice = menuPrices.length ? Math.min(...menuPrices) : null;
+
+  const renderAnswers = (answers, schema, cardTitle) => {
+    if (!answers || !Object.keys(answers).length) return null;
+    return (
+      <SectionCard title={cardTitle} icon="📋">
+        <div className="space-y-1.5">
+          {(schema || []).length > 0
+            ? schema.map((field) => {
+              const v = answers[field.key];
+              if (v === undefined || v === null || v === '') return null;
+              return (
+                <div key={field.key} className="flex items-start gap-2 py-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase w-28 shrink-0">{field.label}</span>
+                  <span className="text-xs font-medium text-slate-800">{Array.isArray(v) ? v.join(', ') : String(v)}</span>
+                </div>
+              );
+            })
+            : Object.entries(answers).map(([key, value]) => (
+              <div key={key} className="flex items-start gap-2 py-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase w-28 shrink-0">{key}</span>
+                <span className="text-xs font-medium text-slate-800">{Array.isArray(value) ? value.join(', ') : String(value)}</span>
+              </div>
+            ))}
+        </div>
+      </SectionCard>
+    );
+  };
 
   return (
     <div className="space-y-4">
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
+      <div className="bg-gradient-to-br from-primary-50 to-indigo-50 rounded-2xl p-4 border border-primary-100">
         <div className="flex items-start gap-3">
-          {category?.iconUrl && <img src={category.iconUrl} alt="" className="w-10 h-10 rounded-xl object-contain bg-white p-1 border border-blue-100" />}
+          {category?.iconUrl && <img src={category.iconUrl} alt="" className="w-10 h-10 rounded-xl object-contain bg-white p-1 border border-primary-100" />}
           <div className="flex-1 min-w-0">
-            <span className="text-[9px] font-black text-blue-600 uppercase tracking-wider">{category?.title || form.categoryId}</span>
-            <h3 className="text-base font-black text-slate-900 mt-0.5">{form.title || 'Untitled Service'}</h3>
-            {form.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{form.description}</p>}
+            <span className="text-[9px] font-black text-primary-600 uppercase tracking-wider">{category?.title}</span>
+            <h3 className="text-base font-black text-slate-900 mt-0.5">{title}</h3>
+            {fromPrice !== null && <p className="text-xs font-bold text-slate-700 mt-1">From ₹{fromPrice}</p>}
           </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <InfoChip label="Starting" value={`₹${mainPrice}`} />
-          <InfoChip label="Model" value={form.pricingModel} />
-          <InfoChip label="Mode" value={form.bookingMode} />
         </div>
       </div>
 
-      {/* Details Summary */}
-      {Object.keys(form.dynamicFormAnswers).length > 0 && (
-        <SectionCard title="Service Details" icon="📋">
-          <div className="space-y-1.5">
-            {Object.entries(form.dynamicFormAnswers).map(([key, value]) => {
-              if (!value || (Array.isArray(value) && value.length === 0)) return null;
-              return (
-                <div key={key} className="flex items-start gap-2 py-1">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase w-28 shrink-0">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                  <span className="text-xs font-medium text-slate-800">{Array.isArray(value) ? value.join(', ') : String(value)}</span>
+      {renderAnswers(form.dynamicFormAnswers, category?.vendorFormSchema, 'Service Details')}
+      {renderAnswers(form.pricingFormAnswers, category?.pricingFormSchema, 'Pricing')}
+      {renderAnswers(form.availabilityFormAnswers, category?.availabilityFormSchema, 'Availability')}
+      {renderAnswers(form.serviceAreaFormAnswers, category?.serviceAreaFormSchema, 'Service Area')}
+      {renderAnswers(form.bookingRulesFormAnswers, category?.bookingRulesFormSchema, 'Booking Rules')}
+
+      {form.catalogItems?.length > 0 && (
+        <SectionCard title="Menu" icon="Layers">
+          <div className="space-y-2">
+            {form.catalogItems.map((item, index) => (
+              <div key={item.id || index} className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-100">
+                {item.photoUrl && <img src={item.photoUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />}
+                <div className="flex-1 min-w-0 flex justify-between">
+                  <h4 className="text-xs font-bold text-slate-800 truncate">{item.title}</h4>
+                  <span className="text-xs font-black text-slate-900 ml-2">₹{item.price}</span>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </SectionCard>
       )}
 
-      <SectionCard title="Availability" icon="📅">
-        <p className="text-xs text-slate-600 font-medium">{openDays.length} days/week: {openDays.map(d => DAY_LABELS[d]).join(', ')}</p>
-      </SectionCard>
-
-      {form.serviceArea.city && (
-        <SectionCard title="Service Area" icon="📍">
-          <p className="text-xs text-slate-600 font-medium">{form.serviceArea.city} • {form.serviceArea.radiusKm || 10} KM radius</p>
-          {form.serviceArea.areas?.length > 0 && <p className="text-[10px] text-slate-400 mt-0.5">{form.serviceArea.areas.join(', ')}</p>}
-        </SectionCard>
-      )}
-
-      {form.portfolioPhotos.length > 0 && (
-        <SectionCard title="Portfolio" icon="📸">
+      {form.portfolioPhotos?.length > 0 && (
+        <SectionCard title="Photos" icon="📸">
           <div className="flex gap-2 overflow-x-auto">
             {form.portfolioPhotos.map((p, i) => (
               <img key={i} src={p} alt="" className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0" />
@@ -645,7 +911,7 @@ const StepPreview = ({ form, category }) => {
           <FiAlertCircle className="w-4 h-4 text-primary-600 mt-0.5 shrink-0" />
           <div>
             <h4 className="text-xs font-black text-primary-800">Ready to Submit?</h4>
-            <p className="text-[10px] text-primary-700 mt-0.5">Your listing block will be reviewed by our team. The live version stays up if you are editing an already-approved listing.</p>
+            <p className="text-[10px] text-primary-700 mt-0.5">Admin will review before your listing goes live.</p>
           </div>
         </div>
       </div>

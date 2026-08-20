@@ -13,9 +13,16 @@ export const FormInput = ({ label, type = 'text', value, onChange, placeholder, 
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-xs font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
+      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-medium focus:ring-2 focus:outline-none transition-colors ${
+        props.error 
+          ? 'border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50' 
+          : 'border-neutral-300 focus:ring-primary-500 focus:border-primary-500 bg-white'
+      }`}
       {...props}
     />
+    {props.error && (
+      <p className="text-[10px] text-red-600 mt-1 font-semibold">{props.error}</p>
+    )}
   </div>
 );
 
@@ -46,8 +53,29 @@ const DynamicField = ({ field, value, onChange, onToggleMulti }) => {
   switch (type) {
     case 'text':
       return <FormInput label={marked} value={value || ''} onChange={onChange} placeholder={helpText || ''} />;
-    case 'number':
-      return <FormInput label={marked} type="number" value={value || ''} onChange={onChange} placeholder={helpText || ''} />;
+    case 'number': {
+      let error = null;
+      if (value !== '' && value !== null && value !== undefined) {
+        const numVal = Number(value);
+        if (field.minValue !== null && field.minValue !== undefined && numVal < field.minValue) {
+          error = `Minimum value is ${field.minValue}`;
+        } else if (field.maxValue !== null && field.maxValue !== undefined && numVal > field.maxValue) {
+          error = `Maximum value is ${field.maxValue}`;
+        }
+      }
+      return (
+        <FormInput 
+          label={marked} 
+          type="number" 
+          value={value || ''} 
+          onChange={onChange} 
+          placeholder={helpText || ''} 
+          min={field.minValue} 
+          max={field.maxValue}
+          error={error}
+        />
+      );
+    }
     case 'textarea':
       return <FormTextarea label={marked} value={value || ''} onChange={onChange} placeholder={helpText || ''} />;
     case 'date':

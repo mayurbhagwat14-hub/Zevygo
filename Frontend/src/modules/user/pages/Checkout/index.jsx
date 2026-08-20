@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { FiArrowLeft, FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiPhone, FiHome, FiClock, FiEdit2, FiCheckCircle, FiInfo, FiCreditCard, FiSmartphone } from 'react-icons/fi';
@@ -16,7 +16,7 @@ import { getPlans } from '../../services/planService';
 import { userAuthService } from '../../../../services/authService';
 import { useCart } from '../../../../context/CartContext';
 import LiveBookingCard from '../../components/booking/LiveBookingCard';
-import { useBranding } from '../../../../context/BrandingContext';
+import resolveAdvancePaymentConfig from '../../utils/advancePaymentConfig';
 import { Button, Badge } from '../../../../components/ui';
 import { APP_NAME } from '../../../../theme/brand';
 
@@ -33,6 +33,7 @@ const Checkout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const listing = location.state?.listing || null;
+  const catalogItem = location.state?.catalogItem || null;
   const category = location.state?.category || null;
   const plan = location.state?.plan || null;
   const { fetchCart: fetchCartGlobal, clearCart: clearCartGlobal, removeCategoryItems: removeCategoryGlobal } = useCart();
@@ -64,7 +65,14 @@ const Checkout = () => {
   const [selectedTime, setSelectedTime] = useState(null);
   const [visitedFee, setVisitedFee] = useState(29);
   const [gstPercentage, setGstPercentage] = useState(18);
-  const [bookingType, setBookingType] = useState('instant'); // 'instant' | 'scheduled'
+  const [advancePaymentPercent, setAdvancePaymentPercent] = useState(30);
+  const [platformFeePercent, setPlatformFeePercent] = useState(1);
+  const [bookingType, setBookingType] = useState(() => {
+    const hasListing = Boolean(location.state?.listing);
+    return hasListing ? 'scheduled' : 'instant';
+  }); // 'instant' | 'scheduled'
+
+  const isListingBooking = Boolean(listing || cartItems[0]?.serviceListingId);
 
   // Check if Razorpay is loaded (defer to avoid blocking initial render)
   useEffect(() => {
@@ -115,29 +123,36 @@ const Checkout = () => {
         setLoading(true);
 
         if (listing) {
-          const price = listing.displayPrice || listing.pricing?.basePrice || listing.pricing?.hourlyRate || listing.pricing?.dailyRate || 0;
+          const item = catalogItem;
+          const price = item
+            ? (Number(item.price) || 0)
+            : (listing.displayPrice || listing.pricing?.basePrice || listing.pricing?.hourlyRate || listing.pricing?.dailyRate || 0);
+          const title = item?.title || listing.title;
           setCartItems([{
-            id: listing.id,
+            id: item?.id || listing.id,
             serviceListingId: listing.id,
-            title: listing.title,
+            catalogItemId: item?.id || null,
+            title,
             price,
             categoryTitle: listing.category?.title || '',
             categoryIcon: listing.category?.icon || listing.portfolioPhotos?.[0] || '',
-            icon: listing.portfolioPhotos?.[0] || '',
-            description: listing.description || '',
+            icon: item?.photoUrl || listing.portfolioPhotos?.[0] || '',
+            description: item?.description || listing.description || '',
             serviceCount: 1,
             card: {
-              title: listing.title,
+              title,
               price,
-              imageUrl: listing.portfolioPhotos?.[0] || '',
-              description: listing.description || ''
+              imageUrl: item?.photoUrl || listing.portfolioPhotos?.[0] || '',
+              description: item?.description || listing.description || ''
             }
           }]);
 
           const response = await userAuthService.getCheckoutData();
           if (response.success) {
-            setVisitedFee(response.settings?.visitedCharges || 0);
+            setVisitedFee(response.settings?.visitedCharges || response.settings?.convenienceFee || 0);
             setGstPercentage(response.settings?.serviceGstPercentage || 18);
+            setAdvancePaymentPercent(response.settings?.advancePaymentPercent ?? 30);
+            setPlatformFeePercent(response.settings?.platformFeePercentage ?? 1);
             if (response.user?.addresses?.length > 0) {
               const defaultAddr = response.user.addresses.find(a => a.isDefault) || response.user.addresses[0];
               setAddress(defaultAddr.addressLine1);
@@ -166,8 +181,10 @@ const Checkout = () => {
           // Still need config and address for plan checkout
           const response = await userAuthService.getCheckoutData();
           if (response.success) {
-            setVisitedFee(0); // Plans usually have 0 visitor fee
+            setVisitedFee(0);
             setGstPercentage(response.settings?.serviceGstPercentage || 18);
+            setAdvancePaymentPercent(response.settings?.advancePaymentPercent ?? 30);
+            setPlatformFeePercent(response.settings?.platformFeePercentage ?? 1);
 
             if (response.user?.addresses?.length > 0) {
               const defaultAddr = response.user.addresses.find(a => a.isDefault) || response.user.addresses[0];
@@ -188,8 +205,10 @@ const Checkout = () => {
           const response = await userAuthService.getCheckoutData();
           if (response.success) {
             // Set Config
-            setVisitedFee(response.settings?.visitedCharges || 29);
+            setVisitedFee(response.settings?.visitedCharges || response.settings?.convenienceFee || 29);
             setGstPercentage(response.settings?.serviceGstPercentage || 18);
+            setAdvancePaymentPercent(response.settings?.advancePaymentPercent ?? 30);
+            setPlatformFeePercent(response.settings?.platformFeePercentage ?? 1);
 
             // Set Addresses
             if (response.user?.addresses?.length > 0) {
@@ -227,7 +246,7 @@ const Checkout = () => {
     };
 
     fetchData();
-  }, [category, plan, listing]);
+  }, [category, plan, listing, catalogItem]);
 
   const loadCart = async () => {
     try {
@@ -376,7 +395,7 @@ const Checkout = () => {
       const response = await bookingService.create({
         bookingType, // 'instant' or 'scheduled'
         ...(firstItem.serviceListingId
-          ? { serviceListingId: firstItem.serviceListingId }
+          ? { serviceListingId: firstItem.serviceListingId, catalogItemId: firstItem.catalogItemId || undefined }
           : { serviceId }),
         address: {
           type: addressDetails?.type || 'home',
@@ -588,7 +607,8 @@ const Checkout = () => {
       }
 
       // Create booking request
-      toast.loading('Searching for nearby vendors...');
+      const isProviderRequest = Boolean(firstItem.serviceListingId);
+      toast.loading(isProviderRequest ? 'Sending request to provider...' : 'Searching for nearby vendors...');
 
       // Ensure serviceId is a string (handle populated cart data)
       const serviceId = typeof firstItem.serviceId === 'object'
@@ -618,7 +638,7 @@ const Checkout = () => {
       const bookingResponse = await bookingService.create({
         bookingType, // 'instant' or 'scheduled'
         ...(firstItem.serviceListingId
-          ? { serviceListingId: firstItem.serviceListingId }
+          ? { serviceListingId: firstItem.serviceListingId, catalogItemId: firstItem.catalogItemId || undefined }
           : { serviceId }),
         address: addressObj,
         scheduledDate: finalDate.toISOString(),
@@ -655,6 +675,20 @@ const Checkout = () => {
       const booking = bookingResponse.data;
       setBookingRequest(booking);
       toast.dismiss();
+
+      // Listing / provider-specific: skip nearby search
+      if (isProviderRequest) {
+        try {
+          if (category) await removeCategoryGlobal(category);
+          else await clearCartGlobal();
+          setCartItems([]);
+        } catch (err) {
+          console.error('Failed to clear cart', err);
+        }
+        toast.success('Request sent! Waiting for provider to accept.');
+        navigate(`/user/booking-confirmation/${booking._id || booking.id}`);
+        return;
+      }
 
       // Clear cart immediately as search starts (consumes items) - ONLY if vendors found
       if (!bookingResponse.noVendorsFound) {
@@ -1072,23 +1106,34 @@ const Checkout = () => {
   }, 0);
 
   const savings = totalOriginalPrice - itemTotal;
+  const platformFee = itemTotal === 0 ? 0 : Math.round((itemTotal * platformFeePercent) / 100);
   const taxesAndFee = Math.round((itemTotal * gstPercentage) / 100);
-  // Visited fee logic: if Total is 0 (All free), user might still pay visited fee?
-  // User says "no payemtn". So maybe visited fee also waived? Or user pays visited fee?
-  // "ask direct servicebooking" -> implies fully free.
-  // I'll set visitedFee to 0 if itemTotal is 0?
-  // Configurable?
-  // Assuming "Free under plan" means NO Payment.
   const finalVisitedFee = itemTotal === 0 ? 0 : visitedFee;
 
-  const totalAmount = itemTotal + taxesAndFee + finalVisitedFee;
+  const totalAmount = itemTotal + taxesAndFee + platformFee + finalVisitedFee;
   const amountToPay = totalAmount;
 
-  // Helper for Free Plan Full Breakdown Display
-  // If the booking is free, we still want to show what the Tax/Fee WOULD have been
+  const listingAdvanceConfig = useMemo(() => {
+    if (!isListingBooking || !listing) {
+      return { requireAdvancePayment: false, advancePaymentPercent: 0 };
+    }
+    return resolveAdvancePaymentConfig({
+      settings: { advancePaymentPercent },
+      category: listing.category,
+      listing,
+      catalogItem: catalogItem || null
+    });
+  }, [isListingBooking, listing, catalogItem, advancePaymentPercent]);
+
+  const requiresAdvance = listingAdvanceConfig.requireAdvancePayment;
+  const effectiveAdvancePct = listingAdvanceConfig.advancePaymentPercent;
+  const advanceDue = requiresAdvance ? Math.round((totalAmount * effectiveAdvancePct) / 100) : 0;
+  const balanceDue = requiresAdvance ? Math.max(0, totalAmount - advanceDue) : totalAmount;
+
   const displayTax = totalAmount === 0 ? Math.round((totalOriginalPrice * gstPercentage) / 100) : taxesAndFee;
+  const displayPlatformFee = totalAmount === 0 ? Math.round((totalOriginalPrice * platformFeePercent) / 100) : platformFee;
   const displayFee = totalAmount === 0 ? visitedFee : finalVisitedFee;
-  const displaySavings = totalAmount === 0 ? (totalOriginalPrice + displayTax + displayFee) : savings;
+  const displaySavings = totalAmount === 0 ? (totalOriginalPrice + displayTax + displayPlatformFee + displayFee) : savings;
 
   // Date and time slot helper functions
   const getDates = () => {
@@ -1231,6 +1276,35 @@ const Checkout = () => {
             <div className="bg-white px-3 py-1 rounded-full shadow-sm border border-green-100">
               <span className="text-[10px] font-black text-green-600">BEST PRICE</span>
             </div>
+          </div>
+        )}
+
+        {/* Selected Provider — listing bookings */}
+        {isListingBooking && listing?.provider && (
+          <div className="mb-4 p-4 rounded-2xl border border-primary-100 bg-primary-50/50">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary-600 mb-2">Your selected provider</p>
+            <div className="flex items-center gap-3">
+              {listing.provider.photo ? (
+                <img src={listing.provider.photo} alt="" className="w-12 h-12 rounded-xl object-cover border border-white shadow-sm" />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-primary-200 flex items-center justify-center text-primary-700 font-black">
+                  {(listing.provider.name || 'P').charAt(0)}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-black text-slate-900 truncate">{listing.provider.name}</p>
+                <p className="text-xs text-slate-500">{listing.category?.title || listing.title}</p>
+                {listing.provider.rating && (
+                  <p className="text-xs text-amber-600 font-bold mt-0.5">★ {listing.provider.rating} · {listing.provider.reviews || 0} reviews</p>
+                )}
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-600 mt-3 leading-relaxed">
+              Request goes directly to this provider.
+              {requiresAdvance
+                ? ` After accept, you pay ${effectiveAdvancePct}% advance — rest after service.`
+                : ' Full payment after service completion.'}
+            </p>
           </div>
         )}
 
@@ -1396,6 +1470,14 @@ const Checkout = () => {
               </div>
             )}
 
+            {/* Platform Fee */}
+            {displayPlatformFee > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-500">Platform Fee ({platformFeePercent}%)</span>
+                <span className="text-sm font-medium text-slate-700">₹{displayPlatformFee.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+
             {/* Visited Fee */}
             {displayFee > 0 && (
               <div className="flex justify-between items-center">
@@ -1407,12 +1489,12 @@ const Checkout = () => {
             {/* Divider */}
             <div className="border-t border-slate-200 pt-4 mt-2">
               <div className="flex justify-between items-center">
-                <span className="text-base font-bold text-slate-900">Total Payable</span>
+                <span className="text-base font-bold text-slate-900">Estimated Total</span>
                 <div className="flex flex-col items-end">
                   {totalAmount === 0 ? (
                     <>
                       <span className="text-sm font-medium text-slate-400 line-through">
-                        ₹{Math.round(totalOriginalPrice + displayTax + displayFee).toLocaleString('en-IN')}
+                        ₹{Math.round(totalOriginalPrice + displayTax + displayPlatformFee + displayFee).toLocaleString('en-IN')}
                       </span>
                       <span className="text-xl font-black text-green-600">FREE</span>
                     </>
@@ -1423,6 +1505,21 @@ const Checkout = () => {
                   )}
                 </div>
               </div>
+              {requiresAdvance && totalAmount > 0 && (
+                <div className="mt-3 pt-3 border-t border-dashed border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-blue-600 font-medium">Advance ({effectiveAdvancePct}% after accept)</span>
+                    <span className="font-bold text-blue-600">₹{advanceDue.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-500">Balance (after service)</span>
+                    <span className="font-medium text-slate-700">₹{balanceDue.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              )}
+              {!requiresAdvance && isListingBooking && totalAmount > 0 && (
+                <p className="mt-2 text-xs text-slate-500">Full amount payable after service — no advance for this service.</p>
+              )}
             </div>
           </div>
         </div>
@@ -1450,7 +1547,7 @@ const Checkout = () => {
               <div>
                 <h3 className="text-lg font-bold text-green-800 mb-1">Covered by {planBenefits.name}</h3>
                 <p className="text-sm text-green-700 leading-relaxed font-medium opacity-90">
-                  You save <span className="font-bold">₹{Math.round(totalOriginalPrice + displayTax + displayFee).toLocaleString('en-IN')}</span> on this booking!
+                  You save <span className="font-bold">₹{Math.round(totalOriginalPrice + displayTax + displayPlatformFee + displayFee).toLocaleString('en-IN')}</span> on this booking!
                   Your plan covers all costs.
                 </p>
               </div>
@@ -1496,9 +1593,14 @@ const Checkout = () => {
               <span>📅</span> Slot
             </button>
           </div>
-          {bookingType === 'instant' && (
+          {bookingType === 'instant' && !isListingBooking && (
             <p className="text-xs text-center text-success-600 font-medium mt-1 mb-1">
               <span className="font-bold">⚡ Priority Service:</span> Vendor arrives in ~45 mins
+            </p>
+          )}
+          {isListingBooking && bookingType === 'scheduled' && (
+            <p className="text-xs text-center text-violet-600 font-medium mt-1 mb-1">
+              <span className="font-bold">📅 Scheduled:</span> Request goes to your selected provider at chosen slot
             </p>
           )}
         </div>
@@ -1631,9 +1733,10 @@ const Checkout = () => {
                 (currentStep === 'payment' ? handlePayment : handleSearchVendors) :
                 handleProceed}
           >
-            {searchingVendors ? 'Searching for vendors...' :
+            {searchingVendors ? (isListingBooking ? 'Sending request...' : 'Searching for vendors...') :
               currentStep === 'payment' ? (totalAmount === 0 ? 'Confirm Booking (Free)' : (paymentMethod === 'online' ? 'Proceed to Pay' : 'Confirm Booking')) :
                 plan ? 'Proceed to Payment' :
+                  isListingBooking ? 'Send Request to Provider' :
                   bookingType === 'instant' ? 'Find nearby vendors now' :
                     (selectedDate && selectedTime && houseNumber ?
                       'Find nearby vendors' :

@@ -35,24 +35,47 @@ const createPaymentOrder = async (req, res) => {
       });
     }
 
-    // Check if payment already done
-    if (booking.paymentStatus === PAYMENT_STATUS.SUCCESS) {
+    // Check if payment already done (fully paid)
+    if (booking.paymentPhase === 'fully_paid' && booking.paymentStatus === PAYMENT_STATUS.SUCCESS) {
       return res.status(400).json({
         success: false,
         message: 'Payment already completed for this booking'
       });
     }
 
+    // Determine charge amount: advance vs final balance
+    let chargeAmount = booking.finalAmount;
+    let paymentType = 'full';
+
+    if (booking.status === BOOKING_STATUS.AWAITING_PAYMENT && booking.paymentPhase === 'advance_pending') {
+      chargeAmount = booking.advanceAmount || Math.round(booking.finalAmount * 0.3);
+      paymentType = 'advance';
+    } else if (
+      (booking.status === BOOKING_STATUS.WORK_DONE || booking.paymentPhase === 'final_pending')
+      && booking.paymentPhase !== 'fully_paid'
+    ) {
+      chargeAmount = booking.balanceAmount || booking.userPayableAmount || booking.finalAmount;
+      paymentType = 'final';
+    }
+
+    if (!chargeAmount || chargeAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No payment due for this booking'
+      });
+    }
+
     // Create Razorpay order
-    console.log('Creating Razorpay order with amount:', booking.finalAmount);
+    console.log(`Creating Razorpay order (${paymentType}) with amount:`, chargeAmount);
     const orderResult = await createOrder(
-      booking.finalAmount,
+      chargeAmount,
       'INR',
-      booking.bookingNumber,
+      `${booking.bookingNumber}_${paymentType}`,
       {
         bookingId: booking._id.toString(),
         userId: userId.toString(),
-        bookingNumber: booking.bookingNumber
+        bookingNumber: booking.bookingNumber,
+        paymentType
       }
     );
 
@@ -69,6 +92,7 @@ const createPaymentOrder = async (req, res) => {
 
     // Update booking with Razorpay order ID
     booking.razorpayOrderId = orderResult.orderId;
+    booking.pendingPaymentType = paymentType;
     await booking.save();
 
     res.status(200).json({
@@ -76,7 +100,8 @@ const createPaymentOrder = async (req, res) => {
       message: 'Payment order created successfully',
       data: {
         orderId: orderResult.orderId,
-        amount: orderResult.amount / 100, // Convert back to rupees
+        amount: orderResult.amount / 100,
+        paymentType,
         currency: orderResult.currency,
         key: process.env.RAZORPAY_KEY_ID,
         bookingId: booking._id
@@ -123,19 +148,46 @@ const verifyPaymentWebhook = async (req, res) => {
       });
     }
 
-    // Update booking payment status
-    booking.paymentStatus = PAYMENT_STATUS.SUCCESS;
-    booking.paymentMethod = 'online';
-    booking.razorpayPaymentId = razorpay_payment_id;
-    booking.paymentId = razorpay_payment_id;
+    const paymentType = booking.pendingPaymentType || 'full';
 
-    // Update booking status based on current state
-    if ([BOOKING_STATUS.PENDING, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.AWAITING_PAYMENT].includes(booking.status)) {
+    if (paymentType === 'advance') {
+      booking.paymentStatus = PAYMENT_STATUS.SUCCESS;
+      booking.paymentMethod = 'online';
+      booking.paymentPhase = 'advance_paid';
+      booking.advancePaidAt = new Date();
+      booking.advancePaymentId = razorpay_payment_id;
       booking.status = BOOKING_STATUS.CONFIRMED;
-    } else if (booking.status === BOOKING_STATUS.WORK_DONE) {
+      booking.balanceAmount = Math.max(0, (booking.finalAmount || 0) - (booking.advanceAmount || 0));
+    } else if (paymentType === 'final') {
+      booking.paymentStatus = PAYMENT_STATUS.SUCCESS;
+      booking.paymentMethod = booking.paymentMethod || 'online';
+      booking.paymentPhase = 'fully_paid';
+      booking.razorpayPaymentId = razorpay_payment_id;
+      booking.paymentId = razorpay_payment_id;
       booking.status = BOOKING_STATUS.COMPLETED;
       booking.completedAt = new Date();
+    } else {
+      booking.paymentStatus = PAYMENT_STATUS.SUCCESS;
+      booking.paymentMethod = 'online';
+      booking.razorpayPaymentId = razorpay_payment_id;
+      booking.paymentId = razorpay_payment_id;
+
+      if ([BOOKING_STATUS.PENDING, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.AWAITING_PAYMENT].includes(booking.status)) {
+        booking.status = BOOKING_STATUS.CONFIRMED;
+        booking.paymentPhase = 'advance_paid';
+      } else if (booking.status === BOOKING_STATUS.WORK_DONE) {
+        booking.status = BOOKING_STATUS.COMPLETED;
+        booking.paymentPhase = 'fully_paid';
+        booking.completedAt = new Date();
+      }
     }
+
+    if (paymentType !== 'advance') {
+      booking.razorpayPaymentId = razorpay_payment_id;
+      booking.paymentId = razorpay_payment_id;
+    }
+
+    booking.pendingPaymentType = null;
 
     await booking.save();
 

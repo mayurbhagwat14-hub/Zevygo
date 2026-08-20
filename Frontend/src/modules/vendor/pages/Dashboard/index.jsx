@@ -442,7 +442,7 @@ const Dashboard = memo(() => {
   return (
     <div className="min-h-screen pb-20 relative bg-[#f8fafc]">
       {/* Top right background accent (like in the design) */}
-      <div className="fixed top-0 right-0 w-[80vw] h-[400px] bg-gradient-to-b from-[#e0f7fa] to-transparent rounded-bl-full opacity-60 pointer-events-none z-0" aria-hidden />
+      <div className="fixed top-0 right-0 w-[80vw] h-[400px] bg-gradient-to-b from-[var(--color-primary-50)] to-transparent rounded-bl-full opacity-60 pointer-events-none z-0" aria-hidden />
       
       <div className="relative z-10">
         <Header title="" showBack={false} notificationCount={stats.pendingAlerts} />
@@ -457,7 +457,7 @@ const Dashboard = memo(() => {
             onClick={() => navigate('/vendor/profile')}
           >
             {/* Top Right Curved Gradient */}
-            <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-bl from-[#e0f7fa] to-transparent rounded-full opacity-60 pointer-events-none" aria-hidden />
+            <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-bl from-[var(--color-primary-50)] to-transparent rounded-full opacity-60 pointer-events-none" aria-hidden />
 
             <div className="flex items-center justify-between relative z-10">
               {/* Profile Info (Left) */}
@@ -476,7 +476,7 @@ const Dashboard = memo(() => {
 
               {/* Profile Image & Badge (Right) */}
               <div className="flex flex-col items-center flex-shrink-0 relative">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden border-[3px] border-[#00bfa5] p-0.5 mb-2 shadow-sm relative z-10 bg-white">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden border-[3px] border-[var(--color-primary-600)] p-0.5 mb-2 shadow-sm relative z-10 bg-white">
                   <div className="w-full h-full rounded-full overflow-hidden bg-gray-100">
                     {vendorProfile.photo ? (
                       <img
@@ -490,9 +490,9 @@ const Dashboard = memo(() => {
                   </div>
                 </div>
                 {/* Verified Badge positioned slightly overlapping */}
-                <div className="absolute -bottom-1 flex items-center justify-center gap-1 px-2.5 py-1 bg-[#e6f7f5] rounded-full border border-white shadow-sm z-20 whitespace-nowrap">
-                  <FiCheckCircle className="w-3 h-3 text-[#00bfa5]" />
-                  <span className="text-[9px] font-bold text-[#00bfa5] uppercase tracking-wider">Verified Partner</span>
+                <div className="absolute -bottom-1 flex items-center justify-center gap-1 px-2.5 py-1 bg-[var(--color-primary-50)] rounded-full border border-white shadow-sm z-20 whitespace-nowrap">
+                  <FiCheckCircle className="w-3 h-3 text-[var(--color-primary-600)]" />
+                  <span className="text-[9px] font-bold text-[var(--color-primary-600)] uppercase tracking-wider">Verified Partner</span>
                 </div>
               </div>
             </div>
@@ -577,7 +577,7 @@ const Dashboard = memo(() => {
               <div className="bg-white rounded-[24px] p-4 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.06)] transition-shadow">
                 <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#00bfa5] shadow-sm"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary-600)] shadow-sm"></span>
                     <p className="text-[12px] font-bold text-gray-700">Completed Jobs</p>
                   </div>
                   <p className="text-[28px] font-black text-gray-900 leading-none">{stats.completedJobs}</p>
@@ -585,22 +585,22 @@ const Dashboard = memo(() => {
                 <div className="mt-8 h-16 w-full relative">
                   {/* Simple SVG Line Chart Placeholder matching design */}
                   <svg viewBox="0 0 100 40" className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                    <path d="M0,30 L15,25 L30,28 L45,15 L60,20 L75,10 L90,12 L100,2" fill="none" stroke="#00bfa5" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                    <path d="M0,30 L15,25 L30,28 L45,15 L60,20 L75,10 L90,12 L100,2" fill="none" stroke="var(--color-primary-600)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
                     <path d="M0,30 L15,25 L30,28 L45,15 L60,20 L75,10 L90,12 L100,2 L100,40 L0,40 Z" fill="url(#grad1)" opacity="0.3" />
                     <defs>
                       <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style={{ stopColor: '#00bfa5', stopOpacity: 1 }} />
-                        <stop offset="100%" style={{ stopColor: '#00bfa5', stopOpacity: 0 }} />
+                        <stop offset="0%" style={{ stopColor: 'var(--color-primary-600)', stopOpacity: 1 }} />
+                        <stop offset="100%" style={{ stopColor: 'var(--color-primary-600)', stopOpacity: 0 }} />
                       </linearGradient>
                     </defs>
-                    <circle cx="0" cy="30" r="2.5" fill="#00bfa5" />
-                    <circle cx="15" cy="25" r="2.5" fill="#00bfa5" />
-                    <circle cx="30" cy="28" r="2.5" fill="#00bfa5" />
-                    <circle cx="45" cy="15" r="2.5" fill="#00bfa5" />
-                    <circle cx="60" cy="20" r="2.5" fill="#00bfa5" />
-                    <circle cx="75" cy="10" r="2.5" fill="#00bfa5" />
-                    <circle cx="90" cy="12" r="2.5" fill="#00bfa5" />
-                    <circle cx="100" cy="2" r="2.5" fill="#00bfa5" />
+                    <circle cx="0" cy="30" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="15" cy="25" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="30" cy="28" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="45" cy="15" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="60" cy="20" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="75" cy="10" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="90" cy="12" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="100" cy="2" r="2.5" fill="var(--color-primary-600)" />
                   </svg>
                   <div className="flex justify-between w-full text-[8px] font-bold text-gray-400 mt-2 px-1">
                     <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span>
@@ -612,7 +612,7 @@ const Dashboard = memo(() => {
               <div className="bg-white rounded-[24px] p-4 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.06)] transition-shadow">
                 <div>
                   <div className="flex items-center gap-1.5 mb-3">
-                    <FiStar className="w-3.5 h-3.5 text-[#00bfa5]" fill="#00bfa5" />
+                    <FiStar className="w-3.5 h-3.5 text-[var(--color-primary-600)]" fill="var(--color-primary-600)" />
                     <p className="text-[12px] font-bold text-gray-700">Average Rating</p>
                   </div>
                   <p className="text-[28px] font-black text-gray-900 leading-none">{stats.rating > 0 ? stats.rating.toFixed(1) : '4.3'}</p>
@@ -620,22 +620,22 @@ const Dashboard = memo(() => {
                 <div className="mt-8 h-16 w-full relative">
                   {/* Simple SVG Line Chart Placeholder matching design */}
                   <svg viewBox="0 0 100 40" className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                    <path d="M0,35 L15,25 L30,20 L45,15 L60,12 L75,14 L90,5 L100,2" fill="none" stroke="#00bfa5" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                    <path d="M0,35 L15,25 L30,20 L45,15 L60,12 L75,14 L90,5 L100,2" fill="none" stroke="var(--color-primary-600)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
                     <path d="M0,35 L15,25 L30,20 L45,15 L60,12 L75,14 L90,5 L100,2 L100,40 L0,40 Z" fill="url(#grad2)" opacity="0.3" />
                     <defs>
                       <linearGradient id="grad2" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style={{ stopColor: '#00bfa5', stopOpacity: 1 }} />
-                        <stop offset="100%" style={{ stopColor: '#00bfa5', stopOpacity: 0 }} />
+                        <stop offset="0%" style={{ stopColor: 'var(--color-primary-600)', stopOpacity: 1 }} />
+                        <stop offset="100%" style={{ stopColor: 'var(--color-primary-600)', stopOpacity: 0 }} />
                       </linearGradient>
                     </defs>
-                    <circle cx="0" cy="35" r="2.5" fill="#00bfa5" />
-                    <circle cx="15" cy="25" r="2.5" fill="#00bfa5" />
-                    <circle cx="30" cy="20" r="2.5" fill="#00bfa5" />
-                    <circle cx="45" cy="15" r="2.5" fill="#00bfa5" />
-                    <circle cx="60" cy="12" r="2.5" fill="#00bfa5" />
-                    <circle cx="75" cy="14" r="2.5" fill="#00bfa5" />
-                    <circle cx="90" cy="5" r="2.5" fill="#00bfa5" />
-                    <circle cx="100" cy="2" r="2.5" fill="#00bfa5" />
+                    <circle cx="0" cy="35" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="15" cy="25" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="30" cy="20" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="45" cy="15" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="60" cy="12" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="75" cy="14" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="90" cy="5" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="100" cy="2" r="2.5" fill="var(--color-primary-600)" />
                   </svg>
                   <div className="flex justify-between w-full text-[8px] font-bold text-gray-400 mt-2 px-1">
                     <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span>
@@ -652,7 +652,7 @@ const Dashboard = memo(() => {
               {recentJobs.length > 0 && (
                 <button
                   onClick={() => navigate('/vendor/jobs')}
-                  className="font-bold text-[13px] text-[#00bfa5] hover:text-[#009b86] transition-colors"
+                  className="font-bold text-[13px] text-[var(--color-primary-600)] hover:text-[var(--color-primary-700)] transition-colors"
                 >
                   View All
                 </button>
@@ -669,7 +669,7 @@ const Dashboard = memo(() => {
                   
                   const label = getStatusLabel(job.status);
                   // Match border color based on status or index
-                  const dummyBorderColors = ['#00bfa5', '#ef4444', '#f59e0b', '#0ea5e9'];
+                  const dummyBorderColors = ['var(--color-primary-600)', '#ef4444', '#f59e0b', '#0ea5e9'];
                   const accentColor = statusColors[label] || dummyBorderColors[index % dummyBorderColors.length];
 
                   return (
@@ -687,15 +687,15 @@ const Dashboard = memo(() => {
                       <div className="px-4 py-4 pl-5">
                         <div className="flex items-center gap-4">
                           {/* Profile Image Circle (Left) */}
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 border border-[#b2dfdb] bg-transparent">
-                            <FiUser className="w-5 h-5 text-[#00bfa5]" strokeWidth={1.5} />
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 border border-[var(--color-primary-200)] bg-transparent">
+                            <FiUser className="w-5 h-5 text-[var(--color-primary-600)]" strokeWidth={1.5} />
                           </div>
 
                           {/* Main Content (Middle) */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <p className="text-[14px] font-bold text-gray-900 truncate tracking-tight">{job.customerName}</p>
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#e6f7f5] text-[#00bfa5] tracking-wide border border-[#00bfa5]/20">
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[var(--color-primary-50)] text-[var(--color-primary-600)] tracking-wide border border-[var(--color-primary-600)]/20">
                                 {job.serviceType || 'Service'}
                               </span>
                             </div>
@@ -721,8 +721,8 @@ const Dashboard = memo(() => {
                           </div>
 
                           {/* Navigate Button (Right) */}
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-[#b2dfdb] bg-transparent transition-colors hover:bg-[#e6f7f5]">
-                            <FiChevronRight className="w-5 h-5 text-[#00bfa5]" />
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-[var(--color-primary-200)] bg-transparent transition-colors hover:bg-[var(--color-primary-50)]">
+                            <FiChevronRight className="w-5 h-5 text-[var(--color-primary-600)]" />
                           </div>
                         </div>
                       </div>

@@ -11,9 +11,11 @@ import {
   FiArrowRight,
   FiArrowLeft,
   FiBell,
-  FiXCircle
+  FiXCircle,
+  FiCreditCard
 } from 'react-icons/fi';
 import { bookingService } from '../../../../services/bookingService';
+import { paymentService } from '../../../../services/paymentService';
 import NotificationBell from '../../components/common/NotificationBell';
 import ConfirmDialog from '../../../../components/common/ConfirmDialog';
 import { Button, Badge, Card, Loader } from '../../../../components/ui';
@@ -90,6 +92,16 @@ const BookingConfirmation = () => {
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(!location.state?.noVendorsFound); // Respect passed state
   const [confirmDialog, setConfirmDialog] = useState(false);
+  const [paying, setPaying] = useState(false);
+
+  const applyBookingData = (data) => {
+    const next = { ...data };
+    if (next.paymentMethod === 'plan_benefit') {
+      if (!next.tax) next.tax = (next.basePrice || 0) * 0.18;
+      if (!next.visitingCharges && !next.visitationFee) next.visitingCharges = 49;
+    }
+    return next;
+  };
 
   useEffect(() => {
     const loadBooking = async () => {
@@ -97,17 +109,12 @@ const BookingConfirmation = () => {
         setLoading(true);
         const response = await bookingService.getById(id);
         if (response.success) {
-          const data = { ...response.data };
-          // Calculate notional display values for plan_benefit
-          if (data.paymentMethod === 'plan_benefit') {
-            if (!data.tax) data.tax = (data.basePrice || 0) * 0.18;
-            if (!data.visitingCharges && !data.visitationFee) data.visitingCharges = 49;
-          }
+          const data = applyBookingData(response.data);
           setBooking(data);
 
-          // Check if vendor is already assigned
           const currentStatus = data.status?.toLowerCase();
-          if (data.vendorId || (currentStatus !== 'requested' && currentStatus !== 'searching')) {
+          const isDirectProvider = Boolean(data.serviceListingId);
+          if (isDirectProvider || data.vendorId || (currentStatus !== 'requested' && currentStatus !== 'searching')) {
             setIsSearching(false);
           }
         } else {
@@ -127,37 +134,89 @@ const BookingConfirmation = () => {
     }
   }, [id, navigate]);
 
-  // Poll for vendor acceptance
+  // Poll for vendor acceptance / advance payment status
   useEffect(() => {
-    if (!isSearching || !id) return;
+    if (!id || !booking) return;
+    const status = booking.status?.toLowerCase();
+    const needsPoll =
+      isSearching
+      || status === 'requested'
+      || (status === 'awaiting_payment' && booking.paymentPhase === 'advance_pending');
+
+    if (!needsPoll) return;
 
     const pollInterval = setInterval(async () => {
       try {
         const response = await bookingService.getById(id);
         if (response.success) {
-          const updatedBooking = { ...response.data };
-
-          // Calculate notional display values for plan_benefit
-          if (updatedBooking.paymentMethod === 'plan_benefit') {
-            if (!updatedBooking.tax) updatedBooking.tax = (updatedBooking.basePrice || 0) * 0.18;
-            if (!updatedBooking.visitingCharges && !updatedBooking.visitationFee) updatedBooking.visitingCharges = 49;
-          }
-
+          const updatedBooking = applyBookingData(response.data);
           setBooking(updatedBooking);
-          // If vendor accepted or status changed
           const currentStatus = updatedBooking.status?.toLowerCase();
           if (updatedBooking.vendorId || (currentStatus !== 'requested' && currentStatus !== 'searching')) {
             setIsSearching(false);
+          }
+          if (currentStatus === 'confirmed' || updatedBooking.paymentPhase === 'advance_paid') {
             clearInterval(pollInterval);
           }
         }
       } catch (error) {
         console.error('Polling error:', error);
       }
-    }, 5000); // Poll every 5 seconds
+    }, 5000);
 
     return () => clearInterval(pollInterval);
-  }, [isSearching, id]);
+  }, [isSearching, id, booking?.status, booking?.paymentPhase]);
+
+  const handleAdvancePayment = async () => {
+    if (paying || !booking) return;
+    try {
+      setPaying(true);
+      toast.loading('Creating payment order...');
+      const orderResponse = await paymentService.createOrder(booking._id || booking.id);
+      toast.dismiss();
+
+      if (!orderResponse.success) {
+        toast.error(orderResponse.message || 'Failed to create payment order');
+        setPaying(false);
+        return;
+      }
+
+      const options = {
+        key: orderResponse.data.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: Math.round((orderResponse.data.amount || booking.advanceAmount || 0) * 100),
+        currency: 'INR',
+        order_id: orderResponse.data.orderId,
+        name: 'Zevygo',
+        description: `Advance payment — ${booking.serviceName || 'Service'}`,
+        handler: async (response) => {
+          toast.loading('Verifying payment...');
+          const verifyResponse = await paymentService.verifyPayment({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature
+          });
+          toast.dismiss();
+          if (verifyResponse.success) {
+            toast.success('Advance payment successful!');
+            const refreshed = await bookingService.getById(booking._id || booking.id);
+            if (refreshed.success) setBooking(applyBookingData(refreshed.data));
+          } else {
+            toast.error('Payment verification failed');
+          }
+          setPaying(false);
+        },
+        modal: { ondismiss: () => setPaying(false) },
+        theme: { color: colors.primary[600] }
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      toast.dismiss();
+      toast.error('Failed to process payment');
+      setPaying(false);
+    }
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -197,9 +256,16 @@ const BookingConfirmation = () => {
     );
   }
 
-  const handleViewDetails = () => {
-    navigate(`/user/booking/${booking._id || booking.id}`);
-  };
+  const bookingStatus = booking.status?.toLowerCase();
+  const isListingBooking = Boolean(booking.serviceListingId);
+  const needsAdvancePayment =
+    bookingStatus === 'awaiting_payment'
+    && booking.paymentPhase === 'advance_pending'
+    && booking.requireAdvancePayment !== false
+    && (booking.advanceAmount > 0);
+  const isConfirmed =
+    ['confirmed', 'assigned', 'journey_started', 'work_in_progress', 'visited', 'work_done', 'completed'].includes(bookingStatus)
+    && !needsAdvancePayment;
 
   const handleGoHome = () => {
     navigate('/user', { replace: true });
@@ -243,34 +309,54 @@ const BookingConfirmation = () => {
             </div>
           )}
 
-          {/* Success Icon - Show when confirmed */}
-          {!isSearching && ['confirmed', 'assigned', 'journey_started', 'work_in_progress', 'visited', 'work_done', 'completed'].includes(booking?.status?.toLowerCase()) && (
+          {/* Success Icon - Show when confirmed (advance paid) */}
+          {!isSearching && isConfirmed && (
             <div className="flex flex-col items-center justify-center mb-6">
               <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-4">
                 <FiCheckCircle className="w-12 h-12 text-green-600" />
               </div>
               <h1 className="text-2xl font-bold text-black mb-2">Booking Confirmed!</h1>
               <p className="text-sm text-gray-600 text-center">
-                Your booking has been confirmed. We'll send you updates via SMS.
+                {booking.paymentPhase === 'advance_paid'
+                  ? 'Advance paid. Your provider will start the service as scheduled.'
+                  : "Your booking has been confirmed. We'll send you updates via SMS."}
               </p>
             </div>
           )}
 
-          {/* Request Sent Icon - Show when status is requested but searching animation is stopped */}
-          {!isSearching && booking?.status?.toLowerCase() === 'requested' && (
+          {/* Advance Payment Required */}
+          {!isSearching && needsAdvancePayment && (
+            <div className="flex flex-col items-center justify-center mb-6">
+              <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-4 border border-blue-100">
+                <FiCreditCard className="w-10 h-10 text-blue-600" />
+              </div>
+              <h1 className="text-2xl font-black text-gray-900 mb-2">Provider Accepted!</h1>
+              <p className="text-sm text-gray-500 text-center max-w-[280px] font-medium leading-relaxed mb-1">
+                Pay advance to confirm your booking. Remaining amount after service completion.
+              </p>
+              <p className="text-2xl font-black text-primary-600">
+                ₹{(booking.advanceAmount || 0).toLocaleString('en-IN')}
+              </p>
+            </div>
+          )}
+
+          {/* Request Sent Icon */}
+          {!isSearching && bookingStatus === 'requested' && (
             <div className="flex flex-col items-center justify-center mb-6">
               <div className="w-20 h-20 rounded-full bg-amber-50 flex items-center justify-center mb-4 border border-amber-100 shadow-sm">
                 <FiBell className="w-10 h-10 text-amber-500 animate-pulse" />
               </div>
               <h1 className="text-2xl font-black text-gray-900 mb-2 italic tracking-tight">REQUEST SENT!</h1>
               <p className="text-sm text-gray-500 text-center max-w-[260px] font-medium leading-relaxed">
-                Your request has been broadcasted to all nearby experts. We'll notify you the moment someone accepts.
+                {isListingBooking
+                  ? 'Your request was sent to the selected provider. We\'ll notify you when they accept.'
+                  : 'Your request has been broadcasted to nearby experts. We\'ll notify you the moment someone accepts.'}
               </p>
             </div>
           )}
 
-          {/* Failure Icon - Show when expired/cancelled/rejected */}
-          {!isSearching && ['expired', 'cancelled', 'rejected', 'failed', 'timeout'].includes(booking?.status?.toLowerCase()) && (
+          {/* Failure Icon */}
+          {!isSearching && ['expired', 'cancelled', 'rejected', 'failed', 'timeout'].includes(bookingStatus) && (
             <div className="flex flex-col items-center justify-center mb-6">
               <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mb-4">
                 <FiXCircle className="w-12 h-12 text-red-600" />
@@ -472,13 +558,29 @@ const BookingConfirmation = () => {
               )}
 
               {/* Total */}
-              <div className="border-t border-slate-200 pt-4 mt-2">
+              <div className="border-t border-slate-200 pt-4 mt-2 space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-base font-bold text-slate-900">Total Paid</span>
+                  <span className="text-base font-bold text-slate-900">Estimated Total</span>
                   <span className="text-xl font-black text-slate-900">
                     ₹{(booking.paymentMethod === 'plan_benefit' ? 0 : (booking.finalAmount || booking.totalAmount || 0)).toLocaleString('en-IN')}
                   </span>
                 </div>
+                {(booking.requireAdvancePayment && (booking.advanceAmount > 0 || booking.balanceAmount > 0)) && booking.paymentMethod !== 'plan_benefit' && (
+                  <>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-blue-600 font-medium">
+                        Advance {booking.paymentPhase === 'advance_paid' ? '(Paid ✓)' : '(Due now)'}
+                      </span>
+                      <span className={`font-bold ${booking.paymentPhase === 'advance_paid' ? 'text-green-600' : 'text-blue-600'}`}>
+                        ₹{(booking.advanceAmount || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500">Balance (after service)</span>
+                      <span className="font-medium text-slate-700">₹{(booking.balanceAmount || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -500,7 +602,20 @@ const BookingConfirmation = () => {
 
           {/* Action Buttons */}
           <div className="space-y-3">
-            {isSearching && (
+            {needsAdvancePayment && (
+              <Button
+                variant="primary"
+                fullWidth
+                size="xl"
+                icon={FiCreditCard}
+                onClick={handleAdvancePayment}
+                disabled={paying}
+              >
+                {paying ? 'Processing...' : `Pay Advance — ₹${(booking.advanceAmount || 0).toLocaleString('en-IN')}`}
+              </Button>
+            )}
+
+            {(isSearching || bookingStatus === 'requested') && !isListingBooking && (
               <Button
                 variant="outline"
                 fullWidth
@@ -518,9 +633,9 @@ const BookingConfirmation = () => {
               size="xl"
               icon={FiArrowRight}
               iconPosition="right"
-              onClick={handleViewDetails}
+              onClick={() => navigate(`/user/booking/${booking._id || booking.id}/track`)}
             >
-              View Full Details
+              {isConfirmed ? 'Track Service' : 'View Full Details'}
             </Button>
             <Button variant="outline" fullWidth size="xl" onClick={handleGoHome}>
               Back to Home

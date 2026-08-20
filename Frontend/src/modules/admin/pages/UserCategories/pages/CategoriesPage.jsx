@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FiGrid, FiPlus, FiEdit2, FiTrash2, FiSave, FiChevronUp, FiChevronDown, FiMove, FiX, FiSliders } from "react-icons/fi";
+import { FiGrid, FiPlus, FiEdit2, FiTrash2, FiSave, FiChevronUp, FiChevronDown, FiMove, FiX, FiSliders, FiList } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import CardShell from "../components/CardShell";
 import Modal from "../components/Modal";
 import ModeSelector from "../components/ModeSelector";
 import VendorFormBuilderModal from "../components/VendorFormBuilderModal";
+import ListingFormSetupModal from "../components/ListingFormSetupModal";
 import { ensureIds, saveCatalog, slugify, toAssetUrl } from "../utils";
 
 import { categoryService, serviceService } from "../../../../../services/catalogService";
@@ -32,11 +33,15 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
     homeBadge: "",
     hasSaleBadge: false,
     showOnHome: true,
+    pricingLimits: { minPrice: '', maxPrice: '' },
+    paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' }
   });
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
   const [formBuilderCategory, setFormBuilderCategory] = useState(null);
+  const [listingSetupCategory, setListingSetupCategory] = useState(null);
+  const [catalogSchemaCategory, setCatalogSchemaCategory] = useState(null);
 
   const categories = (catalog.categories || []).sort((a, b) => (a.homeOrder || 0) - (b.homeOrder || 0));
   const editing = useMemo(() => categories.find((c) => c.id === editingId) || null, [categories, editingId]);
@@ -67,6 +72,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
             homeBadge: cat.homeBadge || "",
             hasSaleBadge: cat.hasSaleBadge || false,
             showOnHome: cat.showOnHome !== false,
+            pricingLimits: cat.pricingLimits || { minPrice: '', maxPrice: '' },
+            paymentConfig: cat.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: '' },
           }));
 
           // Update catalog with fetched categories
@@ -94,6 +101,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         homeBadge: "",
         hasSaleBadge: false,
         showOnHome: true,
+        pricingLimits: { minPrice: '', maxPrice: '' },
+        paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' }
       });
       return;
     }
@@ -105,6 +114,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       homeBadge: safe.homeBadge || "",
       hasSaleBadge: Boolean(safe.hasSaleBadge),
       showOnHome: safe.showOnHome !== false,
+      pricingLimits: safe.pricingLimits || { minPrice: '', maxPrice: '' },
+      paymentConfig: safe.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: '' },
     });
   }, [editing]);
 
@@ -119,6 +130,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       homeBadge: "",
       hasSaleBadge: false,
       showOnHome: true,
+      pricingLimits: { minPrice: '', maxPrice: '' },
+      paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' }
     });
     setIsModalOpen(false);
   };
@@ -172,6 +185,16 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         hasSaleBadge,
         showOnHome,
         homeOrder,
+        pricingLimits: {
+          minPrice: form.pricingLimits.minPrice ? Number(form.pricingLimits.minPrice) : 0,
+          maxPrice: form.pricingLimits.maxPrice ? Number(form.pricingLimits.maxPrice) : 999999
+        },
+        paymentConfig: {
+          requireAdvancePayment: Boolean(form.paymentConfig?.requireAdvancePayment),
+          advancePaymentPercent: form.paymentConfig?.requireAdvancePayment
+            ? Math.min(100, Math.max(0, Number(form.paymentConfig.advancePaymentPercent || 0)))
+            : 0
+        },
         cityIds: selectedCity ? [selectedCity] : [],
       };
 
@@ -205,6 +228,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
             hasSaleBadge: response.category.hasSaleBadge || false,
             showOnHome: response.category.showOnHome !== false,
             homeOrder: response.category.homeOrder || 0,
+            pricingLimits: response.category.pricingLimits || { minPrice: 0, maxPrice: 999999 },
           };
         } else {
           throw new Error(response.message || 'Failed to create category');
@@ -222,6 +246,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
             hasSaleBadge: response.category.hasSaleBadge || false,
             showOnHome: response.category.showOnHome !== false,
             homeOrder: response.category.homeOrder || 0,
+            pricingLimits: response.category.pricingLimits || { minPrice: 0, maxPrice: 999999 },
           };
         } else {
           throw new Error(response.message || 'Failed to update category');
@@ -239,6 +264,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
             hasSaleBadge: response.category.hasSaleBadge || false,
             showOnHome: response.category.showOnHome !== false,
             homeOrder: response.category.homeOrder || 0,
+            pricingLimits: response.category.pricingLimits || { minPrice: 0, maxPrice: 999999 },
           };
         } else {
           throw new Error(response.message || 'Failed to create category');
@@ -535,11 +561,25 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                     <td className="py-4 px-4">
                       <div className="flex items-center justify-center gap-2">
                         <button
+                          onClick={() => setListingSetupCategory(c)}
+                          className="p-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                          title="Setup listing forms (all vendor steps)"
+                        >
+                          <FiGrid className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => setFormBuilderCategory(c)}
                           className="p-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
-                          title="Manage Vendor Form Fields (vendorFormSchema)"
+                          title="Quick edit: Service Details fields"
                         >
                           <FiSliders className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setCatalogSchemaCategory(c)}
+                          className="p-2 rounded-lg bg-fuchsia-50 text-fuchsia-600 hover:bg-fuchsia-100 transition-colors"
+                          title="Manage Catalog Item Fields (catalogItemSchema)"
+                        >
+                          <FiList className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => {
@@ -666,6 +706,72 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
             </label>
           </div>
 
+          <div className="pt-4 border-t border-gray-100">
+            <h4 className="text-sm font-bold text-gray-900 mb-3">Service Pricing Limits</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Minimum Price (₹)</label>
+                <input
+                  type="number"
+                  value={form.pricingLimits?.minPrice || ''}
+                  onChange={(e) => setForm((p) => ({ ...p, pricingLimits: { ...p.pricingLimits, minPrice: e.target.value } }))}
+                  placeholder="e.g. 100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Maximum Price (₹)</label>
+                <input
+                  type="number"
+                  value={form.pricingLimits?.maxPrice || ''}
+                  onChange={(e) => setForm((p) => ({ ...p, pricingLimits: { ...p.pricingLimits, maxPrice: e.target.value } }))}
+                  placeholder="e.g. 5000"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Vendors will not be able to set a base price outside these limits.</p>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100">
+            <h4 className="text-sm font-bold text-gray-900 mb-1">Advance Payment (this category only)</h4>
+            <p className="text-xs text-gray-500 mb-3">Enable only for services that need advance. Others pay full amount after service.</p>
+            <label className="flex items-center gap-2 mb-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(form.paymentConfig?.requireAdvancePayment)}
+                onChange={(e) => setForm((p) => ({
+                  ...p,
+                  paymentConfig: {
+                    ...p.paymentConfig,
+                    requireAdvancePayment: e.target.checked,
+                    advancePaymentPercent: e.target.checked ? (p.paymentConfig?.advancePaymentPercent || '30') : ''
+                  }
+                }))}
+                className="h-4 w-4"
+              />
+              <span className="text-sm font-semibold text-gray-800">Require advance payment after vendor accepts</span>
+            </label>
+            {form.paymentConfig?.requireAdvancePayment && (
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Advance % of total</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={form.paymentConfig?.advancePaymentPercent ?? ''}
+                  onChange={(e) => setForm((p) => ({
+                    ...p,
+                    paymentConfig: { ...p.paymentConfig, advancePaymentPercent: e.target.value }
+                  }))}
+                  placeholder="e.g. 30"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Leave empty to use global default from Settings.</p>
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-3 pt-4">
             <button
               onClick={upsert}
@@ -748,14 +854,34 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         </div>
       </Modal>
 
+      <ListingFormSetupModal
+        isOpen={Boolean(listingSetupCategory)}
+        onClose={() => setListingSetupCategory(null)}
+        category={listingSetupCategory}
+      />
+
       <VendorFormBuilderModal
         isOpen={Boolean(formBuilderCategory)}
         onClose={() => setFormBuilderCategory(null)}
         category={formBuilderCategory}
+        targetSchema="vendorFormSchema"
         onSaveSuccess={(updatedCat) => {
           setCatalog(prev => ({
             ...prev,
             categories: (prev.categories || []).map(c => c.id === updatedCat.id ? { ...c, vendorFormSchema: updatedCat.vendorFormSchema } : c)
+          }));
+        }}
+      />
+
+      <VendorFormBuilderModal
+        isOpen={Boolean(catalogSchemaCategory)}
+        onClose={() => setCatalogSchemaCategory(null)}
+        category={catalogSchemaCategory}
+        targetSchema="catalogItemSchema"
+        onSaveSuccess={(updatedCat) => {
+          setCatalog(prev => ({
+            ...prev,
+            categories: (prev.categories || []).map(c => c.id === updatedCat.id ? { ...c, catalogItemSchema: updatedCat.catalogItemSchema } : c)
           }));
         }}
       />

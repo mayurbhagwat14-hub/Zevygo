@@ -77,12 +77,18 @@ const PendingJobCard = ({ booking, onAccept, onReject, onClick, loadingAction, s
       {/* Urgency header */}
       {showTimer && (
         <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-100 flex justify-between items-center">
-          <span className={`text-[10px] font-bold uppercase tracking-wide flex items-center gap-1 ${booking.bookingType === 'instant' ? 'text-red-500 animate-pulse' : 'text-gray-500'}`}>
-            {booking.bookingType === 'instant' && <span className="text-sm">⚡</span>}
-            {booking.bookingType === 'instant' ? 'INSTANT' : 'NEW REQUEST'}
+          <span className={`text-[10px] font-bold uppercase tracking-wide flex items-center gap-1 ${
+            booking.bookingType === 'instant' ? 'text-red-500 animate-pulse' : 'text-violet-600'
+          }`}>
+            {booking.serviceListingId ? '🎯 Direct • ' : ''}
+            {booking.bookingType === 'instant' ? '⚡ Instant' : '📅 Scheduled'}
           </span>
           <CountdownTimer
-            durationSeconds={maxSearchTimeMins * 60}
+            durationSeconds={
+              booking.serviceListingId || booking.isDirectRequest
+                ? 60 * 60
+                : maxSearchTimeMins * 60
+            }
             createdAt={booking.createdAt}
             expiresAt={booking.expiresAt}
             onExpire={() => {
@@ -156,6 +162,15 @@ const PendingJobCard = ({ booking, onAccept, onReject, onClick, loadingAction, s
         </div>
         <div className="flex gap-2 mt-3">
           <button
+            type="button"
+            disabled={!!loadingAction}
+            onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
+            className="flex-1 bg-slate-100 text-slate-700 py-2 px-3 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-colors disabled:opacity-50"
+          >
+            View Details
+          </button>
+          <button
+            type="button"
             disabled={!!loadingAction}
             onClick={(e) => onAccept(e, booking)}
             className="flex-1 bg-green-500 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
@@ -163,11 +178,12 @@ const PendingJobCard = ({ booking, onAccept, onReject, onClick, loadingAction, s
             {loadingAction === 'accept' ? 'Accepting...' : 'Accept'}
           </button>
           <button
+            type="button"
             disabled={!!loadingAction}
             onClick={(e) => onReject(e, booking)}
             className="flex-1 bg-red-500 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
           >
-            {loadingAction === 'reject' ? 'Rejecting...' : 'Reject'}
+            {loadingAction === 'reject' ? '...' : 'Decline'}
           </button>
         </div>
       </div>

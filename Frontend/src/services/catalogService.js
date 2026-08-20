@@ -62,6 +62,17 @@ export const categoryService = {
   updateFormSchema: async (id, data) => {
     const response = await api.put(`/admin/categories/${id}/form-schema`, data);
     return response.data;
+  },
+
+  // Common listing forms (apply to all categories)
+  getCommonListingForms: async () => {
+    const response = await api.get('/admin/settings/common-listing-forms');
+    return response.data;
+  },
+
+  updateCommonListingForms: async (forms) => {
+    const response = await api.put('/admin/settings/common-listing-forms', { commonListingForms: forms });
+    return response.data;
   }
 };
 

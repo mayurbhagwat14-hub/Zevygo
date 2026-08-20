@@ -44,16 +44,39 @@ const getAllVendors = async (req, res) => {
     // Get vendors
     const vendors = await Vendor.find(query)
       .select('-password')
+      .populate('categoryEnrollments.categoryId', 'title')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
+
+    const formattedVendors = vendors.map(v => {
+      const vendorObj = v.toObject();
+      
+      // Fallback for businessName
+      if (!vendorObj.businessName && vendorObj.businessDetails?.businessName) {
+        vendorObj.businessName = vendorObj.businessDetails.businessName;
+      }
+
+      // Map categoryEnrollments to serviceDetails for frontend
+      if (vendorObj.categoryEnrollments && vendorObj.categoryEnrollments.length > 0) {
+        vendorObj.serviceDetails = {};
+        vendorObj.categoryEnrollments.forEach(enrollment => {
+          const catTitle = enrollment.categoryId?.title || 'Unknown Category';
+          if (enrollment.dynamicAnswers && Object.keys(enrollment.dynamicAnswers).length > 0) {
+            vendorObj.serviceDetails[catTitle] = enrollment.dynamicAnswers;
+          }
+        });
+      }
+      
+      return vendorObj;
+    });
 
     // Get total count
     const total = await Vendor.countDocuments(query);
 
     res.status(200).json({
       success: true,
-      data: vendors,
+      data: formattedVendors,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),

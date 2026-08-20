@@ -1,6 +1,6 @@
 import React, { useState, useEffect, memo, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiBriefcase, FiUser } from 'react-icons/fi';
+import { FiHome, FiBriefcase, FiUser, FiLayers } from 'react-icons/fi';
 import { HiHome, HiBriefcase, HiUser } from 'react-icons/hi';
 import { FaWallet } from 'react-icons/fa';
 
@@ -12,9 +12,12 @@ const BottomNav = memo(() => {
   useEffect(() => {
     const updatePendingCount = () => {
       try {
-        const acceptedBookings = JSON.parse(localStorage.getItem('vendorAcceptedBookings') || '[]');
-        const activeJobs = acceptedBookings.filter((job) => job.status === 'PENDING');
-        setPendingJobsCount(activeJobs.length);
+        const pending = JSON.parse(localStorage.getItem('vendorPendingJobs') || '[]');
+        const active = pending.filter((j) => {
+          const s = (j.status || '').toLowerCase();
+          return s === 'requested' || s === 'searching';
+        });
+        setPendingJobsCount(active.length);
       } catch {
         setPendingJobsCount(0);
       }
@@ -33,6 +36,7 @@ const BottomNav = memo(() => {
     () => [
       { path: '/vendor/dashboard', icon: FiHome, activeIcon: HiHome, label: 'Home' },
       { path: '/vendor/jobs', icon: FiBriefcase, activeIcon: HiBriefcase, label: 'Jobs', badge: pendingJobsCount },
+      { path: '/vendor/my-services', icon: FiLayers, activeIcon: FiLayers, label: 'Services' },
       { path: '/vendor/wallet', icon: FaWallet, activeIcon: FaWallet, label: 'Wallet' },
       { path: '/vendor/profile', icon: FiUser, activeIcon: HiUser, label: 'Profile' },
     ],

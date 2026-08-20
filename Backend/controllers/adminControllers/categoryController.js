@@ -1,4 +1,5 @@
 const Category = require('../../models/Category');
+const Settings = require('../../models/Settings');
 const { validationResult } = require('express-validator');
 const { SERVICE_STATUS } = require('../../utils/constants');
 
@@ -49,6 +50,10 @@ const getAllCategories = async (req, res) => {
         allowMultiSelect: Boolean(cat.allowMultiSelect),
         formSchema: cat.formSchema || [],
         vendorFormSchema: cat.vendorFormSchema || [],
+        catalogItemSchema: cat.catalogItemSchema || [],
+        listingForms: cat.listingForms || [],
+        pricingLimits: cat.pricingLimits || { minPrice: 0, maxPrice: 999999 },
+        paymentConfig: cat.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: 0 },
         metaTitle: cat.metaTitle,
         metaDescription: cat.metaDescription,
         createdAt: cat.createdAt,
@@ -99,6 +104,10 @@ const getCategoryById = async (req, res) => {
         supportedBookingTypes: category.supportedBookingTypes || ['scheduled'],
         allowMultiSelect: Boolean(category.allowMultiSelect),
         formSchema: category.formSchema || [],
+        vendorFormSchema: category.vendorFormSchema || [],
+        catalogItemSchema: category.catalogItemSchema || [],
+        pricingLimits: category.pricingLimits || { minPrice: 0, maxPrice: 999999 },
+        paymentConfig: category.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: 0 },
         metaTitle: category.metaTitle,
         metaDescription: category.metaDescription,
         createdAt: category.createdAt,
@@ -142,6 +151,8 @@ const createCategory = async (req, res) => {
       imageUrl,
       status,
       isPopular,
+      pricingLimits,
+      paymentConfig,
       metaTitle,
       metaDescription,
       cityIds
@@ -204,6 +215,14 @@ const createCategory = async (req, res) => {
       imageUrl: imageUrl || null,
       status: status || SERVICE_STATUS.ACTIVE,
       isPopular: Boolean(isPopular),
+      pricingLimits: {
+        minPrice: pricingLimits?.minPrice ? Number(pricingLimits.minPrice) : 0,
+        maxPrice: pricingLimits?.maxPrice ? Number(pricingLimits.maxPrice) : 999999
+      },
+      paymentConfig: {
+        requireAdvancePayment: Boolean(paymentConfig?.requireAdvancePayment),
+        advancePaymentPercent: Math.min(100, Math.max(0, Number(paymentConfig?.advancePaymentPercent ?? 0)))
+      },
       metaTitle: metaTitle?.trim() || null,
       metaDescription: metaDescription?.trim() || null,
       cityIds: cityIds || [],
@@ -226,6 +245,7 @@ const createCategory = async (req, res) => {
         imageUrl: category.imageUrl,
         status: category.status,
         isPopular: category.isPopular,
+        pricingLimits: category.pricingLimits,
         createdAt: category.createdAt,
         updatedAt: category.updatedAt
       }
@@ -276,6 +296,8 @@ const updateCategory = async (req, res) => {
       imageUrl,
       status,
       isPopular,
+      pricingLimits,
+      paymentConfig,
       metaTitle,
       metaDescription,
       cityIds: updateCityIds
@@ -336,6 +358,22 @@ const updateCategory = async (req, res) => {
     if (imageUrl !== undefined) category.imageUrl = imageUrl || null;
     if (status !== undefined) category.status = status;
     if (isPopular !== undefined) category.isPopular = Boolean(isPopular);
+    if (pricingLimits !== undefined) {
+      category.pricingLimits = {
+        minPrice: pricingLimits.minPrice !== undefined ? Number(pricingLimits.minPrice) : category.pricingLimits?.minPrice || 0,
+        maxPrice: pricingLimits.maxPrice !== undefined ? Number(pricingLimits.maxPrice) : category.pricingLimits?.maxPrice || 999999
+      };
+    }
+    if (paymentConfig !== undefined) {
+      category.paymentConfig = {
+        requireAdvancePayment: paymentConfig.requireAdvancePayment !== undefined
+          ? Boolean(paymentConfig.requireAdvancePayment)
+          : category.paymentConfig?.requireAdvancePayment || false,
+        advancePaymentPercent: paymentConfig.advancePaymentPercent !== undefined
+          ? Math.min(100, Math.max(0, Number(paymentConfig.advancePaymentPercent)))
+          : category.paymentConfig?.advancePaymentPercent || 0
+      };
+    }
     if (metaTitle !== undefined) category.metaTitle = metaTitle?.trim() || null;
     if (metaDescription !== undefined) category.metaDescription = metaDescription?.trim() || null;
 
@@ -362,6 +400,7 @@ const updateCategory = async (req, res) => {
         imageUrl: category.imageUrl,
         status: category.status,
         isPopular: category.isPopular,
+        pricingLimits: category.pricingLimits,
         createdAt: category.createdAt,
         updatedAt: category.updatedAt
       }
@@ -471,7 +510,7 @@ const updateCategoryOrder = async (req, res) => {
 const getCategoryFormSchema = async (req, res) => {
   try {
     const { id } = req.params;
-    const category = await Category.findById(id).select('title slug supportedBookingTypes bookingMode defaultPricingModel formSchema vendorFormSchema allowMultiSelect');
+    const category = await Category.findById(id).select('title slug supportedBookingTypes bookingMode defaultPricingModel formSchema vendorFormSchema catalogItemSchema pricingFormSchema availabilityFormSchema serviceAreaFormSchema bookingRulesFormSchema documentsFormSchema listingSectionConfig listingForms allowMultiSelect');
 
     if (!category) {
       return res.status(404).json({
@@ -479,6 +518,11 @@ const getCategoryFormSchema = async (req, res) => {
         message: 'Category not found'
       });
     }
+
+    const settingsDoc = await Settings.findOne({ type: 'global' }).select('commonListingForms').lean();
+    const commonListingForms = (settingsDoc?.commonListingForms || [])
+      .filter((f) => f && f.enabled !== false)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     res.status(200).json({
       success: true,
@@ -490,7 +534,16 @@ const getCategoryFormSchema = async (req, res) => {
       defaultPricingModel: category.defaultPricingModel || 'FIXED',
       allowMultiSelect: Boolean(category.allowMultiSelect),
       formSchema: category.formSchema || [],
-      vendorFormSchema: category.vendorFormSchema || []
+      vendorFormSchema: category.vendorFormSchema || [],
+      catalogItemSchema: category.catalogItemSchema || [],
+      pricingFormSchema: category.pricingFormSchema || [],
+      availabilityFormSchema: category.availabilityFormSchema || [],
+      serviceAreaFormSchema: category.serviceAreaFormSchema || [],
+      bookingRulesFormSchema: category.bookingRulesFormSchema || [],
+      documentsFormSchema: category.documentsFormSchema || [],
+      listingSectionConfig: category.listingSectionConfig || {},
+      listingForms: category.listingForms || [],
+      commonListingForms
     });
   } catch (error) {
     console.error('Get category form schema error:', error);
@@ -508,7 +561,13 @@ const getCategoryFormSchema = async (req, res) => {
 const updateCategoryFormSchema = async (req, res) => {
   try {
     const { id } = req.params;
-    const { supportedBookingTypes, bookingMode, defaultPricingModel, allowMultiSelect, formSchema, vendorFormSchema } = req.body;
+    const {
+      supportedBookingTypes, bookingMode, defaultPricingModel, allowMultiSelect,
+      formSchema, vendorFormSchema, catalogItemSchema,
+      pricingFormSchema, availabilityFormSchema, serviceAreaFormSchema,
+      bookingRulesFormSchema, documentsFormSchema, listingSectionConfig,
+      listingForms
+    } = req.body;
 
     const category = await Category.findById(id);
 
@@ -556,6 +615,55 @@ const updateCategoryFormSchema = async (req, res) => {
       category.vendorFormSchema = vendorFormSchema;
     }
 
+    if (catalogItemSchema !== undefined) {
+      if (!Array.isArray(catalogItemSchema)) {
+        return res.status(400).json({
+          success: false,
+          message: 'catalogItemSchema must be an array'
+        });
+      }
+      category.catalogItemSchema = catalogItemSchema;
+    }
+
+    const schemaArrays = {
+      pricingFormSchema,
+      availabilityFormSchema,
+      serviceAreaFormSchema,
+      bookingRulesFormSchema,
+      documentsFormSchema
+    };
+    for (const [key, value] of Object.entries(schemaArrays)) {
+      if (value === undefined) continue;
+      if (!Array.isArray(value)) {
+        return res.status(400).json({ success: false, message: `${key} must be an array` });
+      }
+      category[key] = value;
+    }
+
+    if (listingSectionConfig !== undefined) {
+      category.listingSectionConfig = {
+        ...(category.listingSectionConfig?.toObject?.() || category.listingSectionConfig || {}),
+        ...listingSectionConfig
+      };
+      category.markModified('listingSectionConfig');
+    }
+
+    if (listingForms !== undefined) {
+      if (!Array.isArray(listingForms)) {
+        return res.status(400).json({ success: false, message: 'listingForms must be an array' });
+      }
+      category.listingForms = listingForms.map((f, idx) => ({
+        id: String(f.id || `form_${Date.now()}_${idx}`),
+        key: String(f.key || f.title || `form_${idx}`).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''),
+        title: String(f.title || 'Untitled Form').trim(),
+        type: ['fields', 'menu', 'photos'].includes(f.type) ? f.type : 'fields',
+        enabled: f.enabled !== false,
+        order: Number.isFinite(Number(f.order)) ? Number(f.order) : idx,
+        fields: Array.isArray(f.fields) ? f.fields : []
+      }));
+      category.markModified('listingForms');
+    }
+
     await category.save();
 
     // Broadcast real-time socket event so vendor form updates instantly
@@ -566,7 +674,11 @@ const updateCategoryFormSchema = async (req, res) => {
         io.emit('category_schema_updated', {
           categoryId: category._id.toString(),
           title: category.title,
-          vendorFormSchema: category.vendorFormSchema
+          vendorFormSchema: category.vendorFormSchema,
+          catalogItemSchema: category.catalogItemSchema,
+          pricingFormSchema: category.pricingFormSchema,
+          listingSectionConfig: category.listingSectionConfig,
+          listingForms: category.listingForms
         });
       }
     } catch (sErr) {
@@ -584,7 +696,15 @@ const updateCategoryFormSchema = async (req, res) => {
         defaultPricingModel: category.defaultPricingModel,
         allowMultiSelect: category.allowMultiSelect,
         formSchema: category.formSchema,
-        vendorFormSchema: category.vendorFormSchema
+        vendorFormSchema: category.vendorFormSchema,
+        catalogItemSchema: category.catalogItemSchema,
+        pricingFormSchema: category.pricingFormSchema,
+        availabilityFormSchema: category.availabilityFormSchema,
+        serviceAreaFormSchema: category.serviceAreaFormSchema,
+        bookingRulesFormSchema: category.bookingRulesFormSchema,
+        documentsFormSchema: category.documentsFormSchema,
+        listingSectionConfig: category.listingSectionConfig,
+        listingForms: category.listingForms
       }
     });
   } catch (error) {

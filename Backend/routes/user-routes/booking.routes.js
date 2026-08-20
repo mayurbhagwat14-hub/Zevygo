@@ -16,6 +16,7 @@ const {
 // Validation rules
 const createBookingValidation = [
   body('serviceListingId').optional().isMongoId().withMessage('Valid listing ID is required'),
+  body('catalogItemId').optional().isString().trim().notEmpty().withMessage('Valid menu item ID is required'),
   body('serviceId').optional().custom((value) => {
     if (value && typeof value === 'object' && value._id) return true;
     if (value && !/^[0-9a-fA-F]{24}$/.test(value)) {

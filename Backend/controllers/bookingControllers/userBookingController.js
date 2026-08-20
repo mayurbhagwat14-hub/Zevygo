@@ -13,6 +13,9 @@ const { createNotification } = require('../notificationControllers/notificationC
 const { sendNotificationToUser, sendNotificationToVendor, sendNotificationToWorker } = require('../../services/firebaseAdmin');
 const ServiceListing = require('../../models/ServiceListing');
 const { isListingBookable, overlayApprovedVersion, listingDisplayPrice } = require('../../utils/serviceListingPublic');
+const Settings = require('../../models/Settings');
+const { calculateBookingPricing } = require('../../utils/bookingPricing');
+const { resolveAdvancePaymentConfig } = require('../../utils/advancePaymentConfig');
 
 const LISTING_BOOKING_POPULATE = 'title categoryName status portfolioPhotos pricing pricingModel bookingMode';
 
@@ -27,6 +30,7 @@ const notifySingleVendorOfBooking = async ({
   address
 }) => {
   const BookingRequest = require('../../models/BookingRequest');
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
   try {
     await BookingRequest.create({
       bookingId: booking._id,
@@ -34,7 +38,7 @@ const notifySingleVendorOfBooking = async ({
       status: 'PENDING',
       wave: 1,
       sentAt: new Date(),
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      expiresAt
     });
   } catch (err) {
     if (err.code !== 11000) console.error('[CreateListingBooking] BookingRequest insert error:', err);
@@ -50,6 +54,10 @@ const notifySingleVendorOfBooking = async ({
       customerPhone: user.phone,
       scheduledDate,
       scheduledTime,
+      bookingType: booking.bookingType || 'scheduled',
+      isDirectRequest: true,
+      serviceListingId: booking.serviceListingId,
+      timeSlot: booking.timeSlot,
       price: finalAmount,
       address,
       serviceCategory: booking.serviceCategory,
@@ -57,8 +65,9 @@ const notifySingleVendorOfBooking = async ({
       brandIcon: booking.brandIcon,
       categoryIcon: booking.categoryIcon,
       createdAt: booking.createdAt || new Date(),
+      expiresAt,
       playSound: true,
-      message: `New booking request for ${serviceTitle}`
+      message: `New direct booking request for ${serviceTitle}`
     });
   }
 
@@ -94,6 +103,7 @@ const createListingBooking = async (req, res) => {
   const userId = req.user.id;
   const {
     serviceListingId,
+    catalogItemId,
     address,
     scheduledDate,
     scheduledTime,
@@ -125,30 +135,62 @@ const createListingBooking = async (req, res) => {
   }
 
   const live = overlayApprovedVersion(listingDoc);
+  const catalogItems = live.catalogItems || [];
+  const selectedItem = catalogItemId
+    ? catalogItems.find((item) => String(item.id || item._id) === String(catalogItemId) && item.isActive !== false)
+    : null;
+  if (catalogItemId && !selectedItem) {
+    return res.status(400).json({ success: false, message: 'Selected service item is not available.' });
+  }
+  const serviceTitle = selectedItem?.title || live.title;
+  const itemPrice = selectedItem ? (Number(selectedItem.price) || 0) : listingDisplayPrice(live.pricing);
+
   const user = await User.findById(userId).select('name phone wallet plans');
   if (!user) {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
 
   const pendingPenalty = user.wallet?.penalty || 0;
-  let visitingCharges = reqVisitingCharges !== undefined ? reqVisitingCharges : (reqVisitationFee || 0);
-  let basePrice;
-  let discount;
-  let tax;
-  let finalAmount;
+  const settingsDoc = await Settings.findOne({ type: 'global' }).lean();
+  const categoryDoc = listingDoc.categoryId;
+  const advanceConfig = resolveAdvancePaymentConfig({
+    settings: settingsDoc || {},
+    category: categoryDoc,
+    listing: live,
+    catalogItem: selectedItem
+  });
+  const pricing = calculateBookingPricing(
+    itemPrice || listingDisplayPrice(live.pricing),
+    settingsDoc || {},
+    advanceConfig
+  );
+
+  let visitingCharges = reqVisitingCharges !== undefined ? reqVisitingCharges : pricing.convenienceFee;
+  let basePrice = pricing.basePrice;
+  let discount = reqDiscount || 0;
+  let tax = pricing.gst;
+  let finalAmount = pricing.total + pendingPenalty;
+  let advanceAmount = pricing.advanceAmount;
+  let balanceAmount = pricing.balanceAmount;
+  let requireAdvancePayment = pricing.requireAdvancePayment;
+  let advancePaymentPercent = pricing.advancePaymentPercent;
 
   if (amount && amount > 0 && reqBasePrice !== undefined && reqTax !== undefined) {
     basePrice = reqBasePrice;
     discount = reqDiscount || 0;
-    tax = reqTax;
-    visitingCharges = reqVisitingCharges !== undefined ? reqVisitingCharges : (visitingCharges || 0);
-    finalAmount = (basePrice - discount + tax + visitingCharges) + pendingPenalty;
-  } else {
-    basePrice = listingDisplayPrice(live.pricing);
-    discount = 0;
-    tax = 0;
-    visitingCharges = visitingCharges || 0;
-    finalAmount = (amount && amount > 0 ? amount : basePrice + visitingCharges) + pendingPenalty;
+    const netBase = Math.max(0, basePrice - discount);
+    const recalc = calculateBookingPricing(netBase, settingsDoc || {}, advanceConfig);
+    tax = recalc.gst;
+    visitingCharges = reqVisitingCharges !== undefined ? reqVisitingCharges : recalc.convenienceFee;
+    finalAmount = netBase + tax + recalc.platformFee + visitingCharges + pendingPenalty;
+    advanceAmount = recalc.advanceAmount;
+    balanceAmount = recalc.requireAdvancePayment
+      ? Math.max(0, finalAmount - advanceAmount)
+      : finalAmount;
+    requireAdvancePayment = recalc.requireAdvancePayment;
+    advancePaymentPercent = recalc.advancePaymentPercent;
+    pricing.platformFee = recalc.platformFee;
+    pricing.convenienceFee = visitingCharges;
   }
 
   if (pendingPenalty > 0) {
@@ -160,12 +202,25 @@ const createListingBooking = async (req, res) => {
   const category = listingDoc.categoryId;
   const formattedBookedItems = (Array.isArray(bookedItems) && bookedItems.length > 0)
     ? bookedItems.map((item) => ({
-      brandName: item.brandName || item.sectionTitle || item.brand || '',
+      brandName: item.brandName || item.sectionTitle || item.brand || live.title || '',
       brandIcon: item.brandIcon || item.sectionIcon || item.icon || null,
+      serviceName: item.serviceName || item.card?.title || item.title || '',
       card: item.card || item,
       quantity: item.quantity || 1
     }))
-    : [];
+    : (selectedItem
+      ? [{
+        brandName: live.title,
+        serviceName: selectedItem.title,
+        card: {
+          title: selectedItem.title,
+          price: itemPrice,
+          description: selectedItem.description || '',
+          imageUrl: selectedItem.photoUrl || null
+        },
+        quantity: 1
+      }]
+      : []);
 
   const booking = await Booking.create({
     bookingNumber,
@@ -173,8 +228,10 @@ const createListingBooking = async (req, res) => {
     vendorId: null,
     serviceId: null,
     serviceListingId: listingDoc._id,
+    catalogItemId: selectedItem ? String(selectedItem.id || selectedItem._id) : null,
+    catalogItemTitle: selectedItem?.title || null,
     categoryId: listingDoc.categoryId?._id || listingDoc.categoryId,
-    serviceName: live.title,
+    serviceName: serviceTitle,
     serviceCategory: reqServiceCategory || live.categoryName || category?.title || 'General',
     categoryIcon: reqCategoryIcon || category?.homeIconUrl || category?.icon || category?.image || null,
     bookingType: bookingType || 'scheduled',
@@ -185,8 +242,15 @@ const createListingBooking = async (req, res) => {
     discount,
     tax,
     visitingCharges,
+    platformFeeAmount: pricing.platformFee || 0,
+    convenienceFeeAmount: pricing.convenienceFee || visitingCharges || 0,
     finalAmount,
     userPayableAmount: finalAmount,
+    advanceAmount,
+    balanceAmount,
+    requireAdvancePayment,
+    advancePaymentPercent,
+    paymentPhase: 'none',
     address: {
       type: address.type || 'home',
       addressLine1: address.addressLine1,
@@ -222,6 +286,8 @@ const createListingBooking = async (req, res) => {
       status: booking.status,
       paymentStatus: booking.paymentStatus,
       finalAmount: booking.finalAmount,
+      advanceAmount: booking.advanceAmount,
+      balanceAmount: booking.balanceAmount,
       scheduledDate: booking.scheduledDate,
       scheduledTime: booking.scheduledTime,
       address: booking.address,
@@ -237,7 +303,7 @@ const createListingBooking = async (req, res) => {
         booking,
         vendorId: vendor._id,
         user,
-        serviceTitle: live.title,
+        serviceTitle,
         scheduledDate,
         scheduledTime,
         finalAmount,
@@ -515,6 +581,23 @@ const createBooking = async (req, res) => {
 
     console.log('[CreateBooking] About to save with formatted items:', JSON.stringify(formattedBookedItems, null, 2));
 
+    const settingsDoc = await Settings.findOne({ type: 'global' }).lean();
+    const advanceConfig = resolveAdvancePaymentConfig({
+      settings: settingsDoc || {},
+      category: finalCategory || category
+    });
+    let advanceAmount = 0;
+    let balanceAmount = finalAmount;
+    let requireAdvancePayment = false;
+    let advancePaymentPercent = 0;
+    if (advanceConfig.requireAdvancePayment) {
+      requireAdvancePayment = true;
+      advancePaymentPercent = advanceConfig.advancePaymentPercent
+        || Number(settingsDoc?.advancePaymentPercent ?? 30);
+      advanceAmount = Math.round((finalAmount * advancePaymentPercent) / 100);
+      balanceAmount = Math.max(0, finalAmount - advanceAmount);
+    }
+
     // Extract Visual Identity Details
     const categoryIcon = finalCategory?.icon || finalCategory?.image || service.iconUrl || 'https://cdn-icons-png.flaticon.com/512/3500/3500833.png';
     let brandName = null;
@@ -554,6 +637,11 @@ const createBooking = async (req, res) => {
       visitingCharges,
       finalAmount,
       userPayableAmount: finalAmount,
+      advanceAmount,
+      balanceAmount,
+      requireAdvancePayment,
+      advancePaymentPercent,
+      paymentPhase: 'none',
       address: {
         type: address.type || 'home',
         addressLine1: address.addressLine1,

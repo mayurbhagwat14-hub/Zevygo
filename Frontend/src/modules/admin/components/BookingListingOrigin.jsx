@@ -23,6 +23,7 @@ const BookingListingOrigin = ({ booking, compact = false }) => {
 
   const title = listingTitle(booking);
   const category = listing.categoryName;
+  const menuItem = booking?.catalogItemTitle;
   const id = listing._id || listing;
 
   return (
@@ -33,6 +34,7 @@ const BookingListingOrigin = ({ booking, compact = false }) => {
       <div className="min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-wider text-primary-600">Listing block</p>
         <p className="text-xs font-black text-neutral-900 truncate">{title}</p>
+        {menuItem && <p className="text-[10px] font-bold text-neutral-700">Menu: {menuItem}</p>}
         {category && <p className="text-[10px] text-neutral-500 font-medium">{category}</p>}
         {id && (
           <Link

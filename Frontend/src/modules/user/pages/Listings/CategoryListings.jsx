@@ -58,7 +58,7 @@ const CategoryListings = () => {
             {category?.title || 'Providers'}
           </h1>
           <p className="text-[10px] text-neutral-400 font-medium">
-            {listings.length} listing{listings.length !== 1 ? 's' : ''} nearby
+            {listings.length} provider{listings.length !== 1 ? 's' : ''} nearby
           </p>
         </div>
       </header>
@@ -72,7 +72,7 @@ const CategoryListings = () => {
           <div className="bg-white rounded-2xl p-8 text-center border border-neutral-100">
             <p className="text-sm font-black text-neutral-900">No providers yet</p>
             <p className="text-xs text-neutral-500 mt-1">
-              Approved listing blocks for this category will show up here.
+              Approved providers for this category will show up here.
             </p>
           </div>
         ) : (

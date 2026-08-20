@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiTrash2, FiSave, FiX, FiCheck, FiSliders, FiList, FiEdit2 } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiSave, FiSliders, FiEdit2 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
+import Modal from '../../../../../components/ui/Modal';
 import { categoryService } from '../../../../../services/catalogService';
 
 const FIELD_TYPES = [
@@ -15,7 +16,39 @@ const FIELD_TYPES = [
   { value: 'file', label: 'Document / File Upload' },
 ];
 
-const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) => {
+const SCHEMA_META = {
+  vendorFormSchema: {
+    title: 'Service Details Form',
+    description: 'Profile & category-specific fields vendors fill when creating a listing (e.g. license, experience).'
+  },
+  catalogItemSchema: {
+    title: 'Menu Item Form',
+    description: 'Fields for each menu/sub-service item (e.g. tiffin type, driver day/night rate).'
+  },
+  pricingFormSchema: {
+    title: 'Pricing Form',
+    description: 'Custom pricing fields for this category (replaces fixed pricing step).'
+  },
+  availabilityFormSchema: {
+    title: 'Availability Form',
+    description: 'When the vendor is available — fully admin-defined fields.'
+  },
+  serviceAreaFormSchema: {
+    title: 'Service Area Form',
+    description: 'City, pincodes, radius — define fields admin needs.'
+  },
+  bookingRulesFormSchema: {
+    title: 'Booking Rules Form',
+    description: 'Cancellation, advance booking, etc. as admin-defined fields.'
+  },
+  documentsFormSchema: {
+    title: 'Documents Form',
+    description: 'Extra document/certificate fields plus portfolio photos step.'
+  }
+};
+
+const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess, targetSchema = 'vendorFormSchema' }) => {
+  const meta = SCHEMA_META[targetSchema] || SCHEMA_META.vendorFormSchema;
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -28,20 +61,11 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) =>
     optionsText: '',
     required: false,
     helpText: '',
+    minValue: '',
+    maxValue: '',
   });
 
   const [editingIndex, setEditingIndex] = useState(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
 
   useEffect(() => {
     if (category && isOpen) {
@@ -53,14 +77,18 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) =>
     try {
       setLoading(true);
       const res = await categoryService.getFormSchema(category.id || category._id);
-      if (res.success && res.vendorFormSchema) {
-        setFields(res.vendorFormSchema);
+      const targetArray = res[targetSchema];
+      const fallbackArray = category[targetSchema];
+      
+      if (res.success && targetArray) {
+        setFields(targetArray);
       } else {
-        setFields(category.vendorFormSchema || []);
+        setFields(fallbackArray || []);
       }
     } catch (err) {
-      console.error('Error loading vendor schema:', err);
-      setFields(category.vendorFormSchema || []);
+      console.error(`Error loading ${targetSchema}:`, err);
+      const fallbackArray = category[targetSchema];
+      setFields(fallbackArray || []);
     } finally {
       setLoading(false);
     }
@@ -84,6 +112,8 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) =>
       options,
       required: Boolean(newField.required),
       helpText: newField.helpText.trim() || null,
+      minValue: newField.type === 'number' && newField.minValue !== '' ? Number(newField.minValue) : null,
+      maxValue: newField.type === 'number' && newField.maxValue !== '' ? Number(newField.maxValue) : null,
       order: fields.length + 1
     };
 
@@ -98,7 +128,7 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) =>
       toast.success('Field added locally');
     }
 
-    setNewField({ key: '', label: '', type: 'text', optionsText: '', required: false, helpText: '' });
+    setNewField({ key: '', label: '', type: 'text', optionsText: '', required: false, helpText: '', minValue: '', maxValue: '' });
   };
 
   const handleEditField = (index) => {
@@ -110,6 +140,8 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) =>
       optionsText: (f.options || []).join(', '),
       required: f.required || false,
       helpText: f.helpText || '',
+      minValue: f.minValue !== null && f.minValue !== undefined ? f.minValue : '',
+      maxValue: f.maxValue !== null && f.maxValue !== undefined ? f.maxValue : '',
     });
     setEditingIndex(index);
   };
@@ -122,12 +154,13 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) =>
   const handleSaveSchema = async () => {
     try {
       setSaving(true);
-      const res = await categoryService.updateFormSchema(category.id || category._id, {
-        vendorFormSchema: fields
-      });
+      const payload = {};
+      payload[targetSchema] = fields;
+      
+      const res = await categoryService.updateFormSchema(category.id || category._id, payload);
 
       if (res.success) {
-        toast.success(`Vendor form for "${category.title}" updated successfully!`);
+        toast.success(`Schema for "${category.title}" updated successfully!`);
         if (onSaveSuccess) onSaveSuccess(res.category);
         onClose();
       }
@@ -139,29 +172,37 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) =>
     }
   };
 
-  if (!isOpen || !category) return null;
+  if (!category) return null;
+
+  const modalHeader = (
+    <div className="flex items-center gap-2 min-w-0 pr-2">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700 shrink-0">
+        <FiSliders className="w-4 h-4" />
+      </span>
+      <div className="min-w-0">
+        <h2 className="text-base font-bold text-slate-900 truncate">{meta.title}: {category.title}</h2>
+        <p className="text-xs text-slate-500 truncate">{meta.description}</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-              <FiSliders />
-            </div>
-            <div>
-              <h2 className="text-base font-black text-slate-900">Vendor Form Builder: {category.title}</h2>
-              <p className="text-xs text-slate-500">Configure dynamic specs & fields required from vendors during signup</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-200 text-slate-500">
-            <FiX className="w-5 h-5" />
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="lg"
+      header={modalHeader}
+      contentClassName="p-5 sm:p-6"
+      footer={
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button onClick={handleSaveSchema} disabled={saving} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl inline-flex items-center gap-2 disabled:opacity-50">
+            <FiSave className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Schema'}
           </button>
         </div>
-
-        {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+      }
+    >
+      <div className="space-y-6">
           {/* Add / Edit Form Card */}
           <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
             <h3 className="text-xs font-black text-blue-900 uppercase tracking-wider">
@@ -196,6 +237,21 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) =>
               </div>
             </div>
 
+            {newField.type === 'number' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Min Value (Optional)</label>
+                  <input type="number" value={newField.minValue} onChange={e => setNewField(p => ({ ...p, minValue: e.target.value }))}
+                    placeholder="e.g. 100" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Max Value (Optional)</label>
+                  <input type="number" value={newField.maxValue} onChange={e => setNewField(p => ({ ...p, maxValue: e.target.value }))}
+                    placeholder="e.g. 5000" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+            )}
+
             {(newField.type === 'select' || newField.type === 'multiselect') && (
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">Options (Comma separated)</label>
@@ -212,7 +268,7 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) =>
 
               <div className="flex items-center gap-2">
                 {editingIndex !== null && (
-                  <button type="button" onClick={() => { setEditingIndex(null); setNewField({ key: '', label: '', type: 'text', optionsText: '', required: false, helpText: '' }); }}
+                  <button type="button" onClick={() => { setEditingIndex(null); setNewField({ key: '', label: '', type: 'text', optionsText: '', required: false, helpText: '', minValue: '', maxValue: '' }); }}
                     className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-lg">Cancel</button>
                 )}
                 <button type="button" onClick={handleAddField} className="px-4 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg flex items-center gap-1 hover:bg-blue-700">
@@ -239,7 +295,11 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) =>
                         {f.required && <span className="text-[9px] font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Required</span>}
                         <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase">{f.type}</span>
                       </div>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Key: <code className="text-slate-600">{f.key}</code> {f.options?.length > 0 && `• Options: ${f.options.join(', ')}`}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Key: <code className="text-slate-600">{f.key}</code> 
+                      {f.options?.length > 0 && ` • Options: ${f.options.join(', ')}`}
+                      {(f.minValue !== null && f.minValue !== undefined) && ` • Min: ${f.minValue}`}
+                      {(f.maxValue !== null && f.maxValue !== undefined) && ` • Max: ${f.maxValue}`}
+                      </p>
                     </div>
 
                     <div className="flex items-center gap-1">
@@ -251,17 +311,8 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess }) =>
               </div>
             )}
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl">Cancel</button>
-          <button onClick={handleSaveSchema} disabled={saving} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md">
-            <FiSave /> {saving ? 'Saving...' : 'Save Schema to DB'}
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

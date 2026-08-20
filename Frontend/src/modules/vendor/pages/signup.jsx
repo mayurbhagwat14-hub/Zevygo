@@ -66,7 +66,7 @@ const bankSchema = z.object({
   ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC code format (e.g. SBIN0001234)'),
 });
 
-const STEPS = ['Details', 'Identity & KYC', 'Services & Rates', 'Bank Details', 'Verify OTP'];
+const STEPS = ['Details', 'Identity & KYC', 'Bank Details', 'Verify OTP'];
 
 const ALL_16_CATEGORIES = [
   {
@@ -468,7 +468,7 @@ const VendorSignup = () => {
 
   useEffect(() => {
     const otpValue = otp.join('');
-    if (otpValue.length === 6 && !isLoading && otpToken && stepIndex === 4) {
+    if (otpValue.length === 6 && !isLoading && otpToken && stepIndex === 3) {
       handleOtpSubmit();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -613,8 +613,8 @@ const VendorSignup = () => {
       },
       aadhar: formData.aadhar,
       pan: formData.pan,
-      service: selectedServices,
-      serviceDetails: serviceDetailsMap,
+      service: [],
+      serviceDetails: {},
       aadharDocument: aadharDoc,
       aadharBackDocument: aadharBackDoc,
       panDocument: panDoc,
@@ -683,14 +683,6 @@ const VendorSignup = () => {
     setStepIndex(2);
   };
 
-  const goNextFromServices = () => {
-    if (selectedServices.length === 0) {
-      toast.error('Please select at least 1 service category');
-      return;
-    }
-    setStepIndex(3);
-  };
-
   const submitFullOnboarding = async (isSkipBank = false) => {
     setFieldErrors({});
     if (!isSkipBank) {
@@ -722,7 +714,7 @@ const VendorSignup = () => {
         if (response.success) {
           sessionStorage.removeItem(SIGNUP_STORAGE_KEY);
           localStorage.removeItem(SIGNUP_STORAGE_KEY);
-          setStepIndex(5);
+          setStepIndex(4);
           toast.success('Application Submitted Successfully!');
         } else {
           toast.error(response.message || 'Registration failed');
@@ -739,7 +731,7 @@ const VendorSignup = () => {
       const response = await sendVendorOTP(formData.phoneNumber);
       if (response.success) {
         setOtpToken(response.token);
-        setStepIndex(4);
+        setStepIndex(3);
         setResendTimer(120);
         toast.success('OTP sent successfully to +91 ' + formData.phoneNumber);
       } else {
@@ -769,7 +761,7 @@ const VendorSignup = () => {
       if (response.success) {
         sessionStorage.removeItem(SIGNUP_STORAGE_KEY);
         localStorage.removeItem(SIGNUP_STORAGE_KEY);
-        setStepIndex(5);
+        setStepIndex(4);
         toast.success('Provider onboarding complete! Pending admin approval.');
       } else {
         toast.error(response.message || 'Registration failed');
@@ -784,7 +776,6 @@ const VendorSignup = () => {
   const titles = [
     'Personal & Location Details',
     'Identity & KYC Verification',
-    'Select Services & Complete Forms',
     'Bank Account & Payout Setup',
     'Verify Mobile Phone Number',
     'Application Submitted Successfully',
@@ -793,7 +784,6 @@ const VendorSignup = () => {
   const subtitles = [
     'Enter your name, contact, and address details',
     'Upload Aadhaar & PAN card for verification (never shared publicly)',
-    'Select 1 or more services you provide and fill detailed specs',
     'Enter bank details to receive job payouts directly',
     `Enter the 6-digit code sent to +91 ${formData.phoneNumber}`,
     'Your provider account is under review by Zevygo admin team',
@@ -1182,122 +1172,16 @@ const VendorSignup = () => {
               iconPosition="right"
               onClick={goNextFromIdentity}
             >
-              Continue to Services
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* STEP 2 — Interactive Visual Category & Service Setup (Supports Multi-Selection & Dedicated Forms) */}
-      {stepIndex === 2 && (
-        <div className="space-y-4 max-w-lg mx-auto">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-black text-slate-900 uppercase tracking-wider">
-                Select Your Service Categories *
-              </label>
-              <span className="text-[11px] font-bold text-blue-600">
-                {selectedServices.length} Selected
-              </span>
-            </div>
-
-            {/* FULL 16 CATEGORIES GRID WITH CHECKBOXES */}
-            <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50/50">
-              {categories.map((cat) => {
-                const IconComponent = cat.icon || FiLayers;
-                const isSelected = selectedServices.includes(cat.title);
-
-                return (
-                  <div
-                    key={cat.id}
-                    onClick={() => toggleCategorySelection(cat.title)}
-                    className={`p-2.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-2 relative ${
-                      isSelected
-                        ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-2xs font-bold'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                    }`}
-                  >
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-sm ${
-                        isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      {isSelected ? <FiCheck /> : <IconComponent />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="text-[8px] font-bold text-blue-600 uppercase tracking-wider block truncate">
-                        {cat.badge || 'Available'}
-                      </span>
-                      <h4 className="text-[11px] font-black truncate">{cat.title}</h4>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* DYNAMIC FORMS ACCORDION / TABS FOR EACH SELECTED SERVICE */}
-          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <span className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <FiTool className="text-blue-600" /> Configure Service Details
-              </span>
-              <span className="text-[10px] text-slate-500">Fill specs for selected categories</span>
-            </div>
-
-            {/* Category Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-              {selectedServices.map((catTitle) => {
-                const isActive = activeTabCategory === catTitle;
-                return (
-                  <button
-                    key={catTitle}
-                    type="button"
-                    onClick={() => setActiveTabCategory(catTitle)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    }`}
-                  >
-                    <span>{catTitle}</span>
-                    <FiCheck className="w-3 h-3 opacity-80" />
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Render Form for Currently Active Tab */}
-            <div className="pt-2">
-              <div className="text-xs font-extrabold text-blue-900 bg-blue-50/80 px-3 py-1.5 rounded-lg mb-3 border border-blue-100 flex items-center justify-between">
-                <span>Form Specs for: {activeTabCategory}</span>
-                <span className="text-[10px] text-blue-600 uppercase font-black">Detailed Config</span>
-              </div>
-              {renderServiceSpecificForm(activeTabCategory)}
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" size="xl" onClick={() => setStepIndex(1)}>
-              <FiChevronLeft className="mr-1" /> Back
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="xl"
-              fullWidth
-              icon={FiArrowRight}
-              iconPosition="right"
-              onClick={goNextFromServices}
-            >
               Continue to Bank Details
             </Button>
           </div>
         </div>
       )}
 
-      {/* STEP 3 — Bank Account & Payout Setup */}
-      {stepIndex === 3 && (
+
+
+      {/* STEP 2 — Bank Account & Payout Setup */}
+      {stepIndex === 2 && (
         <div className="space-y-4 max-w-lg mx-auto">
           <div className="flex items-start gap-3 p-3.5 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-800">
             <FiCreditCard className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
@@ -1352,7 +1236,7 @@ const VendorSignup = () => {
 
           <div className="flex flex-col gap-3 pt-2">
             <div className="flex gap-3">
-              <Button type="button" variant="outline" size="xl" onClick={() => setStepIndex(2)}>
+              <Button type="button" variant="outline" size="xl" onClick={() => setStepIndex(1)}>
                 <FiChevronLeft className="mr-1" /> Back
               </Button>
               <Button
@@ -1381,14 +1265,14 @@ const VendorSignup = () => {
         </div>
       )}
 
-      {/* STEP 4 — Phone OTP Verification */}
-      {stepIndex === 4 && (
+      {/* STEP 3 — Phone OTP Verification */}
+      {stepIndex === 3 && (
         <form onSubmit={handleOtpSubmit} className="space-y-6 max-w-md mx-auto">
           <OtpInput value={otp} onChange={setOtp} disabled={isLoading} />
           <div className="flex items-center justify-between text-sm">
             <button
               type="button"
-              onClick={() => setStepIndex(3)}
+              onClick={() => setStepIndex(2)}
               className="flex items-center font-medium text-neutral-500 hover:text-neutral-800"
             >
               <FiChevronLeft className="mr-1" /> Back to Bank Details
@@ -1431,8 +1315,8 @@ const VendorSignup = () => {
         </form>
       )}
 
-      {/* STEP 5 — Application Submitted Success Screen */}
-      {stepIndex === 5 && (
+      {/* STEP 4 — Application Submitted Success Screen */}
+      {stepIndex === 4 && (
         <div className="py-6 px-4 text-center space-y-6 max-w-md mx-auto">
           {/* Animated Success Icon */}
           <div className="relative inline-flex items-center justify-center">
@@ -1457,10 +1341,6 @@ const VendorSignup = () => {
             <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
               <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Mobile Number</span>
               <span className="font-bold text-slate-800 text-xs">+91 {formData.phoneNumber}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Selected Services</span>
-              <span className="font-bold text-blue-700 text-xs max-w-[200px] truncate text-right">{selectedServices.join(', ')}</span>
             </div>
           </div>
 

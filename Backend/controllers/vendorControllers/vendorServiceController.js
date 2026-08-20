@@ -1,9 +1,12 @@
 const ServiceListing = require('../../models/ServiceListing');
 const Category = require('../../models/Category');
 const Vendor = require('../../models/Vendor');
+const Settings = require('../../models/Settings');
 const { logAudit } = require('../../utils/auditLogger');
 const cloudinaryService = require('../../services/cloudinaryService');
 const { LISTING_STATUS, SERVICE_STATUS, VENDOR_STATUS } = require('../../utils/constants');
+const { normalizeDynamicAnswers, coerceNumber, coercePricing, coerceNestedNumbers, normalizeCatalogItems, extractListingTitle } = require('../../utils/listingPayload');
+const { mergeListingForms } = require('../../utils/listingFormsMerge');
 
 /**
  * Get vendor's service listings
@@ -95,14 +98,21 @@ const createServiceListing = async (req, res) => {
       serviceAreaRadiusKm,
       cancellation,
       dynamicFormAnswers = {},
+      pricingFormAnswers = {},
+      availabilityFormAnswers = {},
+      serviceAreaFormAnswers = {},
+      bookingRulesFormAnswers = {},
+      documentsFormAnswers = {},
+      listingFormAnswers = {},
       portfolioPhotos = [],
       portfolioVideos = [],
       documents = [],
+      catalogItems = [],
       isDraft = false
     } = req.body;
 
-    if (!categoryId || !title) {
-      return res.status(400).json({ success: false, message: 'Category ID and service title are required' });
+    if (!categoryId) {
+      return res.status(400).json({ success: false, message: 'Category is required' });
     }
 
     const category = await Category.findById(categoryId);
@@ -110,7 +120,37 @@ const createServiceListing = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Selected category does not exist' });
     }
 
-    // Check if vendor already has a listing for this category
+    const normalizedMenu = await normalizeCatalogItems(catalogItems, vendorId);
+    const settingsDoc = await Settings.findOne({ type: 'global' }).select('commonListingForms').lean();
+    const mergedForms = mergeListingForms(settingsDoc?.commonListingForms || [], category.listingForms || []);
+    const hasMenuForm = mergedForms.some((f) => f.type === 'menu');
+    const requireMenu = mergedForms.length
+      ? hasMenuForm
+      : category.listingSectionConfig?.menu?.enabled !== false;
+    if (!isDraft && requireMenu && normalizedMenu.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Add at least one menu item before submitting.'
+      });
+    }
+
+    let cleanedAnswers = await normalizeDynamicAnswers(dynamicFormAnswers, vendorId);
+    const cleanedListingFormAnswersEarly = {};
+    for (const [formKey, answers] of Object.entries(listingFormAnswers || {})) {
+      cleanedListingFormAnswersEarly[formKey] = answers;
+    }
+    const resolvedTitle = String(
+      title ||
+      extractListingTitle(cleanedAnswers, normalizedMenu) ||
+      Object.values(cleanedListingFormAnswersEarly).map((a) => a?.title || a?.shopName || a?.businessName || a?.name).find(Boolean)
+    ).trim();
+    if (!resolvedTitle) {
+      return res.status(400).json({
+        success: false,
+        message: 'Listing title is required. Add a title/shop name field in admin form or a menu item name.'
+      });
+    }
+
     const existing = await ServiceListing.findOne({ vendorId, categoryId });
     if (existing) {
       return res.status(400).json({ success: false, message: 'You already have a service listing for this category. Please edit the existing one.' });
@@ -126,6 +166,8 @@ const createServiceListing = async (req, res) => {
         uploadedPhotos.push(photo);
       }
     }
+
+    const processedCatalogItems = normalizedMenu;
 
     // Process documents (upload base64 if present)
     const uploadedDocuments = [];
@@ -145,27 +187,80 @@ const createServiceListing = async (req, res) => {
       });
     }
 
+    const vendor = await Vendor.findById(vendorId).select('categoryEnrollments');
+    const enrollment = (vendor?.categoryEnrollments || []).find(
+      (e) => e.categoryId && e.categoryId.toString() === category._id.toString()
+    );
+
+    const cleanedPricing = coercePricing(pricing);
+    
+    // Validate against category pricingLimits
+    if (category.pricingLimits) {
+      const minLimit = category.pricingLimits.minPrice || 0;
+      const maxLimit = category.pricingLimits.maxPrice || 999999;
+      
+      const priceToCheck = cleanedPricing.basePrice || cleanedPricing.hourlyRate || cleanedPricing.dailyRate || 0;
+      
+      if (priceToCheck > 0) {
+        if (priceToCheck < minLimit) {
+          return res.status(400).json({ success: false, message: `Price must be at least ₹${minLimit} as per category limits.` });
+        }
+        if (priceToCheck > maxLimit) {
+          return res.status(400).json({ success: false, message: `Price cannot exceed ₹${maxLimit} as per category limits.` });
+        }
+      }
+    }
+
+    if (!Object.keys(cleanedAnswers).length && enrollment?.dynamicAnswers) {
+      cleanedAnswers = await normalizeDynamicAnswers(enrollment.dynamicAnswers, vendorId);
+    }
+
+    const cleanedPricingAnswers = await normalizeDynamicAnswers(pricingFormAnswers, vendorId);
+    const cleanedAvailabilityAnswers = await normalizeDynamicAnswers(availabilityFormAnswers, vendorId);
+    const cleanedServiceAreaAnswers = await normalizeDynamicAnswers(serviceAreaFormAnswers, vendorId);
+    const cleanedBookingRulesAnswers = await normalizeDynamicAnswers(bookingRulesFormAnswers, vendorId);
+    const cleanedDocumentsAnswers = await normalizeDynamicAnswers(documentsFormAnswers, vendorId);
+    const cleanedListingFormAnswers = {};
+    for (const [formKey, answers] of Object.entries(listingFormAnswers || {})) {
+      cleanedListingFormAnswers[formKey] = await normalizeDynamicAnswers(answers, vendorId);
+    }
+
     const listing = await ServiceListing.create({
       vendorId,
       categoryId: category._id,
       categoryName: category.title,
-      title: title.trim(),
-      description: description ? description.trim() : '',
-      shortDescription: shortDescription ? shortDescription.trim() : '',
-      experience: experience || 0,
-      languages: languages || [],
+      title: resolvedTitle,
+      description: description ? description.trim() : String(cleanedAnswers.description || cleanedAnswers.about || '').trim(),
+      shortDescription: shortDescription ? String(shortDescription).trim() : String(cleanedAnswers.shortDescription || cleanedAnswers.tagline || '').trim(),
+      experience: coerceNumber(experience, 0),
+      languages: Array.isArray(languages) ? languages.filter(Boolean) : [],
       bookingMode: bookingMode || category.bookingMode || 'BOTH',
-      bookingConfig: bookingConfig || {},
+      bookingConfig: coerceNestedNumbers(bookingConfig || {}, [
+        'minAdvanceBookingMinutes', 'maxAdvanceBookingDays',
+        'minServiceDurationMinutes', 'maxServiceDurationMinutes', 'advancePaymentPercent'
+      ]),
       pricingModel: pricingModel || category.defaultPricingModel || 'FIXED',
-      pricing,
+      pricing: cleanedPricing,
       availability: availability || {},
-      serviceArea: serviceArea || {},
-      serviceAreaRadiusKm: serviceAreaRadiusKm || serviceArea?.radiusKm || 10,
-      cancellation: cancellation || {},
-      dynamicFormAnswers,
+      serviceArea: {
+        ...(serviceArea || {}),
+        radiusKm: coerceNumber(serviceAreaRadiusKm || serviceArea?.radiusKm, 10)
+      },
+      serviceAreaRadiusKm: coerceNumber(serviceAreaRadiusKm || serviceArea?.radiusKm, 10),
+      cancellation: coerceNestedNumbers(cancellation || {}, [
+        'cancellationWindowHours', 'cancellationFeePercent', 'reschedulingWindowHours'
+      ]),
+      dynamicFormAnswers: cleanedAnswers,
+      pricingFormAnswers: cleanedPricingAnswers,
+      availabilityFormAnswers: cleanedAvailabilityAnswers,
+      serviceAreaFormAnswers: cleanedServiceAreaAnswers,
+      bookingRulesFormAnswers: cleanedBookingRulesAnswers,
+      documentsFormAnswers: cleanedDocumentsAnswers,
+      listingFormAnswers: cleanedListingFormAnswers,
       portfolioPhotos: uploadedPhotos,
       portfolioVideos: portfolioVideos || [],
       documents: uploadedDocuments,
+      catalogItems: processedCatalogItems,
       status: isDraft ? LISTING_STATUS.DRAFT : LISTING_STATUS.PENDING_REVIEW,
       submittedAt: isDraft ? null : new Date()
     });
@@ -206,14 +301,18 @@ const updateServiceListing = async (req, res) => {
       title, description, shortDescription, experience, languages,
       bookingMode, bookingConfig, pricingModel, pricing,
       availability, serviceArea, serviceAreaRadiusKm, cancellation,
-      dynamicFormAnswers, portfolioPhotos, portfolioVideos,
-      documents, isDraft
+      dynamicFormAnswers, pricingFormAnswers, availabilityFormAnswers,
+      serviceAreaFormAnswers, bookingRulesFormAnswers, documentsFormAnswers,
+      listingFormAnswers,
+      portfolioPhotos, portfolioVideos,
+      documents, catalogItems, isDraft
     } = req.body;
 
-    const listing = await ServiceListing.findOne({ _id: id, vendorId });
+    const listing = await ServiceListing.findOne({ _id: id, vendorId }).populate('categoryId');
     if (!listing) {
       return res.status(404).json({ success: false, message: 'Service listing not found' });
     }
+    const category = listing.categoryId;
 
     // Process photos if provided
     let uploadedPhotos = listing.portfolioPhotos || [];
@@ -253,11 +352,23 @@ const updateServiceListing = async (req, res) => {
       uploadedDocuments = newDocs;
     }
 
+    let processedCatalogItems = listing.catalogItems || [];
+    if (catalogItems && Array.isArray(catalogItems)) {
+      processedCatalogItems = await normalizeCatalogItems(catalogItems, vendorId);
+      if (!isDraft && processedCatalogItems.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Add at least one menu item before submitting.'
+        });
+      }
+    }
+
     // Previous values for audit
     const previousValue = {
       title: listing.title,
       pricing: listing.pricing,
-      status: listing.status
+      status: listing.status,
+      catalogItems: listing.catalogItems
     };
 
     // Check if listing is currently approved -> Snapshot approved version for live customers
@@ -270,13 +381,22 @@ const updateServiceListing = async (req, res) => {
         languages: listing.languages,
         pricingModel: listing.pricingModel,
         bookingMode: listing.bookingMode,
+        bookingConfig: listing.bookingConfig,
         pricing: listing.pricing,
         availability: listing.availability,
         serviceArea: listing.serviceArea,
         cancellation: listing.cancellation,
         dynamicFormAnswers: listing.dynamicFormAnswers,
+        pricingFormAnswers: listing.pricingFormAnswers,
+        availabilityFormAnswers: listing.availabilityFormAnswers,
+        serviceAreaFormAnswers: listing.serviceAreaFormAnswers,
+        bookingRulesFormAnswers: listing.bookingRulesFormAnswers,
+        documentsFormAnswers: listing.documentsFormAnswers,
+        listingFormAnswers: listing.listingFormAnswers,
         portfolioPhotos: listing.portfolioPhotos,
-        documents: listing.documents
+        portfolioVideos: listing.portfolioVideos,
+        documents: listing.documents,
+        catalogItems: listing.catalogItems
       };
       listing.hasPendingEdits = true;
       listing.pendingEditSubmittedAt = new Date();
@@ -286,21 +406,104 @@ const updateServiceListing = async (req, res) => {
     // Apply updates
     if (title) listing.title = title.trim();
     if (description !== undefined) listing.description = description.trim();
-    if (shortDescription !== undefined) listing.shortDescription = shortDescription.trim();
-    if (experience !== undefined) listing.experience = experience;
-    if (languages) listing.languages = languages;
+    if (shortDescription !== undefined) listing.shortDescription = String(shortDescription).trim();
+    if (experience !== undefined) listing.experience = coerceNumber(experience, listing.experience);
+    if (languages) listing.languages = Array.isArray(languages) ? languages.filter(Boolean) : languages;
     if (bookingMode) listing.bookingMode = bookingMode;
-    if (bookingConfig) listing.bookingConfig = { ...listing.bookingConfig, ...bookingConfig };
+    if (bookingConfig) {
+      listing.bookingConfig = {
+        ...listing.bookingConfig,
+        ...coerceNestedNumbers(bookingConfig, [
+          'minAdvanceBookingMinutes', 'maxAdvanceBookingDays',
+          'minServiceDurationMinutes', 'maxServiceDurationMinutes', 'advancePaymentPercent'
+        ])
+      };
+    }
     if (pricingModel) listing.pricingModel = pricingModel;
-    if (pricing) listing.pricing = { ...listing.pricing, ...pricing };
+    if (pricing) {
+      const newPricing = { ...listing.pricing, ...coercePricing(pricing) };
+      
+      // Validate against category pricingLimits
+      if (category && category.pricingLimits) {
+        const minLimit = category.pricingLimits.minPrice || 0;
+        const maxLimit = category.pricingLimits.maxPrice || 999999;
+        
+        const priceToCheck = newPricing.basePrice || newPricing.hourlyRate || newPricing.dailyRate || 0;
+        
+        if (priceToCheck > 0) {
+          if (priceToCheck < minLimit) {
+            return res.status(400).json({ success: false, message: `Price must be at least ₹${minLimit} as per category limits.` });
+          }
+          if (priceToCheck > maxLimit) {
+            return res.status(400).json({ success: false, message: `Price cannot exceed ₹${maxLimit} as per category limits.` });
+          }
+        }
+      }
+      
+      listing.pricing = newPricing;
+    }
     if (availability) listing.availability = { ...listing.availability, ...availability };
-    if (serviceArea) listing.serviceArea = { ...listing.serviceArea, ...serviceArea };
-    if (serviceAreaRadiusKm) listing.serviceAreaRadiusKm = serviceAreaRadiusKm;
-    if (cancellation) listing.cancellation = { ...listing.cancellation, ...cancellation };
-    if (dynamicFormAnswers) listing.dynamicFormAnswers = { ...listing.dynamicFormAnswers, ...dynamicFormAnswers };
+    if (serviceArea) {
+      listing.serviceArea = { ...listing.serviceArea, ...serviceArea };
+      if (serviceArea.radiusKm !== undefined) {
+        listing.serviceArea.radiusKm = coerceNumber(serviceArea.radiusKm, listing.serviceArea.radiusKm);
+      }
+    }
+    if (serviceAreaRadiusKm) listing.serviceAreaRadiusKm = coerceNumber(serviceAreaRadiusKm, listing.serviceAreaRadiusKm);
+    if (cancellation) {
+      listing.cancellation = {
+        ...listing.cancellation,
+        ...coerceNestedNumbers(cancellation, [
+          'cancellationWindowHours', 'cancellationFeePercent', 'reschedulingWindowHours'
+        ])
+      };
+    }
+    if (dynamicFormAnswers) {
+      const cleanedAnswers = await normalizeDynamicAnswers(dynamicFormAnswers, vendorId);
+      listing.dynamicFormAnswers = { ...listing.dynamicFormAnswers, ...cleanedAnswers };
+      listing.markModified('dynamicFormAnswers');
+      const resolvedTitle = extractListingTitle(listing.dynamicFormAnswers, listing.catalogItems);
+      if (resolvedTitle) listing.title = resolvedTitle;
+    }
+    const sectionAnswerUpdates = [
+      ['pricingFormAnswers', pricingFormAnswers],
+      ['availabilityFormAnswers', availabilityFormAnswers],
+      ['serviceAreaFormAnswers', serviceAreaFormAnswers],
+      ['bookingRulesFormAnswers', bookingRulesFormAnswers],
+      ['documentsFormAnswers', documentsFormAnswers]
+    ];
+    for (const [field, payload] of sectionAnswerUpdates) {
+      if (!payload) continue;
+      const cleaned = await normalizeDynamicAnswers(payload, vendorId);
+      listing[field] = { ...(listing[field] || {}), ...cleaned };
+      listing.markModified(field);
+    }
+    if (listingFormAnswers) {
+      const merged = { ...(listing.listingFormAnswers || {}) };
+      for (const [formKey, answers] of Object.entries(listingFormAnswers)) {
+        const cleaned = await normalizeDynamicAnswers(answers, vendorId);
+        merged[formKey] = { ...(merged[formKey] || {}), ...cleaned };
+      }
+      listing.listingFormAnswers = merged;
+      listing.markModified('listingFormAnswers');
+      const resolvedTitle = extractListingTitle(listing.dynamicFormAnswers, listing.catalogItems);
+      // Prefer title from listing form answers
+      for (const ans of Object.values(merged)) {
+        const t = ans?.title || ans?.shopName || ans?.businessName || ans?.name;
+        if (t) {
+          listing.title = String(t).trim();
+          break;
+        }
+      }
+      if (!listing.title && resolvedTitle) listing.title = resolvedTitle;
+    }
     if (portfolioVideos) listing.portfolioVideos = portfolioVideos;
     listing.portfolioPhotos = uploadedPhotos;
     listing.documents = uploadedDocuments;
+    if (catalogItems !== undefined) {
+      listing.catalogItems = processedCatalogItems;
+      listing.markModified('catalogItems');
+    }
 
     // If currently draft and not saving as draft again, submit for review
     if (listing.status === LISTING_STATUS.DRAFT && !isDraft) {
@@ -418,7 +621,7 @@ const getAvailableCategories = async (req, res) => {
     }
 
     const categories = await Category.find({ status: SERVICE_STATUS.ACTIVE })
-      .select('title slug description homeIconUrl imageUrl supportedBookingTypes allowMultiSelect formSchema vendorFormSchema bookingMode defaultPricingModel requiredDocuments')
+      .select('title slug description homeIconUrl imageUrl supportedBookingTypes allowMultiSelect formSchema vendorFormSchema catalogItemSchema pricingFormSchema availabilityFormSchema serviceAreaFormSchema bookingRulesFormSchema documentsFormSchema listingSectionConfig listingForms bookingMode defaultPricingModel requiredDocuments')
       .sort({ homeOrder: 1, title: 1 })
       .lean();
 
@@ -454,6 +657,14 @@ const getAvailableCategories = async (req, res) => {
         allowMultiSelect: Boolean(cat.allowMultiSelect),
         formSchema: cat.formSchema || [],
         vendorFormSchema: cat.vendorFormSchema || [],
+        catalogItemSchema: cat.catalogItemSchema || [],
+        pricingFormSchema: cat.pricingFormSchema || [],
+        availabilityFormSchema: cat.availabilityFormSchema || [],
+        serviceAreaFormSchema: cat.serviceAreaFormSchema || [],
+        bookingRulesFormSchema: cat.bookingRulesFormSchema || [],
+        documentsFormSchema: cat.documentsFormSchema || [],
+        listingSectionConfig: cat.listingSectionConfig || {},
+        listingForms: cat.listingForms || [],
         requiredDocuments: cat.requiredDocuments || [],
         enrollmentStatus: enrollment ? enrollment.status : 'not_applied',
         enrollment: enrollment ? {
@@ -472,9 +683,15 @@ const getAvailableCategories = async (req, res) => {
       };
     });
 
+    const settingsDoc = await Settings.findOne({ type: 'global' }).select('commonListingForms').lean();
+    const commonListingForms = (settingsDoc?.commonListingForms || [])
+      .filter((f) => f && f.enabled !== false)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
     res.status(200).json({
       success: true,
       accountApprovalStatus: vendor.approvalStatus,
+      commonListingForms,
       categories: categoryList
     });
   } catch (error) {

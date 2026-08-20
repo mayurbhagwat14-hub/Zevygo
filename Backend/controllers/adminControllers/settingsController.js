@@ -1,5 +1,6 @@
 const Settings = require('../../models/Settings');
 const Vendor = require('../../models/Vendor');
+const { normalizeListingForm } = require('../../utils/listingFormsMerge');
 
 // Get Global Settings
 exports.getSettings = async (req, res, next) => {
@@ -51,6 +52,8 @@ exports.updateSettings = async (req, res, next) => {
       maxSearchTime, waveDuration, searchRadius,
       // Payment Control
       isOnlinePaymentEnabled,
+      advancePaymentPercent,
+      convenienceFee,
       // Branding Settings
       appName, appLogo
     } = req.body;
@@ -119,6 +122,8 @@ exports.updateSettings = async (req, res, next) => {
       if (waveDuration !== undefined) settings.waveDuration = waveDuration;
       if (searchRadius !== undefined) settings.searchRadius = searchRadius;
       if (isOnlinePaymentEnabled !== undefined) settings.isOnlinePaymentEnabled = isOnlinePaymentEnabled;
+      if (advancePaymentPercent !== undefined) settings.advancePaymentPercent = advancePaymentPercent;
+      if (convenienceFee !== undefined) settings.convenienceFee = convenienceFee;
 
       // Branding update
       if (appName !== undefined) settings.appName = appName;
@@ -158,10 +163,81 @@ exports.updateSettings = async (req, res, next) => {
     });
   }
 };
+
+// Get common listing forms (reusable across all categories)
+exports.getCommonListingForms = async (req, res) => {
+  try {
+    let settings = await Settings.findOne({ type: 'global' }).select('commonListingForms');
+    if (!settings) {
+      settings = await Settings.create({ type: 'global' });
+    }
+
+    res.status(200).json({
+      success: true,
+      commonListingForms: (settings.commonListingForms || []).sort((a, b) => (a.order || 0) - (b.order || 0))
+    });
+  } catch (error) {
+    console.error('Error fetching common listing forms:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch common listing forms'
+    });
+  }
+};
+
+// Update common listing forms
+exports.updateCommonListingForms = async (req, res) => {
+  try {
+    const { commonListingForms } = req.body;
+
+    if (commonListingForms !== undefined && !Array.isArray(commonListingForms)) {
+      return res.status(400).json({
+        success: false,
+        message: 'commonListingForms must be an array'
+      });
+    }
+
+    let settings = await Settings.findOne({ type: 'global' });
+    if (!settings) {
+      settings = await Settings.create({ type: 'global' });
+    }
+
+    if (commonListingForms !== undefined) {
+      settings.commonListingForms = commonListingForms.map((f, idx) => normalizeListingForm(f, idx, 'common'));
+      settings.markModified('commonListingForms');
+      await settings.save();
+    }
+
+    try {
+      const { getIO } = require('../../sockets');
+      const io = getIO();
+      if (io) {
+        io.emit('common_listing_forms_updated', {
+          commonListingForms: settings.commonListingForms
+        });
+      }
+    } catch (sErr) {
+      console.warn('Socket emit warning:', sErr.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Common listing forms saved — they apply to all service categories',
+      commonListingForms: settings.commonListingForms
+    });
+  } catch (error) {
+    console.error('Error updating common listing forms:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update common listing forms'
+    });
+  }
+};
+
 // Get Public Settings (Visited Charges, GST, Branding)
 exports.getPublicSettings = async (req, res, next) => {
   try {
-    let settings = await Settings.findOne({ type: 'global' }).select('visitedCharges serviceGstPercentage partsGstPercentage supportEmail supportPhone supportWhatsapp cancellationPenalty companyName companyAddress companyCity companyState companyPincode companyPhone companyEmail isOnlinePaymentEnabled appName appLogo');
+    let settings = await Settings.findOne({ type: 'global' }).select('visitedCharges serviceGstPercentage partsGstPercentage supportEmail supportPhone supportWhatsapp cancellationPenalty companyName companyAddress companyCity companyState companyPincode companyPhone companyEmail isOnlinePaymentEnabled appName appLogo advancePaymentPercent convenienceFee platformFeePercentage');
 
     // Default if not found (fallback values)
     if (!settings) {
