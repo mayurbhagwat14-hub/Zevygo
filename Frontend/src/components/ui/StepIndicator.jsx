@@ -25,7 +25,7 @@ const StepIndicator = ({ steps = [], current = 0, className = '' }) => {
                 )}
                 <div
                   className={[
-                    'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border-2 transition-colors',
+                    'w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold shrink-0 border-2 transition-colors',
                     done
                       ? 'bg-primary-500 border-primary-500 text-white'
                       : active

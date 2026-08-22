@@ -46,9 +46,11 @@ const sendOTP = async (req, res) => {
       console.log(`[DEV] OTP for ${phone}: ${otp}`);
     }
 
-    // 5. Optional: Send email notification if email provided
+    // 5. Optional: Send email notification if email provided (non-blocking)
     if (email) {
-      await sendOTPEmail(email, otp, 'verification');
+      sendOTPEmail(email, otp, 'verification').catch((err) =>
+        console.error('[OTP] Email notification failed:', err.message)
+      );
     }
 
     // Check if SMS failed

@@ -260,10 +260,26 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
+  max-width: 100vw;
+  overflow-x: hidden;
   background-color: var(--color-neutral-0) !important;
   background: linear-gradient(to bottom, rgba(15, 52, 143, 0.03) 0%, rgba(15, 52, 143, 0.02) 10%, #ffffff 20%) !important;
   background-attachment: fixed;
@@ -273,14 +289,15 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
   color: var(--color-neutral-900);
 }
 
 #root {
   background-color: var(--color-neutral-0) !important;
   background: linear-gradient(to bottom, rgba(15, 52, 143, 0.03) 0%, rgba(15, 52, 143, 0.02) 10%, #ffffff 20%) !important;
-  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 /* Hide scrollbar for horizontal scroll */
@@ -298,10 +315,7 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
+/* Smooth scrolling — merged into html block above */
 
 /* Active state for touch devices */
 .active\:scale-95:active {

@@ -133,10 +133,16 @@ const DetailedServiceCard = memo(({ image, title, rating, reviews, price, origin
           </div>
 
           <button
-            className="shrink-0 text-[10.5px] font-bold px-2.5 py-1 rounded-md bg-[#0F348F] hover:bg-primary-600 text-white shadow-xs active:scale-95 transition-all whitespace-nowrap"
+            type="button"
+            className="shrink-0 text-[10.5px] font-bold px-2.5 py-1 rounded-md bg-[#0F348F] hover:bg-primary-600 text-white shadow-xs active:scale-95 transition-all whitespace-nowrap touch-manipulation"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
-              onAddClick?.();
+              if (onAddClick) {
+                onAddClick();
+              } else if (onClick) {
+                onClick();
+              }
             }}
           >
             Book Now

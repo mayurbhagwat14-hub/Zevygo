@@ -327,6 +327,59 @@ const Home = () => {
     navigate(`/user/category/${id}`, { state: { category } });
   };
 
+  const findCategoryForService = (service) => {
+    if (!service || categories.length === 0) return null;
+
+    const targetId = service.targetCategoryId;
+    if (targetId) {
+      const id = String(targetId);
+      const byId = categories.find(
+        (c) => String(c.id) === id || String(c._id) === id
+      );
+      if (byId) return byId;
+    }
+
+    if (service.slug) {
+      const bySlug = categories.find((c) => c.slug === service.slug);
+      if (bySlug) return bySlug;
+    }
+
+    const title = (service.title || '').toLowerCase();
+    if (!title) return null;
+
+    const keywordRules = [
+      { keys: ['driver', 'chauffeur'], match: ['driver'] },
+      { keys: ['ac ', 'air condition', 'cooling'], match: ['ac', 'appliance', 'repair', 'service'] },
+      { keys: ['fridge', 'refrigerator'], match: ['fridge', 'appliance', 'repair'] },
+      { keys: ['washing', 'laundry'], match: ['washing', 'appliance', 'laundry'] },
+      { keys: ['plumb', 'tap', 'pipe'], match: ['plumb', 'tap'] },
+      { keys: ['electric', 'wiring', 'fan'], match: ['electric', 'wiring', 'fan'] },
+      { keys: ['clean'], match: ['clean'] },
+      { keys: ['cook', 'chef', 'tiffin'], match: ['cook', 'tiffin', 'chef'] },
+      { keys: ['makeup', 'salon', 'beauty'], match: ['makeup', 'salon', 'beauty'] },
+      { keys: ['photo'], match: ['photo'] },
+      { keys: ['dj', 'sound'], match: ['dj', 'sound'] },
+      { keys: ['health'], match: ['health'] },
+    ];
+
+    for (const rule of keywordRules) {
+      if (rule.keys.some((k) => title.includes(k))) {
+        const match = categories.find((c) => {
+          const catTitle = (c.title || '').toLowerCase();
+          return rule.match.some((m) => catTitle.includes(m));
+        });
+        if (match) return match;
+      }
+    }
+
+    const byTitle = categories.find((c) => {
+      const catTitle = (c.title || '').toLowerCase();
+      const firstWord = title.split(/\s+/)[0];
+      return catTitle.includes(firstWord) || title.includes(catTitle.split(' ')[0]);
+    });
+    return byTitle || null;
+  };
+
   const handlePromoClick = (promo) => {
     if (promo.targetCategoryId) {
       const cat = categories.find(c => (c.id === promo.targetCategoryId || c._id === promo.targetCategoryId));
@@ -348,24 +401,22 @@ const Home = () => {
 
   const handleServiceClick = (service) => {
     if (!service) return;
-    if (service.targetCategoryId) {
-      const cat = categories.find(c => (c.id === service.targetCategoryId || c._id === service.targetCategoryId));
-      if (cat) {
-        handleCategoryClick(cat);
-        return;
-      }
+    const cat = findCategoryForService(service);
+    if (cat) {
+      handleCategoryClick(cat);
+      return;
     }
-    // Fallback if no targetCategoryId but has slug/title, we no longer navigate to slug
+    navigate('/user/all-services');
   };
 
   const handleAddClick = async (service) => {
+    if (!service) return;
+
     try {
-      if (service.targetCategoryId) {
-        const cat = categories.find(c => c.id === service.targetCategoryId);
-        if (cat) {
-          handleCategoryClick(cat);
-          return;
-        }
+      const cat = findCategoryForService(service);
+      if (cat) {
+        handleCategoryClick(cat);
+        return;
       }
 
       if (service.serviceId && service.categoryId) {
@@ -394,16 +445,7 @@ const Home = () => {
           toast.error(response.message || 'Failed to add to cart');
         }
       } else {
-        if (service.targetCategoryId) {
-          const cat = categories.find(c => (c.id === service.targetCategoryId || c._id === service.targetCategoryId));
-          if (cat) {
-            handleCategoryClick(cat);
-          } else {
-            toast.error('Unable to add this service to cart.');
-          }
-        } else {
-          toast.error('Unable to add this service to cart.');
-        }
+        navigate('/user/all-services');
       }
     } catch (error) {
       toast.error('Failed to add to cart. Please try again.');

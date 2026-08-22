@@ -20,6 +20,22 @@ function notifyFlutterLogin(responseData) {
   }
 }
 
+function storeVendorSession({ accessToken, refreshToken, vendor }) {
+  if (accessToken) {
+    localStorage.setItem('vendorAccessToken', accessToken);
+    sessionStorage.setItem('vendorAccessToken', accessToken);
+  }
+  if (refreshToken) {
+    localStorage.setItem('vendorRefreshToken', refreshToken);
+    sessionStorage.setItem('vendorRefreshToken', refreshToken);
+  }
+  if (vendor) {
+    const serialized = JSON.stringify(vendor);
+    localStorage.setItem('vendorData', serialized);
+    sessionStorage.setItem('vendorData', serialized);
+  }
+}
+
 /**
  * Send OTP for vendor authentication
  * @param {string} phone - Phone number
@@ -46,9 +62,7 @@ export const verifyLogin = async (data) => {
     const isPending = response.data.vendor?.adminApproval?.toLowerCase() === 'pending';
 
     if (response.data.success && !response.data.isNewUser && response.data.accessToken && !isPending) {
-      localStorage.setItem('vendorAccessToken', response.data.accessToken);
-      localStorage.setItem('vendorRefreshToken', response.data.refreshToken);
-      localStorage.setItem('vendorData', JSON.stringify(response.data.vendor));
+      storeVendorSession(response.data);
 
       // Notify Flutter about the login for mobile app FCM token handling
       notifyFlutterLogin(response.data);
@@ -77,9 +91,7 @@ export const login = async (credentials) => {
 
     // Store tokens in localStorage
     if (response.data.success && response.data.accessToken) {
-      localStorage.setItem('vendorAccessToken', response.data.accessToken);
-      localStorage.setItem('vendorRefreshToken', response.data.refreshToken);
-      localStorage.setItem('vendorData', JSON.stringify(response.data.vendor));
+      storeVendorSession(response.data);
     }
 
     return response.data;

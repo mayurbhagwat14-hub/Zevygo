@@ -15,7 +15,8 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  withCredentials: true // For cookies
+  withCredentials: true,
+  timeout: 30000,
 });
 
 // Helper to get token keys based on role/path

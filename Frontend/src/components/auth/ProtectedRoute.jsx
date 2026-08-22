@@ -104,7 +104,7 @@ const ProtectedRoute = ({ children, userType = 'user', redirectTo = null }) => {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#00a6a6' }}></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
           <p className="text-gray-600 text-sm">Checking authentication...</p>
         </div>
       </div>

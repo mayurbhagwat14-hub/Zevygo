@@ -32,7 +32,7 @@ const Input = forwardRef(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-[15px] font-medium text-neutral-900 mb-2"
+            className="block text-sm sm:text-[15px] font-medium text-neutral-900 mb-2"
           >
             {label}
             {required && <span className="text-error-500 ml-0.5" aria-hidden>*</span>}
@@ -41,7 +41,7 @@ const Input = forwardRef(
 
         <div
           className={[
-            'relative flex items-center h-14 overflow-hidden bg-white transition-colors',
+            'relative flex items-center h-12 sm:h-14 overflow-hidden bg-white transition-colors',
             'rounded-[14px] border',
             hasError
               ? 'border-error-500 focus-within:ring-2 focus-within:ring-error-500/20'
@@ -55,7 +55,7 @@ const Input = forwardRef(
             <div className="flex items-center gap-2 pl-4 pr-3 border-r border-neutral-200 h-full shrink-0 bg-neutral-50/80">
               {LeftIcon && <LeftIcon className="h-[18px] w-[18px] text-primary-500" aria-hidden />}
               {prefix && (
-                <span className="text-[15px] font-medium text-neutral-900 whitespace-nowrap">
+                <span className="text-base font-medium text-neutral-900 whitespace-nowrap">
                   {prefix}
                 </span>
               )}
@@ -71,7 +71,7 @@ const Input = forwardRef(
             required={required}
             className={[
               'block w-full h-full px-4 border-none outline-none bg-transparent',
-              'text-[15px] font-medium text-neutral-900 placeholder:text-neutral-400',
+              'text-base font-medium text-neutral-900 placeholder:text-neutral-400',
               'focus:ring-0 disabled:cursor-not-allowed',
               inputClassName,
             ].join(' ')}

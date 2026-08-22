@@ -44,7 +44,7 @@ const OtpInput = ({ value = ['', '', '', '', '', ''], onChange, disabled = false
   };
 
   return (
-    <div className="flex justify-center gap-2 sm:gap-3 py-2" role="group" aria-label="One-time password">
+    <div className="flex justify-center gap-1.5 sm:gap-2.5 py-1 sm:py-2 max-w-full" role="group" aria-label="One-time password">
       {value.map((digit, index) => (
         <input
           key={index}
@@ -60,7 +60,7 @@ const OtpInput = ({ value = ['', '', '', '', '', ''], onChange, disabled = false
           aria-label={`Digit ${index + 1}`}
           onChange={(e) => handleChange(index, e.target.value)}
           onKeyDown={(e) => handleKeyDown(index, e)}
-          className="w-11 h-14 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50"
+          className="w-10 h-12 sm:w-11 sm:h-14 text-center text-base sm:text-xl font-bold rounded-lg sm:rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50"
         />
       ))}
     </div>

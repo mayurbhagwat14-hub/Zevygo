@@ -451,7 +451,8 @@ const VendorSignup = () => {
 
   useEffect(() => {
     if (location.state?.phone && location.state?.verificationToken) {
-      setFormData((prev) => ({ ...prev, phoneNumber: location.state.phone }));
+      const cleanPhone = String(location.state.phone).replace(/\D/g, '').slice(0, 10);
+      setFormData((prev) => ({ ...prev, phoneNumber: cleanPhone }));
       setVerificationToken(location.state.verificationToken);
     }
   }, [location.state]);
@@ -730,7 +731,7 @@ const VendorSignup = () => {
     try {
       const response = await sendVendorOTP(formData.phoneNumber);
       if (response.success) {
-        setOtpToken(response.token);
+        setOtpToken(response.token || 'verification-pending');
         setStepIndex(3);
         setResendTimer(120);
         toast.success('OTP sent successfully to +91 ' + formData.phoneNumber);

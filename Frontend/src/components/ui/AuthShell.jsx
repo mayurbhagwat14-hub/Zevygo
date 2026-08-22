@@ -23,9 +23,9 @@ const AuthShell = ({
   const widthClass = maxWidth === '2xl' ? 'sm:max-w-2xl' : 'sm:max-w-md';
 
   return (
-    <div className={`min-h-[100dvh] w-full bg-neutral-25 flex flex-col justify-center py-10 sm:px-6 lg:px-8 relative overflow-hidden ${className}`}>
+    <div className={`min-h-[100dvh] w-full max-w-[100vw] overflow-x-hidden bg-neutral-25 flex flex-col justify-center py-4 sm:py-8 lg:py-10 px-3 sm:px-6 lg:px-8 relative ${className}`}>
 
-      <div className="absolute bottom-0 left-[-10%] w-full h-[50%] opacity-50 pointer-events-none z-0">
+      <div className="absolute bottom-0 left-[-10%] w-full h-[40%] sm:h-[50%] opacity-40 sm:opacity-50 pointer-events-none z-0">
         <svg
           viewBox="0 0 400 400"
           xmlns="http://www.w3.org/2000/svg"
@@ -38,7 +38,7 @@ const AuthShell = ({
       </div>
 
       {onBack && (
-        <div className="absolute top-8 left-4 sm:left-8 z-20">
+        <div className="absolute top-4 left-3 sm:top-8 sm:left-8 z-20">
           <Button
             type="button"
             variant="icon"
@@ -50,37 +50,37 @@ const AuthShell = ({
         </div>
       )}
 
-      <div className={`sm:mx-auto sm:w-full ${widthClass} text-center mb-6 relative z-10 pt-4 px-4 sm:px-0`}>
-        <div className="flex justify-center mb-4 sm:mb-6">
-          <Logo className="h-[100px] sm:h-[120px] w-auto" />
+      <div className={`mx-auto w-full max-w-[420px] ${widthClass} text-center mb-4 sm:mb-6 relative z-10 pt-2 sm:pt-4`}>
+        <div className="flex justify-center mb-3 sm:mb-5">
+          <Logo className="h-14 sm:h-20 w-auto max-w-[200px]" />
         </div>
-        <h1 className="text-[28px] sm:text-[34px] font-extrabold text-neutral-900 tracking-tight">
+        <h1 className="text-xl sm:text-2xl md:text-[28px] font-extrabold text-neutral-900 tracking-tight leading-tight px-1">
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-3 text-[15px] sm:text-base text-neutral-500 font-medium">{subtitle}</p>
+          <p className="mt-2 sm:mt-3 text-sm sm:text-[15px] text-neutral-500 font-medium px-1 leading-snug">{subtitle}</p>
         )}
       </div>
 
-      <div className={`sm:mx-auto w-full ${widthClass} px-4 sm:px-0 relative z-10 pb-4`}>
-        <div className="bg-white py-8 px-6 sm:px-8 shadow-xl rounded-3xl sm:rounded-[32px] border border-neutral-100">
+      <div className={`mx-auto w-full max-w-[420px] ${widthClass} relative z-10 pb-3 sm:pb-4`}>
+        <div className="bg-white py-5 sm:py-7 px-4 sm:px-7 shadow-lg sm:shadow-xl rounded-2xl sm:rounded-3xl border border-neutral-100">
           {children}
         </div>
-        {footer && <div className="mt-5 text-center">{footer}</div>}
+        {footer && <div className="mt-4 text-center">{footer}</div>}
       </div>
 
       {showShield && (
-        <div className="mt-2 flex flex-col items-center justify-center relative z-10 pb-8 px-4">
+        <div className="mt-3 sm:mt-4 flex flex-col items-center justify-center relative z-10 pb-4 sm:pb-8 px-3">
           <img
             src="/secure_shield_3d.png"
             alt=""
-            className="h-28 sm:h-32 object-contain"
+            className="h-16 sm:h-24 object-contain"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
             }}
           />
-          <div className="mt-3 flex items-center justify-center gap-2 text-[13px] text-neutral-500 font-medium">
-            <div className="bg-primary-100 p-1.5 rounded-full flex items-center justify-center">
+          <div className="mt-2 sm:mt-3 flex items-center justify-center gap-2 text-xs sm:text-[13px] text-neutral-500 font-medium text-center">
+            <div className="bg-primary-100 p-1.5 rounded-full flex items-center justify-center shrink-0">
               <FiLock className="h-3.5 w-3.5 text-primary-500" aria-hidden />
             </div>
             <p>
@@ -88,7 +88,7 @@ const AuthShell = ({
               {name}.
             </p>
           </div>
-          <p className="mt-4 text-[12px] text-neutral-400">
+          <p className="mt-3 text-[11px] sm:text-[12px] text-neutral-400">
             © {new Date().getFullYear()} {name}. All rights reserved.
           </p>
         </div>

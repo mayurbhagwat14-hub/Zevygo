@@ -23,6 +23,7 @@ const VendorLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   const phoneInputRef = useRef(null);
+  const otpSubmitLock = useRef(false);
 
   useEffect(() => {
     let interval;
@@ -33,7 +34,9 @@ const VendorLogin = () => {
   }, [resendTimer]);
 
   useEffect(() => {
-    if (localStorage.getItem('vendorAccessToken')) {
+    const token =
+      sessionStorage.getItem('vendorAccessToken') || localStorage.getItem('vendorAccessToken');
+    if (token) {
       navigate('/vendor', { replace: true });
       return;
     }
@@ -42,11 +45,11 @@ const VendorLogin = () => {
 
   useEffect(() => {
     const otpValue = otp.join('');
-    if (otpValue.length === 6 && !isLoading && otpToken) {
+    if (otpValue.length === 6 && !isLoading && otpToken && step === 'otp' && !otpSubmitLock.current) {
       handleOtpSubmit();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otp]);
+  }, [otp, otpToken, step]);
 
   const handlePhoneSubmit = async (e) => {
     e.preventDefault();
@@ -67,7 +70,9 @@ const VendorLogin = () => {
           });
           return;
         }
-        setOtpToken(response.token);
+        setOtpToken(response.token || 'verification-pending');
+        setOtp(['', '', '', '', '', '']);
+        otpSubmitLock.current = false;
         setStep('otp');
         setResendTimer(120);
         toast.success('OTP sent successfully');
@@ -83,6 +88,8 @@ const VendorLogin = () => {
 
   const handleOtpSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (otpSubmitLock.current || isLoading) return;
+
     const otpValue = otp.join('');
     if (otpValue.length !== 6) {
       toast.error('Please enter complete OTP');
@@ -92,6 +99,8 @@ const VendorLogin = () => {
       toast.error('Please request OTP first');
       return;
     }
+
+    otpSubmitLock.current = true;
     setIsLoading(true);
     try {
       const response = await verifyLogin({
@@ -118,6 +127,10 @@ const VendorLogin = () => {
           localStorage.removeItem('vendorAccessToken');
           localStorage.removeItem('vendorRefreshToken');
           localStorage.removeItem('vendorData');
+          sessionStorage.removeItem('vendorAccessToken');
+          sessionStorage.removeItem('vendorRefreshToken');
+          sessionStorage.removeItem('vendorData');
+          otpSubmitLock.current = false;
           setIsLoading(false);
         } else {
           toast.success(
@@ -130,10 +143,12 @@ const VendorLogin = () => {
           navigate('/vendor', { replace: true });
         }
       } else {
+        otpSubmitLock.current = false;
         setIsLoading(false);
         toast.error(response.message || 'Login failed');
       }
     } catch (error) {
+      otpSubmitLock.current = false;
       setIsLoading(false);
       toast.error(error.response?.data?.message || 'Verification failed. Please try again.');
     }
@@ -158,15 +173,18 @@ const VendorLogin = () => {
           ? `Manage your ${name} services and bookings`
           : `We've sent a 6-digit code to ${phoneNumber}`
       }
+      showShield={false}
     >
       {step === 'phone' ? (
-        <form onSubmit={handlePhoneSubmit} className="space-y-6">
+        <form onSubmit={handlePhoneSubmit} className="space-y-4 sm:space-y-5">
           <Input
             ref={phoneInputRef}
             label="Phone Number"
             leftIcon={FiPhone}
             prefix="+91"
             type="tel"
+            inputMode="numeric"
+            autoComplete="tel"
             required
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
@@ -194,7 +212,7 @@ const VendorLogin = () => {
           </p>
         </form>
       ) : (
-        <form onSubmit={handleOtpSubmit} className="space-y-6">
+        <form onSubmit={handleOtpSubmit} className="space-y-4 sm:space-y-5">
           <OtpInput value={otp} onChange={setOtp} disabled={isLoading} />
 
           <div className="flex items-center justify-between text-sm">

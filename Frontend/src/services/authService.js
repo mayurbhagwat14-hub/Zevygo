@@ -27,6 +27,22 @@ function getPlatformType() {
   return (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) ? 'mobile' : 'web';
 }
 
+function storeUserSession({ accessToken, refreshToken, user }) {
+  if (accessToken) {
+    localStorage.setItem('accessToken', accessToken);
+    sessionStorage.setItem('accessToken', accessToken);
+  }
+  if (refreshToken) {
+    localStorage.setItem('refreshToken', refreshToken);
+    sessionStorage.setItem('refreshToken', refreshToken);
+  }
+  if (user) {
+    const serialized = JSON.stringify(user);
+    localStorage.setItem('userData', serialized);
+    sessionStorage.setItem('userData', serialized);
+  }
+}
+
 /**
  * User Authentication Service
  */
@@ -41,9 +57,7 @@ export const userAuthService = {
   verifyLogin: async (data) => {
     const response = await api.post('/users/auth/verify-login', data);
     if (response.data.success && !response.data.isNewUser && response.data.accessToken) {
-      localStorage.setItem('accessToken', response.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
-      localStorage.setItem('userData', JSON.stringify(response.data.user));
+      storeUserSession(response.data);
       notifyFlutterLogin(response.data);
       registerFCMToken('user', true).catch(console.error);
     }
@@ -54,9 +68,7 @@ export const userAuthService = {
   register: async (data) => {
     const response = await api.post('/users/auth/register', data);
     if (response.data.accessToken) {
-      localStorage.setItem('accessToken', response.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
-      localStorage.setItem('userData', JSON.stringify(response.data.user));
+      storeUserSession(response.data);
       notifyFlutterLogin(response.data);
       registerFCMToken('user', true).catch(console.error);
     }
@@ -67,9 +79,7 @@ export const userAuthService = {
   login: async (data) => {
     const response = await api.post('/users/auth/login', data);
     if (response.data.accessToken) {
-      localStorage.setItem('accessToken', response.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
-      localStorage.setItem('userData', JSON.stringify(response.data.user));
+      storeUserSession(response.data);
       notifyFlutterLogin(response.data);
       registerFCMToken('user', true).catch(console.error);
     }

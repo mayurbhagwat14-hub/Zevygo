@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { FiUser, FiMail, FiPhone, FiArrowRight, FiChevronLeft, FiCheckCircle } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiArrowRight, FiChevronLeft, FiCheckCircle, FiLock } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { z } from 'zod';
 import { userAuthService } from '../../../services/authService';
@@ -37,6 +37,22 @@ const Signup = () => {
   const [resendTimer, setResendTimer] = useState(0);
   const [fieldErrors, setFieldErrors] = useState({});
   const nameInputRef = useRef(null);
+  const otpSubmitLock = useRef(false);
+  const detailsSubmitLock = useRef(false);
+
+  const canSubmitDetails = verificationToken
+    ? formData.name.trim().length >= 2
+    : formData.name.trim().length >= 2 && /^[6-9]\d{9}$/.test(formData.phoneNumber);
+
+  const getAuthErrorMessage = (error, fallback) => {
+    if (error?.code === 'ECONNABORTED') {
+      return 'Request timed out. Please check your internet and try again.';
+    }
+    if (!error?.response) {
+      return 'Cannot reach server. Please check your connection and try again.';
+    }
+    return error.response?.data?.message || fallback;
+  };
 
   useEffect(() => {
     let interval;
@@ -48,7 +64,8 @@ const Signup = () => {
 
   useEffect(() => {
     if (location.state?.phone && location.state?.verificationToken) {
-      setFormData((prev) => ({ ...prev, phoneNumber: location.state.phone }));
+      const cleanPhone = String(location.state.phone).replace(/\D/g, '').slice(0, 10);
+      setFormData((prev) => ({ ...prev, phoneNumber: cleanPhone }));
       setVerificationToken(location.state.verificationToken);
     }
   }, [location.state]);
@@ -59,55 +76,47 @@ const Signup = () => {
 
   useEffect(() => {
     const otpValue = otp.join('');
-    if (otpValue.length === 6 && !isLoading && otpToken) {
+    if (otpValue.length === 6 && !isLoading && otpToken && step === 'otp' && !otpSubmitLock.current) {
       handleOtpSubmit();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otp]);
+  }, [otp, otpToken, step]);
 
   const handleDetailsSubmit = async (e) => {
     e.preventDefault();
+    if (detailsSubmitLock.current || isLoading) return;
+
     setFieldErrors({});
 
-    const payload = verificationToken
-      ? { ...formData, phoneNumber: formData.phoneNumber || location.state?.phone || '9999999999' }
-      : formData;
-
-    const validationResult = signupSchema.safeParse(
-      verificationToken
-        ? { ...payload, phoneNumber: formData.phoneNumber || '9876543210' }
-        : formData
-    );
-
-    if (!verificationToken && !validationResult.success) {
-      const errs = {};
-      validationResult.error.errors.forEach((err) => {
-        errs[err.path[0]] = err.message;
-        toast.error(err.message);
+    if (!verificationToken) {
+      const validationResult = signupSchema.safeParse({
+        name: formData.name.trim(),
+        email: formData.email.trim() || undefined,
+        phoneNumber: formData.phoneNumber.trim(),
       });
-      setFieldErrors(errs);
+
+      if (!validationResult.success) {
+        const errs = {};
+        validationResult.error.errors.forEach((err) => {
+          errs[err.path[0]] = err.message;
+          toast.error(err.message);
+        });
+        setFieldErrors(errs);
+        return;
+      }
+    } else if (formData.name.trim().length < 2) {
+      toast.error('Please enter a valid name (at least 2 characters)');
       return;
     }
 
-    if (verificationToken) {
-      const nameCheck = z
-        .string()
-        .trim()
-        .min(2)
-        .safeParse(formData.name);
-      if (!nameCheck.success) {
-        toast.error('Please enter a valid name (at least 2 characters)');
-        return;
-      }
-    }
-
+    detailsSubmitLock.current = true;
     setIsLoading(true);
 
     if (verificationToken) {
       try {
         const response = await userAuthService.register({
-          name: formData.name,
-          email: formData.email || null,
+          name: formData.name.trim(),
+          email: formData.email.trim() || null,
           verificationToken,
         });
         if (response.success) {
@@ -124,22 +133,28 @@ const Signup = () => {
             </div>,
             { icon: <FiCheckCircle className="text-success-500" /> }
           );
-          navigate('/user');
+          navigate('/user', { replace: true });
         } else {
           toast.error(response.message || 'Registration failed');
         }
       } catch (error) {
-        toast.error(error.response?.data?.message || 'Registration failed');
+        toast.error(getAuthErrorMessage(error, 'Registration failed'));
       } finally {
+        detailsSubmitLock.current = false;
         setIsLoading(false);
       }
       return;
     }
 
     try {
-      const response = await userAuthService.sendOTP(formData.phoneNumber, formData.email || null);
+      const response = await userAuthService.sendOTP(
+        formData.phoneNumber.trim(),
+        formData.email.trim() || null
+      );
       if (response.success) {
-        setOtpToken(response.token);
+        setOtpToken(response.token || 'verification-pending');
+        setOtp(['', '', '', '', '', '']);
+        otpSubmitLock.current = false;
         setStep('otp');
         setResendTimer(120);
         toast.success('OTP sent successfully');
@@ -147,14 +162,17 @@ const Signup = () => {
         toast.error(response.message || 'Failed to send OTP');
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to send OTP. Please try again.');
+      toast.error(getAuthErrorMessage(error, 'Failed to send OTP. Please try again.'));
     } finally {
+      detailsSubmitLock.current = false;
       setIsLoading(false);
     }
   };
 
   const handleOtpSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (otpSubmitLock.current || isLoading) return;
+
     const otpValue = otp.join('');
     if (otpValue.length !== 6) {
       toast.error('Please enter complete OTP');
@@ -164,6 +182,8 @@ const Signup = () => {
       toast.error('Please request OTP first');
       return;
     }
+
+    otpSubmitLock.current = true;
     setIsLoading(true);
     try {
       const response = await userAuthService.register({
@@ -187,14 +207,16 @@ const Signup = () => {
           </div>,
           { icon: <FiCheckCircle className="text-success-500" /> }
         );
-        navigate('/user');
+        navigate('/user', { replace: true });
       } else {
         toast.error(response.message || 'Registration failed');
-        setIsLoading(false);
+        otpSubmitLock.current = false;
       }
     } catch (error) {
+      otpSubmitLock.current = false;
+      toast.error(getAuthErrorMessage(error, 'Registration failed. Please try again.'));
+    } finally {
       setIsLoading(false);
-      toast.error(error.response?.data?.message || 'Registration failed. Please try again.');
     }
   };
 
@@ -211,18 +233,19 @@ const Signup = () => {
             services
           </>
         ) : (
-          `We've sent a 6-digit code to ${formData.phoneNumber}`
+          `We've sent a 6-digit code to +91 ${formData.phoneNumber}`
         )
       }
+      showShield={false}
     >
       <StepIndicator
         steps={verificationToken ? ['Profile', 'Done'] : ['Profile', 'Verify']}
         current={stepIndex}
-        className="mb-8"
+        className="mb-4 sm:mb-6"
       />
 
       {step === 'details' ? (
-        <form onSubmit={handleDetailsSubmit} className="space-y-5">
+        <form onSubmit={handleDetailsSubmit} className="space-y-4 sm:space-y-5">
           <Input
             ref={nameInputRef}
             label="Full Name"
@@ -254,6 +277,8 @@ const Signup = () => {
               prefix="+91"
               name="phoneNumber"
               type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
               required
               value={formData.phoneNumber}
               error={fieldErrors.phoneNumber}
@@ -267,57 +292,84 @@ const Signup = () => {
             />
           )}
 
+          {verificationToken && formData.phoneNumber && (
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-left">
+              <p className="text-xs font-medium text-neutral-500">Verified mobile</p>
+              <p className="text-sm font-semibold text-neutral-900 mt-0.5">+91 {formData.phoneNumber}</p>
+            </div>
+          )}
+
           <Button
             type="submit"
-            variant="soft"
+            variant="primary"
             size="xl"
             fullWidth
             isLoading={isLoading}
+            disabled={!canSubmitDetails}
             icon={FiArrowRight}
             iconPosition="right"
           >
             {verificationToken ? 'Complete Registration' : 'Send OTP'}
           </Button>
 
-          <p className="text-center text-sm text-neutral-500">
+          <p className="text-center text-xs sm:text-sm text-neutral-500">
             Already have an account?{' '}
             <Link to="/user/login" className="text-primary-500 font-semibold hover:underline">
               Sign in
             </Link>
           </p>
+
+          <div className="bg-primary-50/80 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center gap-3">
+            <div className="bg-primary-100 p-2.5 rounded-full shrink-0">
+              <FiLock className="h-4 w-4 text-neutral-900" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm sm:text-[15px] text-neutral-900 leading-snug">
+                Your data is <span className="text-primary-500 font-bold">safe and secure</span> with us.
+              </p>
+            </div>
+          </div>
         </form>
       ) : (
-        <form onSubmit={handleOtpSubmit} className="space-y-6">
+        <form onSubmit={handleOtpSubmit} className="space-y-4 sm:space-y-5">
           <OtpInput value={otp} onChange={setOtp} disabled={isLoading} />
 
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
             <button
               type="button"
-              onClick={() => setStep('details')}
-              className="flex items-center font-medium text-neutral-500 hover:text-neutral-800"
+              onClick={() => {
+                setOtp(['', '', '', '', '', '']);
+                otpSubmitLock.current = false;
+                setStep('details');
+              }}
+              className="flex items-center font-medium text-neutral-500 hover:text-neutral-800 shrink-0"
             >
-              <FiChevronLeft className="mr-1" /> Edit details
+              <FiChevronLeft className="mr-0.5" /> Edit details
             </button>
             <button
               type="button"
-              disabled={resendTimer > 0}
+              disabled={isLoading || resendTimer > 0}
               onClick={async () => {
-                if (resendTimer > 0) return;
+                if (isLoading || resendTimer > 0) return;
                 try {
+                  setIsLoading(true);
                   const response = await userAuthService.sendOTP(
                     formData.phoneNumber,
                     formData.email || null
                   );
                   if (response.success) {
-                    setOtpToken(response.token);
+                    setOtpToken(response.token || 'verification-pending');
+                    otpSubmitLock.current = false;
                     setResendTimer(120);
                     toast.success('New code sent!');
                   }
                 } catch {
                   toast.error('Failed to resend code');
+                } finally {
+                  setIsLoading(false);
                 }
               }}
-              className="font-medium text-primary-500 disabled:opacity-50"
+              className="font-medium text-primary-500 hover:text-primary-700 disabled:opacity-50 text-right"
             >
               {resendTimer > 0
                 ? `Resend in ${Math.floor(resendTimer / 60)}:${String(resendTimer % 60).padStart(2, '0')}`
@@ -327,7 +379,7 @@ const Signup = () => {
 
           <Button
             type="submit"
-            variant="soft"
+            variant="primary"
             size="xl"
             fullWidth
             isLoading={isLoading}
