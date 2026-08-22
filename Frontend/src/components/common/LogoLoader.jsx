@@ -46,7 +46,7 @@ const LogoLoader = ({ fullScreen = false, overlay = false, inline = false, size 
         />
         {/* Subtle ripple effect */}
         <motion.div
-          className="absolute inset-0 rounded-full border-2 border-blue-200"
+          className="absolute inset-0 rounded-full border-2 border-primary-200"
           animate={{
             scale: [1, 1.4],
             opacity: [0.6, 0]

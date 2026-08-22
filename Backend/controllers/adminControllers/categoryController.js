@@ -46,6 +46,7 @@ const getAllCategories = async (req, res) => {
         cityIds: cat.cityIds || [],
         supportedBookingTypes: cat.supportedBookingTypes || ['scheduled'],
         bookingMode: cat.bookingMode || 'BOTH',
+        serviceFulfillmentType: cat.serviceFulfillmentType || 'ON_SITE',
         defaultPricingModel: cat.defaultPricingModel || 'FIXED',
         allowMultiSelect: Boolean(cat.allowMultiSelect),
         formSchema: cat.formSchema || [],
@@ -108,6 +109,8 @@ const getCategoryById = async (req, res) => {
         catalogItemSchema: category.catalogItemSchema || [],
         pricingLimits: category.pricingLimits || { minPrice: 0, maxPrice: 999999 },
         paymentConfig: category.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: 0 },
+        bookingMode: category.bookingMode || 'BOTH',
+        serviceFulfillmentType: category.serviceFulfillmentType || 'ON_SITE',
         metaTitle: category.metaTitle,
         metaDescription: category.metaDescription,
         createdAt: category.createdAt,
@@ -153,6 +156,8 @@ const createCategory = async (req, res) => {
       isPopular,
       pricingLimits,
       paymentConfig,
+      bookingMode,
+      serviceFulfillmentType,
       metaTitle,
       metaDescription,
       cityIds
@@ -223,6 +228,12 @@ const createCategory = async (req, res) => {
         requireAdvancePayment: Boolean(paymentConfig?.requireAdvancePayment),
         advancePaymentPercent: Math.min(100, Math.max(0, Number(paymentConfig?.advancePaymentPercent ?? 0)))
       },
+      bookingMode: ['INSTANT', 'SCHEDULED', 'BOTH', 'REQUEST_QUOTE'].includes(String(bookingMode || '').toUpperCase())
+        ? String(bookingMode).toUpperCase()
+        : 'BOTH',
+      serviceFulfillmentType: String(serviceFulfillmentType || '').toUpperCase() === 'DELIVERY'
+        ? 'DELIVERY'
+        : 'ON_SITE',
       metaTitle: metaTitle?.trim() || null,
       metaDescription: metaDescription?.trim() || null,
       cityIds: cityIds || [],
@@ -298,6 +309,8 @@ const updateCategory = async (req, res) => {
       isPopular,
       pricingLimits,
       paymentConfig,
+      bookingMode,
+      serviceFulfillmentType,
       metaTitle,
       metaDescription,
       cityIds: updateCityIds
@@ -373,6 +386,20 @@ const updateCategory = async (req, res) => {
           ? Math.min(100, Math.max(0, Number(paymentConfig.advancePaymentPercent)))
           : category.paymentConfig?.advancePaymentPercent || 0
       };
+    }
+    if (bookingMode !== undefined) {
+      const mode = String(bookingMode).toUpperCase();
+      if (['INSTANT', 'SCHEDULED', 'BOTH', 'REQUEST_QUOTE'].includes(mode)) {
+        category.bookingMode = mode;
+        category.supportedBookingTypes = mode === 'BOTH'
+          ? ['instant', 'scheduled', 'both']
+          : [mode.toLowerCase()];
+      }
+    }
+    if (serviceFulfillmentType !== undefined) {
+      category.serviceFulfillmentType = String(serviceFulfillmentType).toUpperCase() === 'DELIVERY'
+        ? 'DELIVERY'
+        : 'ON_SITE';
     }
     if (metaTitle !== undefined) category.metaTitle = metaTitle?.trim() || null;
     if (metaDescription !== undefined) category.metaDescription = metaDescription?.trim() || null;

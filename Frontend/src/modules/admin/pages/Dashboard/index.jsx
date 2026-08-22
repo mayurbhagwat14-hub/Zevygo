@@ -151,7 +151,7 @@ const AdminDashboard = () => {
       value: (stats.activeBookings || 0).toLocaleString(),
       change: 0,
       icon: FiShoppingBag,
-      iconBox: 'bg-white border-2 border-blue-500 text-blue-600',
+      iconBox: 'bg-white border-2 border-primary-400 text-primary-500',
       link: '/admin/reports/bookings'
     },
     {

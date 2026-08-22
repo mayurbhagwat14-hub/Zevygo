@@ -50,7 +50,7 @@ const BookingNotifications = () => {
 
   const getIcon = (type) => {
     switch (type) {
-      case 'new_booking': return <FiBell className="text-blue-500 w-5 h-5" />;
+      case 'new_booking': return <FiBell className="text-primary-400 w-5 h-5" />;
       case 'cancelled': return <FiBell className="text-red-500 w-5 h-5" />; // Using generic bell for now, or X
       case 'payment_failed': return <FiBell className="text-yellow-500 w-5 h-5" />;
       default: return <FiInfo className="text-gray-500 w-5 h-5" />;
@@ -59,7 +59,7 @@ const BookingNotifications = () => {
 
   const getBgColor = (type) => {
     switch (type) {
-      case 'new_booking': return 'bg-blue-50';
+      case 'new_booking': return 'bg-primary-50';
       case 'cancelled': return 'bg-red-50';
       case 'payment_failed': return 'bg-yellow-50';
       default: return 'bg-gray-50';
@@ -74,7 +74,7 @@ const BookingNotifications = () => {
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-blue-500 cursor-pointer min-w-[150px]"
+            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-primary-400 cursor-pointer min-w-[150px]"
           >
             <option>All Types</option>
             <option value="new_booking">New Bookings</option>
@@ -91,7 +91,7 @@ const BookingNotifications = () => {
           )}
           <button
             onClick={markAllRead}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             Mark All Read
           </button>
@@ -110,7 +110,7 @@ const BookingNotifications = () => {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className={`p-4 flex items-center justify-between hover:bg-gray-50 transition-colors group ${notification.unread ? 'bg-blue-50/10' : ''}`}
+                className={`p-4 flex items-center justify-between hover:bg-gray-50 transition-colors group ${notification.unread ? 'bg-primary-50/10' : ''}`}
               >
                 <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${getBgColor(notification.type)}`}>
@@ -121,15 +121,15 @@ const BookingNotifications = () => {
                     <p className="text-sm text-gray-500">{notification.message}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-xs text-gray-400">{notification.time}</span>
-                      <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{notification.bookingId}</span>
+                      <span className="text-xs font-medium text-primary-500 bg-primary-50 px-2 py-0.5 rounded">{notification.bookingId}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                   {notification.unread && (
-                    <button title="Mark as read" onClick={() => (notification.title)} className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors relative">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full absolute top-1 right-1" />
+                    <button title="Mark as read" onClick={() => (notification.title)} className="p-2 text-blue-400 hover:text-primary-500 hover:bg-primary-50 rounded-full transition-colors relative">
+                      <div className="w-2 h-2 bg-primary-500 rounded-full absolute top-1 right-1" />
                       <FiCheck className="w-4 h-4" /> {/* Simple check icon logic implies read */}
                     </button>
                   )}

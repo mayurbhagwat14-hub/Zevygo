@@ -176,7 +176,7 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess, targ
 
   const modalHeader = (
     <div className="flex items-center gap-2 min-w-0 pr-2">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700 shrink-0">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-100 text-primary-600 shrink-0">
         <FiSliders className="w-4 h-4" />
       </span>
       <div className="min-w-0">
@@ -204,7 +204,7 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess, targ
     >
       <div className="space-y-6">
           {/* Add / Edit Form Card */}
-          <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
+          <div className="bg-primary-50/50 p-4 rounded-xl border border-primary-100 space-y-3">
             <h3 className="text-xs font-black text-blue-900 uppercase tracking-wider">
               {editingIndex !== null ? 'Edit Field' : 'Add New Custom Field'}
             </h3>
@@ -213,12 +213,12 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess, targ
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">Field Label *</label>
                 <input type="text" value={newField.label} onChange={e => setNewField(p => ({ ...p, label: e.target.value }))}
-                  placeholder="e.g. License Number, Driving Experience" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+                  placeholder="e.g. License Number, Driving Experience" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-primary-400" />
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">Field Key (System ID)</label>
                 <input type="text" value={newField.key} onChange={e => setNewField(p => ({ ...p, key: e.target.value }))}
-                  placeholder="Auto-generated if blank" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+                  placeholder="Auto-generated if blank" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-primary-400" />
               </div>
             </div>
 
@@ -226,14 +226,14 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess, targ
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">Input Type</label>
                 <select value={newField.type} onChange={e => setNewField(p => ({ ...p, type: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold">
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-primary-400 font-semibold">
                   {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">Help Text / Hint</label>
                 <input type="text" value={newField.helpText} onChange={e => setNewField(p => ({ ...p, helpText: e.target.value }))}
-                  placeholder="e.g. 12 digits without spaces" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+                  placeholder="e.g. 12 digits without spaces" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-primary-400" />
               </div>
             </div>
 
@@ -242,12 +242,12 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess, targ
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">Min Value (Optional)</label>
                   <input type="number" value={newField.minValue} onChange={e => setNewField(p => ({ ...p, minValue: e.target.value }))}
-                    placeholder="e.g. 100" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+                    placeholder="e.g. 100" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-primary-400" />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">Max Value (Optional)</label>
                   <input type="number" value={newField.maxValue} onChange={e => setNewField(p => ({ ...p, maxValue: e.target.value }))}
-                    placeholder="e.g. 5000" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+                    placeholder="e.g. 5000" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-primary-400" />
                 </div>
               </div>
             )}
@@ -256,13 +256,13 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess, targ
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">Options (Comma separated)</label>
                 <input type="text" value={newField.optionsText} onChange={e => setNewField(p => ({ ...p, optionsText: e.target.value }))}
-                  placeholder="Option 1, Option 2, Option 3" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+                  placeholder="Option 1, Option 2, Option 3" className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-primary-400" />
               </div>
             )}
 
             <div className="flex items-center justify-between pt-1">
               <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                <input type="checkbox" checked={newField.required} onChange={e => setNewField(p => ({ ...p, required: e.target.checked }))} className="w-4 h-4 text-blue-600 rounded" />
+                <input type="checkbox" checked={newField.required} onChange={e => setNewField(p => ({ ...p, required: e.target.checked }))} className="w-4 h-4 text-primary-500 rounded" />
                 <span>Is Required Field?</span>
               </label>
 
@@ -271,7 +271,7 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess, targ
                   <button type="button" onClick={() => { setEditingIndex(null); setNewField({ key: '', label: '', type: 'text', optionsText: '', required: false, helpText: '', minValue: '', maxValue: '' }); }}
                     className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-lg">Cancel</button>
                 )}
-                <button type="button" onClick={handleAddField} className="px-4 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg flex items-center gap-1 hover:bg-blue-700">
+                <button type="button" onClick={handleAddField} className="px-4 py-1.5 bg-primary-500 text-white text-xs font-bold rounded-lg flex items-center gap-1 hover:bg-primary-600">
                   <FiPlus /> {editingIndex !== null ? 'Update Field' : 'Add Field'}
                 </button>
               </div>
@@ -288,7 +288,7 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess, targ
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                 {fields.map((f, i) => (
-                  <div key={f.key || i} className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-3 hover:border-blue-200 transition-colors">
+                  <div key={f.key || i} className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-3 hover:border-primary-200 transition-colors">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-black text-slate-900">{f.label}</span>
@@ -303,7 +303,7 @@ const VendorFormBuilderModal = ({ isOpen, onClose, category, onSaveSuccess, targ
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <button onClick={() => handleEditField(i)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><FiEdit2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleEditField(i)} className="p-1.5 text-primary-500 hover:bg-primary-50 rounded-lg"><FiEdit2 className="w-3.5 h-3.5" /></button>
                       <button onClick={() => handleDeleteField(i)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><FiTrash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </div>

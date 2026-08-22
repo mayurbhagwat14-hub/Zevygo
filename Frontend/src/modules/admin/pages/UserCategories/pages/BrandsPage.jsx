@@ -325,7 +325,7 @@ const BrandsPage = ({ catalog, setCatalog, selectedCity }) => {
               reset();
               setIsModalOpen(true);
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+            className="px-4 py-2 bg-primary-500 text-white rounded-lg font-semibold hover:bg-primary-600 transition-colors flex items-center gap-2 shadow-sm"
           >
             <FiPlus className="w-4 h-4" />
             <span>Add Brand</span>
@@ -409,7 +409,7 @@ const BrandsPage = ({ catalog, setCatalog, selectedCity }) => {
                         <div className="flex flex-wrap gap-1">
                           {(s.categoryTitles && s.categoryTitles.length > 0) ? (
                             s.categoryTitles.map((title, tIdx) => (
-                              <span key={`t-${tIdx}`} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold border border-blue-100">
+                              <span key={`t-${tIdx}`} className="px-2 py-0.5 bg-primary-50 text-primary-600 rounded text-[10px] font-bold border border-primary-100">
                                 {title}
                               </span>
                             ))
@@ -420,7 +420,7 @@ const BrandsPage = ({ catalog, setCatalog, selectedCity }) => {
                               const catKey = catId ? `cat-${catId}-${cIdx}` : `cat-${cIdx}`;
                               if (cat) {
                                 return (
-                                  <span key={catKey} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold border border-blue-100">
+                                  <span key={catKey} className="px-2 py-0.5 bg-primary-50 text-primary-600 rounded text-[10px] font-bold border border-primary-100">
                                     {cat.title}
                                   </span>
                                 );
@@ -459,7 +459,7 @@ const BrandsPage = ({ catalog, setCatalog, selectedCity }) => {
                               setEditingId(s.id);
                               setIsModalOpen(true);
                             }}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            className="p-1.5 text-primary-500 hover:bg-primary-50 rounded transition-colors"
                             title="Edit"
                           >
                             <FiEdit2 className="w-4 h-4" />

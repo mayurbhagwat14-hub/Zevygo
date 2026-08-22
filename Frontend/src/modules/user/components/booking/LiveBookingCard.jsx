@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiClock, FiMapPin, FiTool, FiCheckCircle, FiChevronRight, FiNavigation, FiX } from 'react-icons/fi';
 import userBookingService from '../../../../services/bookingService';
-import { userTheme } from '../../../../theme';
 import RatingModal from './RatingModal';
 import { toast } from 'react-hot-toast';
 import { useSocket } from '../../../../context/SocketContext';
@@ -16,83 +15,93 @@ const LiveBookingCard = ({ hasBottomNav }) => {
   const [loading, setLoading] = useState(true);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
+  const fetchTimerRef = useRef(null);
+  const inflightRef = useRef(null);
 
-  // Reset dismissed state when location changes (page changes)
   useEffect(() => {
     setIsDismissed(false);
   }, [location.pathname]);
 
-  // Status mapping for UI
   const getStatusInfo = (status) => {
     switch (status?.toUpperCase()) {
       case 'ASSIGNED':
-        return { label: 'Worker Assigned', icon: FiCheckCircle, color: 'bg-blue-500', sub: 'Worker will start journey soon' };
+      case 'CONFIRMED':
+      case 'AWAITING_PAYMENT':
+      case 'ACCEPTED':
+        return { label: 'Booking Active', icon: FiCheckCircle, color: 'bg-primary-500', sub: 'Vendor is handling your request' };
       case 'STARTED':
       case 'JOURNEY_STARTED':
-        return { label: 'Worker on the Way', icon: FiNavigation, color: 'bg-orange-500', sub: 'Track location live', pulse: true };
+        return { label: 'On the Way', icon: FiNavigation, color: 'bg-orange-500', sub: 'Track location live', pulse: true };
       case 'VISITED':
-        return { label: 'Reached & Started Work', icon: FiMapPin, color: 'bg-green-500', sub: 'At your location • Work Started' };
+        return { label: 'Reached & Started', icon: FiMapPin, color: 'bg-green-500', sub: 'At your location' };
       case 'IN_PROGRESS':
-        return { label: 'Reached & Working', icon: FiTool, color: 'bg-purple-500', sub: 'Work successfully started' };
+        return { label: 'In Progress', icon: FiTool, color: 'bg-purple-500', sub: 'Service in progress' };
       case 'WORK_DONE':
-        return { label: 'Work Completed', icon: FiCheckCircle, color: 'bg-green-600', sub: 'Review payment details' };
-      // New Finding Status
+        return { label: 'Completed', icon: FiCheckCircle, color: 'bg-green-600', sub: 'Review payment details' };
       case 'REQUESTED':
       case 'SEARCHING':
-        return { label: 'Finding Nearby Vendors', icon: FiClock, color: 'bg-teal-500', sub: 'Scanning within 10km...', pulse: true };
+        return { label: 'Waiting for Vendor', icon: FiClock, color: 'bg-teal-500', sub: 'Vendor will accept soon...', pulse: true };
       default:
         return null;
     }
   };
 
+  const fetchActiveBooking = useCallback(async () => {
+    if (inflightRef.current) return inflightRef.current;
+
+    inflightRef.current = (async () => {
+      try {
+        const res = await userBookingService.getUserBookings({ limit: 5 });
+        if (res.success && res.data?.length > 0) {
+          const ongoing = res.data.find((b) => {
+            const s = b.status?.toUpperCase();
+            if (s === 'WORK_DONE' && b.rating) return false;
+            return [
+              'ASSIGNED', 'CONFIRMED', 'AWAITING_PAYMENT', 'ACCEPTED', 'STARTED', 'JOURNEY_STARTED',
+              'VISITED', 'IN_PROGRESS', 'WORK_DONE', 'SEARCHING', 'REQUESTED'
+            ].includes(s);
+          });
+          setActiveBooking(ongoing || null);
+        } else {
+          setActiveBooking(null);
+        }
+      } catch {
+        // Silent
+      } finally {
+        setLoading(false);
+        inflightRef.current = null;
+      }
+    })();
+
+    return inflightRef.current;
+  }, []);
+
+  const scheduleFetch = useCallback(() => {
+    if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
+    fetchTimerRef.current = setTimeout(() => {
+      fetchActiveBooking();
+    }, 800);
+  }, [fetchActiveBooking]);
+
   useEffect(() => {
     fetchActiveBooking();
 
     if (socket) {
-      socket.on('booking_updated', fetchActiveBooking);
-      socket.on('notification', fetchActiveBooking);
+      socket.on('booking_updated', scheduleFetch);
+      socket.on('notification', scheduleFetch);
     }
 
-    // Poll every 30 seconds for updates
-    const interval = setInterval(fetchActiveBooking, 30000);
+    const interval = setInterval(fetchActiveBooking, 60000);
     return () => {
       clearInterval(interval);
+      if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
       if (socket) {
-        socket.off('booking_updated', fetchActiveBooking);
-        socket.off('notification', fetchActiveBooking);
+        socket.off('booking_updated', scheduleFetch);
+        socket.off('notification', scheduleFetch);
       }
     };
-  }, [socket]);
+  }, [socket, fetchActiveBooking, scheduleFetch]);
 
-  const fetchActiveBooking = async () => {
-    try {
-      // Fetch bookings with active statuses
-      // We manually fetch latest and check status on client or assume API supports status filter array
-      // For now, getting all 'active' look-alikes by assuming 'current' sort order or specific API behaviour
-      // Re-using getUserBookings with a broad status or custom logic if needed. 
-      // Actually, relying on getUserBookings default which excludes 'SEARCHING'. 
-      // We'll filter client side for the *most relevant* active one.
-
-      const res = await userBookingService.getUserBookings({ limit: 5 });
-      if (res.success && res.data.length > 0) {
-        // Find the first booking that is in an active state (checking both cases to be safe)
-        const ongoing = res.data.find(b => {
-          const s = b.status?.toUpperCase();
-          // Hide LiveBookingCard if status is WORK_DONE and review is already done
-          if (s === 'WORK_DONE' && b.rating) return false;
-
-          return ['ASSIGNED', 'STARTED', 'JOURNEY_STARTED', 'VISITED', 'IN_PROGRESS', 'WORK_DONE', 'SEARCHING', 'REQUESTED'].includes(s);
-        });
-        setActiveBooking(ongoing || null);
-      }
-    } catch (error) {
-      // Failed to fetch active booking
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Auto-show rating modal when work is marked done
   useEffect(() => {
     if (activeBooking && activeBooking.status?.toUpperCase() === 'WORK_DONE' && !activeBooking.rating && !showRatingModal) {
       const dismissed = localStorage.getItem(`rating_dismissed_live_${activeBooking._id}`);
@@ -100,7 +109,7 @@ const LiveBookingCard = ({ hasBottomNav }) => {
         setShowRatingModal(true);
       }
     }
-  }, [activeBooking]);
+  }, [activeBooking, showRatingModal]);
 
   const handleRateSubmit = async (ratingData) => {
     try {
@@ -111,16 +120,16 @@ const LiveBookingCard = ({ hasBottomNav }) => {
           style: { borderRadius: '15px', background: '#333', color: '#fff' }
         });
         setShowRatingModal(false);
-        fetchActiveBooking(); // Refresh to hide card or update state
+        fetchActiveBooking();
       } else {
         toast.error(response.message || 'Failed to submit review');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to submit review');
     }
   };
 
-  if (!activeBooking || isDismissed) return null;
+  if (loading || !activeBooking || isDismissed) return null;
 
   const statusInfo = getStatusInfo(activeBooking.status);
   if (!statusInfo) return null;
@@ -137,7 +146,6 @@ const LiveBookingCard = ({ hasBottomNav }) => {
         transition={{ type: 'spring', stiffness: 200, damping: 20 }}
         onClick={() => {
           const status = activeBooking.status?.toUpperCase();
-          // If worker is on the way, go to tracking map
           if (status === 'STARTED' || status === 'JOURNEY_STARTED') {
             navigate(`/user/booking/${activeBooking._id || activeBooking.id}/track`);
           } else if (status === 'SEARCHING' || status === 'REQUESTED') {
@@ -149,9 +157,8 @@ const LiveBookingCard = ({ hasBottomNav }) => {
         className={`fixed ${hasBottomNav ? 'bottom-24' : 'bottom-6'} left-4 right-4 z-50`}
       >
         <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 flex items-center gap-4 relative overflow-hidden cursor-pointer active:scale-95 transition-transform group">
-
-          {/* Close Button */}
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               setIsDismissed(true);
@@ -161,37 +168,32 @@ const LiveBookingCard = ({ hasBottomNav }) => {
             <FiX className="w-3 h-3" />
           </button>
 
-          {/* Progress Bar Background */}
           <div className="absolute bottom-0 left-0 h-1 bg-gray-100 w-full">
             <motion.div
               className={`h-full ${statusInfo.color}`}
-              initial={{ width: "0%" }}
-              animate={{ width: "100%" }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              initial={{ width: '0%' }}
+              animate={{ width: '100%' }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
             />
           </div>
 
-          {/* Icon Box */}
           <div className={`w-12 h-12 rounded-full ${statusInfo.color} flex items-center justify-center shrink-0 relative`}>
             {statusInfo.pulse && (
-              <div className={`absolute inset-0 rounded-full ${statusInfo.color} animate-ping opacity-50`}></div>
+              <div className={`absolute inset-0 rounded-full ${statusInfo.color} animate-ping opacity-50`} />
             )}
             <Icon className="text-white w-6 h-6 relative z-10" />
           </div>
 
-          {/* Text Info */}
           <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-gray-900 text-sm truncate">
-              {statusInfo.label}
-            </h4>
+            <h4 className="font-bold text-gray-900 text-sm truncate">{statusInfo.label}</h4>
             <p className="text-xs text-gray-500 truncate">
               {statusInfo.sub} • {activeBooking.serviceName}
             </p>
           </div>
 
-          {/* Action Arrow or Pay Button */}
           {activeBooking.status?.toUpperCase() === 'WORK_DONE' && !activeBooking.cashCollected ? (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 navigate(`/user/booking/${activeBooking._id || activeBooking.id}`);
@@ -205,11 +207,9 @@ const LiveBookingCard = ({ hasBottomNav }) => {
               <FiChevronRight className="text-gray-400 w-5 h-5" />
             </div>
           )}
-
         </div>
       </motion.div>
 
-      {/* Global Rating Modal */}
       <RatingModal
         key="rating-modal"
         isOpen={showRatingModal}
@@ -221,7 +221,7 @@ const LiveBookingCard = ({ hasBottomNav }) => {
         }}
         onSubmit={handleRateSubmit}
         bookingName={activeBooking.serviceName || 'Service'}
-        workerName={activeBooking.workerId?.name || 'Worker'}
+        workerName={activeBooking.workerId?.name || activeBooking.vendorId?.name || 'Vendor'}
       />
     </AnimatePresence>
   );

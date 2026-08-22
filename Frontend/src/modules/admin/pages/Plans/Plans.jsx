@@ -389,7 +389,7 @@ const Plans = () => {
                 <div className={`px-4 py-3 flex justify-end gap-2 border-t ${style.footer}`}>
                   <button
                     onClick={() => handleEdit(plan)}
-                    className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-full transition-all duration-300"
+                    className="p-2 bg-primary-50 text-primary-500 hover:bg-primary-500 hover:text-white rounded-full transition-all duration-300"
                     title="Edit"
                   >
                     <FiEdit2 className="w-3.5 h-3.5" />
@@ -507,7 +507,7 @@ const Plans = () => {
               <div className="border border-gray-200 rounded-2xl overflow-hidden">
                 <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    <span className="bg-blue-100 text-blue-600 p-2 rounded-lg">
+                    <span className="bg-primary-100 text-primary-500 p-2 rounded-lg">
                       <FiCheck className="w-5 h-5" />
                     </span>
                     <div>
@@ -524,7 +524,7 @@ const Plans = () => {
                       <select
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-400 outline-none"
                       >
                         <option value="">Select Category...</option>
                         {categories.map(cat => (
@@ -539,7 +539,7 @@ const Plans = () => {
                           value={selectedService}
                           onChange={(e) => setSelectedService(e.target.value)}
                           disabled={!selectedCategory}
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-400 outline-none disabled:bg-gray-100 disabled:text-gray-400"
                         >
                           <option value="">{selectedCategory ? 'Select Service Type...' : 'Select Category first'}</option>
                           {(() => {
@@ -584,7 +584,7 @@ const Plans = () => {
                           toast.error('Benefit already in list or nothing selected');
                         }
                       }}
-                      className="h-[42px] px-6 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20 active:scale-95 transition-all w-full md:w-auto"
+                      className="h-[42px] px-6 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20 active:scale-95 transition-all w-full md:w-auto"
                     >
                       Add Benefit
                     </button>

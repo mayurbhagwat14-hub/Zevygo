@@ -105,8 +105,9 @@ const approveServiceListing = async (req, res) => {
     }
 
     const previousStatus = listing.status;
+    const wasPendingEdit = Boolean(listing.hasPendingEdits);
 
-    // If this was a pending edit of an already-approved listing, merge the edit
+    // If this was a pending edit of an already-approved listing, clear snapshot (new data is now live)
     if (listing.hasPendingEdits) {
       listing.approvedVersion = null;
       listing.hasPendingEdits = false;
@@ -138,7 +139,9 @@ const approveServiceListing = async (req, res) => {
         recipientId: listing.vendorId,
         recipientType: 'Vendor',
         title: 'Service Approved! ✅',
-        message: `Your "${listing.title}" service listing has been approved and is now live for customers.`,
+        message: wasPendingEdit
+          ? `Your "${listing.title}" updates (including packages) are approved and now live for customers.`
+          : `Your "${listing.title}" service listing has been approved and is now live for customers.`,
         type: 'SERVICE_APPROVED',
         data: { serviceListingId: listing._id }
       });
@@ -182,7 +185,7 @@ const rejectServiceListing = async (req, res) => {
 
     const previousStatus = listing.status;
 
-    // If this was a pending edit, revert to approved version
+    // If this was a pending edit, revert fully to approved version (incl. packages/blocks)
     if (listing.hasPendingEdits && listing.approvedVersion) {
       const approved = listing.approvedVersion;
       listing.title = approved.title;
@@ -192,13 +195,25 @@ const rejectServiceListing = async (req, res) => {
       listing.languages = approved.languages;
       listing.pricingModel = approved.pricingModel;
       listing.bookingMode = approved.bookingMode;
+      listing.bookingConfig = approved.bookingConfig || listing.bookingConfig;
       listing.pricing = approved.pricing;
       listing.availability = approved.availability;
       listing.serviceArea = approved.serviceArea;
       listing.cancellation = approved.cancellation;
       listing.dynamicFormAnswers = approved.dynamicFormAnswers;
+      listing.pricingFormAnswers = approved.pricingFormAnswers || {};
+      listing.availabilityFormAnswers = approved.availabilityFormAnswers || {};
+      listing.serviceAreaFormAnswers = approved.serviceAreaFormAnswers || {};
+      listing.bookingRulesFormAnswers = approved.bookingRulesFormAnswers || {};
+      listing.documentsFormAnswers = approved.documentsFormAnswers || {};
+      listing.listingFormAnswers = approved.listingFormAnswers || {};
       listing.portfolioPhotos = approved.portfolioPhotos;
+      listing.portfolioVideos = approved.portfolioVideos || [];
       listing.documents = approved.documents;
+      listing.catalogItems = approved.catalogItems || [];
+      listing.markModified('catalogItems');
+      listing.markModified('dynamicFormAnswers');
+      listing.markModified('listingFormAnswers');
       listing.status = LISTING_STATUS.APPROVED; // Keep approved version live
       listing.approvedVersion = null;
       listing.hasPendingEdits = false;

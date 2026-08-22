@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   FiArrowLeft, FiCheck, FiChevronRight, FiChevronLeft, FiSave, FiSend,
   FiInfo, FiFileText, FiDollarSign, FiClock, FiMapPin, FiImage, FiSettings, FiEye,
@@ -12,7 +12,7 @@ import {
   buildListingSteps,
   validateDynamicSchema,
   extractListingTitle,
-  isSectionEnabled
+  getActiveListingForms
 } from '../../utils/listingFormConfig';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -23,6 +23,7 @@ const EMPTY_FORM = {
   title: '',
   description: '',
   shortDescription: '',
+  bookingMode: 'BOTH',
   dynamicFormAnswers: {},
   pricingFormAnswers: {},
   availabilityFormAnswers: {},
@@ -35,17 +36,41 @@ const EMPTY_FORM = {
   catalogItems: [],
 };
 
+const emptyCatalogItem = () => ({
+  id: crypto.randomUUID(),
+  title: '',
+  description: '',
+  price: '',
+  photoUrl: null,
+  isActive: true
+});
+
+const listingModeOptions = (categoryMode = 'BOTH') => {
+  const allowed = String(categoryMode || 'BOTH').toUpperCase();
+  if (allowed === 'INSTANT') return [['INSTANT', '⚡ Instant']];
+  if (allowed === 'SCHEDULED') return [['SCHEDULED', '📅 Scheduled']];
+  if (allowed === 'REQUEST_QUOTE') return [['REQUEST_QUOTE', '💬 Quote Only']];
+  return [
+    ['INSTANT', '⚡ Instant'],
+    ['SCHEDULED', '📅 Scheduled'],
+    ['BOTH', '✅ Both'],
+  ];
+};
+
 // ─── MAIN COMPONENT ───
 const AddService = () => {
   const navigate = useNavigate();
   const { categorySlug, serviceId } = useParams();
+  const [searchParams] = useSearchParams();
   const isEdit = Boolean(serviceId);
+  const packagesOnly = isEdit && searchParams.get('mode') === 'packages';
 
   const [step, setStep] = useState(0);
   const [categories, setCategories] = useState([]);
   const [commonListingForms, setCommonListingForms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [serviceMeta, setServiceMeta] = useState(null);
 
   // ─── FORM STATE ───
   const [form, setForm] = useState(EMPTY_FORM);
@@ -55,6 +80,12 @@ const AddService = () => {
     [categories, form.categoryId]
   );
 
+  const menuSchema = useMemo(() => {
+    const forms = getActiveListingForms(selectedCategory, commonListingForms);
+    const menuForm = forms.find((f) => f.type === 'menu');
+    return menuForm?.fields || selectedCategory?.catalogItemSchema || [];
+  }, [selectedCategory, commonListingForms]);
+
   const steps = useMemo(
     () => buildListingSteps(selectedCategory, commonListingForms),
     [selectedCategory, commonListingForms]
@@ -63,25 +94,32 @@ const AddService = () => {
 
   // ─── LOAD DATA ───
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       try {
         setLoading(true);
-        const catRes = await api.get('/vendors/categories');
+        const catRes = await api.get('/vendors/categories', { cacheTtl: 90 });
+        if (cancelled) return;
         if (catRes.data?.categories) {
           setCategories(catRes.data.categories);
           setCommonListingForms(catRes.data.commonListingForms || []);
-          // Auto-select if slug provided
           if (categorySlug) {
             const match = catRes.data.categories.find(c => c.slug === categorySlug);
             if (match) setForm(p => ({ ...p, categoryId: match.id || match._id }));
           }
         }
 
-        // If editing, load existing service
         if (serviceId) {
-          const svcRes = await api.get(`/vendors/services/${serviceId}/detail`);
+          const svcRes = await api.get(`/vendors/services/${serviceId}/detail`, { cacheTtl: 20 });
+          if (cancelled) return;
           if (svcRes.data?.service) {
             const s = svcRes.data.service;
+            setServiceMeta({
+              title: s.title,
+              categoryName: s.categoryName || s.categoryId?.title,
+              status: s.status,
+              hasPendingEdits: s.hasPendingEdits
+            });
             setForm({
               ...EMPTY_FORM,
               categoryId: s.categoryId?._id || s.categoryId || '',
@@ -97,19 +135,24 @@ const AddService = () => {
               listingFormAnswers: s.listingFormAnswers || {},
               portfolioPhotos: s.portfolioPhotos || [],
               documents: s.documents || [],
-              catalogItems: s.catalogItems || [],
+              catalogItems: (s.catalogItems || []).length ? s.catalogItems : [emptyCatalogItem()],
+              bookingMode: s.bookingMode || s.categoryId?.bookingMode || 'BOTH',
             });
-            setStep(1); // Skip category selection when editing
+            // Skip category step on full edit (packages-only UI ignores step)
+            setStep(1);
           }
         }
       } catch (err) {
-        console.error('Error loading data:', err);
-        toast.error('Failed to load categories');
+        if (!cancelled) {
+          console.error('Error loading data:', err);
+          toast.error('Failed to load categories');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     load();
+    return () => { cancelled = true; };
   }, [categorySlug, serviceId]);
 
   // ─── FORM HELPERS ───
@@ -120,19 +163,20 @@ const AddService = () => {
     setForm((p) => ({
       ...p,
       categoryId: catId,
+      bookingMode: cat.bookingMode === 'BOTH' ? (p.bookingMode || 'BOTH') : (cat.bookingMode || 'BOTH'),
       dynamicFormAnswers: Object.keys(p.dynamicFormAnswers || {}).length && p.categoryId === catId
         ? p.dynamicFormAnswers
         : enrollmentAnswers,
       catalogItems: (p.catalogItems?.length && p.categoryId === catId)
         ? p.catalogItems
-        : (isSectionEnabled(cat, 'menu') ? [{
+        : [{
           id: crypto.randomUUID(),
           title: '',
           description: '',
           price: '',
           photoUrl: null,
           isActive: true
-        }] : [])
+        }]
     }));
   };
   const updateNested = (parent, key, value) => setForm(p => ({ ...p, [parent]: { ...p[parent], [key]: value } }));
@@ -207,7 +251,7 @@ const AddService = () => {
         const err = validateDynamicSchema(currentStep.schema, getStepAnswers(currentStep));
         if (err) toast.error(err);
       } else if (currentStep?.type === 'menu' || currentStep?.key === 'menu') {
-        toast.error('Add at least one menu item with a name');
+        toast.error('Add at least one package option with a name');
       }
       return;
     }
@@ -235,6 +279,7 @@ const AddService = () => {
         portfolioPhotos: form.portfolioPhotos,
         documents: form.documents,
         catalogItems: form.catalogItems,
+        bookingMode: form.bookingMode || selectedCategory?.bookingMode || 'BOTH',
         isDraft
       };
       
@@ -246,11 +291,40 @@ const AddService = () => {
       }
 
       if (res.data?.success) {
-        toast.success(res.data.message || (isDraft ? 'Draft saved!' : 'Service submitted!'));
+        const defaultMsg = isDraft
+          ? 'Draft saved!'
+          : isEdit
+            ? 'Details sent for admin approval. Customers still see the last approved version until then.'
+            : 'Submitted for admin approval. Visible to customers after approval.';
+        toast.success(res.data.message || defaultMsg);
         navigate('/vendor/my-services');
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save service');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** Save packages (edit existing + add new) — business details stay; admin must re-approve */
+  const handleSubmitPackages = async () => {
+    const items = (form.catalogItems || []).filter((p) => (p.title || '').trim());
+    if (!items.length) {
+      toast.error('Keep at least one package with a name');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const res = await api.patch(`/vendors/services/${serviceId}`, {
+        catalogItems: items,
+        isDraft: false
+      });
+      if (res.data?.success) {
+        toast.success(res.data.message || 'Packages sent for admin approval. Live listing stays until approved.');
+        navigate('/vendor/my-services');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save packages');
     } finally {
       setSubmitting(false);
     }
@@ -268,6 +342,83 @@ const AddService = () => {
     );
   }
 
+  if (packagesOnly) {
+    return (
+      <div className="min-h-screen bg-slate-50 pb-24">
+        <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/vendor/my-services')}
+              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 active:scale-95"
+            >
+              <FiArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-black text-slate-900 truncate">Manage Packages</h1>
+              <p className="text-[10px] font-bold text-primary-600 truncate">
+                {serviceMeta?.categoryName || selectedCategory?.title || 'Service'}
+                {serviceMeta?.title ? ` · ${serviceMeta.title}` : ''}
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <main className="p-4 max-w-lg mx-auto space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm">
+            <p className="text-[11px] font-black text-slate-800 uppercase tracking-wide">Business already saved</p>
+            <p className="text-xs text-slate-500 mt-1">
+              Edit existing packages or add new ones here. Company details stay the same. Changes go live only after admin approval.
+            </p>
+            {serviceMeta?.hasPendingEdits && (
+              <p className="text-[10px] font-semibold text-amber-800 mt-2 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
+                You already have updates under review. Saving again updates that pending review.
+              </p>
+            )}
+          </div>
+
+          <PackageDraftList
+            items={form.catalogItems?.length ? form.catalogItems : [emptyCatalogItem()]}
+            setItems={(updater) => {
+              setForm((p) => ({
+                ...p,
+                catalogItems: typeof updater === 'function'
+                  ? updater(p.catalogItems?.length ? p.catalogItems : [emptyCatalogItem()])
+                  : updater
+              }));
+            }}
+            schema={menuSchema}
+            heading={`Packages (${(form.catalogItems || []).filter((i) => (i.title || '').trim()).length || (form.catalogItems || []).length})`}
+            helper={`Edit any package below or tap “Add another package”. Customers see the last approved set until admin approves.`}
+            showApprovalNote
+            minItems={1}
+          />
+        </main>
+
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 z-30">
+          <div className="max-w-lg mx-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate(`/vendor/edit-service/${serviceId}`)}
+              className="px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50"
+            >
+              Edit full details
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmitPackages}
+              disabled={submitting || !(form.catalogItems || []).some((p) => (p.title || '').trim())}
+              className="flex-1 flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 active:scale-95 transition-all disabled:opacity-40 shadow-sm"
+            >
+              {submitting ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiSend className="w-4 h-4" />}
+              {submitting ? 'Submitting...' : 'Submit for Approval'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       {/* Header */}
@@ -278,7 +429,7 @@ const AddService = () => {
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-black text-slate-900 truncate">
-              {isEdit ? 'Edit Listing Block' : 'Create Listing Block'}
+              {isEdit ? 'Edit Service' : 'Add Service'}
             </h1>
             {selectedCategory && (
               <p className="text-[10px] font-bold text-primary-600 truncate">{selectedCategory.title}</p>
@@ -299,7 +450,42 @@ const AddService = () => {
       </header>
 
       <main className="p-4 max-w-lg mx-auto">
-        {currentStep?.key === 'category' && <StepCategory categories={categories} form={form} onSelectCategory={selectCategory} />}
+        {isEdit && (
+          <div className="mb-4 rounded-xl border border-amber-100 bg-amber-50 p-3">
+            <p className="text-[11px] font-semibold text-amber-900">
+              You can edit business details and packages. Changes appear for customers only after admin approval. Until then the last approved version stays live.
+            </p>
+          </div>
+        )}
+        {currentStep?.key === 'category' && (
+          <>
+            <StepCategory categories={categories} form={form} onSelectCategory={selectCategory} />
+            {selectedCategory && (
+              <div className="mt-4 bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+                <p className="text-xs font-black text-slate-800 mb-1">Listing booking mode</p>
+                <p className="text-[10px] text-slate-500 mb-3">
+                  Allowed by admin for {selectedCategory.title}: {selectedCategory.bookingMode || 'BOTH'}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {listingModeOptions(selectedCategory.bookingMode).map(([val, label]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => updateForm('bookingMode', val)}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                        form.bookingMode === val
+                          ? 'bg-primary-600 text-white border-primary-600'
+                          : 'bg-white text-slate-600 border-slate-200'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
         {(currentStep?.type === 'menu' || currentStep?.key === 'menu') && (
           <StepMenuItems form={form} setForm={setForm} category={selectedCategory} itemSchema={currentStep.schema} stepTitle={currentStep.label} />
         )}
@@ -388,7 +574,9 @@ const StepDynamicSection = ({ title, schema, values, onChange, onToggleMulti }) 
   <div className="space-y-4">
     <div className="bg-primary-50 rounded-xl p-3.5 border border-primary-100">
       <h3 className="text-sm font-black text-primary-900">{title}</h3>
-      <p className="text-xs text-primary-700 mt-0.5">Fields configured by admin for this service category.</p>
+      <p className="text-xs text-primary-700 mt-0.5">
+        Fill company name, about your business, and other details for this service. Customers see this on your profile.
+      </p>
     </div>
     {schema.length === 0 ? (
       <p className="text-xs text-slate-500">No fields configured yet. Ask admin to add fields for this section.</p>
@@ -406,8 +594,10 @@ const StepDynamicSection = ({ title, schema, values, onChange, onToggleMulti }) 
 const StepCategory = ({ categories, form, onSelectCategory }) => (
   <div className="space-y-4">
     <div className="bg-primary-50 rounded-xl p-3.5 border border-primary-100">
-      <h3 className="text-sm font-black text-primary-900">Select Your Service Category</h3>
-      <p className="text-xs text-primary-700 mt-0.5">Choose the category that best matches the listing block you want to publish.</p>
+      <h3 className="text-sm font-black text-primary-900">Select Your Service</h3>
+      <p className="text-xs text-primary-700 mt-0.5">
+        Pick any service you provide. Fill company details once, then add packages. Later you can add more packages without re-filling the full form.
+      </p>
     </div>
     <div className="grid grid-cols-2 gap-3">
       {categories.map(cat => {
@@ -452,7 +642,7 @@ const StepDetails = ({ form, updateForm, updateDynamic, toggleDynamicMulti, cate
         <div>
           <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Languages Spoken</label>
           <input type="text" value={(form.languages || []).join(', ')} onChange={e => updateForm('languages', e.target.value.split(',').map(l => l.trim()).filter(Boolean))}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-primary-400 focus:border-primary-400 outline-none"
             placeholder="Hindi, English, Marathi" />
         </div>
       </SectionCard>
@@ -499,7 +689,7 @@ const StepPricing = ({ form, updateForm, updateNested, category }) => {
           {['FIXED', 'PER_VISIT', 'HOURLY', 'DAILY', 'MONTHLY', 'PER_UNIT', 'CUSTOM_QUOTE'].map(model => (
             <button key={model} type="button" onClick={() => updateForm('pricingModel', model)}
               className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition-all active:scale-95 ${
-                pricingModel === model ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                pricingModel === model ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
               }`}>
               {model.replace(/_/g, ' ')}
             </button>
@@ -519,78 +709,71 @@ const StepPricing = ({ form, updateForm, updateNested, category }) => {
 };
 
 // ════════════════════════════════════════════════════════════════
-// STEP 4: MENU ITEMS (Catalog Sub-Services)
+// PACKAGE / BLOCK EDITOR (shared by full wizard + add-package mode)
 // ════════════════════════════════════════════════════════════════
-const StepMenuItems = ({ form, setForm, category, itemSchema, stepTitle }) => {
-  const schema = itemSchema || category?.catalogItemSchema || [];
-  const categoryTitle = category?.title || 'this service';
-  const heading = stepTitle || 'Your menu';
-
-  const addItem = () => {
-    setForm(p => ({
-      ...p,
-      catalogItems: [...p.catalogItems, {
-        id: crypto.randomUUID(),
-        title: '',
-        description: '',
-        price: '',
-        photoUrl: null,
-        isActive: true
-      }]
-    }));
-  };
+const PackageDraftList = ({
+  items,
+  setItems,
+  schema = [],
+  heading = 'Packages & Blocks',
+  helper = '',
+  minItems = 1,
+  showApprovalNote = false
+}) => {
+  const addItem = () => setItems((prev) => [...prev, emptyCatalogItem()]);
 
   const updateItem = (index, field, value) => {
-    setForm(p => {
-      const newItems = [...p.catalogItems];
-      newItems[index] = { ...newItems[index], [field]: value };
-      return { ...p, catalogItems: newItems };
+    setItems((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
     });
   };
 
   const removeItem = (index) => {
-    setForm(p => ({
-      ...p,
-      catalogItems: p.catalogItems.filter((_, i) => i !== index)
-    }));
+    setItems((prev) => {
+      if (prev.length <= minItems) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handlePhotoUpload = (e, index) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      updateItem(index, 'photoUrl', reader.result);
-    };
+    reader.onload = () => updateItem(index, 'photoUrl', reader.result);
     reader.readAsDataURL(file);
   };
 
   const toggleMulti = (index, key, value) => {
-    setForm(p => {
-      const newItems = [...p.catalogItems];
-      const current = Array.isArray(newItems[index][key]) ? newItems[index][key] : [];
-      const updated = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
-      newItems[index] = { ...newItems[index], [key]: updated };
-      return { ...p, catalogItems: newItems };
+    setItems((prev) => {
+      const next = [...prev];
+      const current = Array.isArray(next[index][key]) ? next[index][key] : [];
+      const updated = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+      next[index] = { ...next[index], [key]: updated };
+      return next;
     });
   };
 
   return (
     <div className="space-y-4">
-      <div className="bg-primary-50 rounded-xl p-3.5 border border-primary-100 mb-4">
+      <div className="bg-primary-50 rounded-xl p-3.5 border border-primary-100">
         <h3 className="text-sm font-black text-primary-900">{heading}</h3>
-        <p className="text-xs text-primary-700 mt-0.5">
-          Like dishes in a restaurant — add every item you offer for {categoryTitle}. Example: Tiffin → Mini, Regular, Premium. Driver → Day, Night, Outstation.
-        </p>
+        {helper ? <p className="text-xs text-primary-700 mt-0.5">{helper}</p> : null}
+        {showApprovalNote && (
+          <p className="text-[10px] text-amber-800 font-semibold mt-2 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
+            New or changed packages go live only after admin approval.
+          </p>
+        )}
       </div>
 
-      {form.catalogItems.map((item, index) => (
-        <SectionCard key={item.id || index} title={`Item ${index + 1}`} icon="🏷️">
+      {(items || []).map((item, index) => (
+        <SectionCard key={item.id || index} title={`Package ${index + 1}`} icon="🏷️">
           <div className="flex gap-3">
             <div className="flex-1 space-y-3">
-              <FormInput label="Item name *" value={item.title || ''} onChange={v => updateItem(index, 'title', v)} placeholder="e.g. Regular Tiffin / Outstation Driver" />
-              <FormInput label="Price (₹) *" type="number" value={item.price || ''} onChange={v => updateItem(index, 'price', v)} placeholder="e.g. 500" />
-              <FormTextarea label="Description" value={item.description || ''} onChange={v => updateItem(index, 'description', v)} placeholder="What is included..." rows={2} />
+              <FormInput label="Package name *" value={item.title || ''} onChange={(v) => updateItem(index, 'title', v)} placeholder="e.g. Standard / Premium / Half-day" />
+              <FormInput label="Price (₹) *" type="number" value={item.price || ''} onChange={(v) => updateItem(index, 'price', v)} placeholder="e.g. 500" />
+              <FormTextarea label="What's included" value={item.description || ''} onChange={(v) => updateItem(index, 'description', v)} placeholder="Describe this package..." rows={2} />
               {schema.length > 0 && (
                 [...schema]
                   .filter((field) => !['title', 'price', 'description'].includes(field.key))
@@ -616,10 +799,15 @@ const StepMenuItems = ({ form, setForm, category, itemSchema, stepTitle }) => {
                     <span className="text-[10px] font-bold text-slate-400">Photo</span>
                   </>
                 )}
-                <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(e, index)} />
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(e, index)} />
               </label>
-              <ToggleRow label="Active" value={item.isActive} onChange={v => updateItem(index, 'isActive', v)} />
-              <button type="button" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700 p-2">
+              <ToggleRow label="Active" value={item.isActive} onChange={(v) => updateItem(index, 'isActive', v)} />
+              <button
+                type="button"
+                onClick={() => removeItem(index)}
+                className="text-red-500 hover:text-red-700 p-2 disabled:opacity-30"
+                disabled={(items || []).length <= minItems}
+              >
                 <FiTrash2 className="w-4 h-4" />
               </button>
             </div>
@@ -627,10 +815,42 @@ const StepMenuItems = ({ form, setForm, category, itemSchema, stepTitle }) => {
         </SectionCard>
       ))}
 
-      <button type="button" onClick={addItem} className="w-full py-3 rounded-xl border-2 border-dashed border-primary-300 text-primary-600 font-bold flex items-center justify-center gap-2 hover:bg-primary-50 transition-colors">
-        <FiPlus className="w-4 h-4" /> Add another item
+      <button
+        type="button"
+        onClick={addItem}
+        className="w-full py-3 rounded-xl border-2 border-dashed border-primary-300 text-primary-600 font-bold flex items-center justify-center gap-2 hover:bg-primary-50 transition-colors"
+      >
+        <FiPlus className="w-4 h-4" /> Add another package / block
       </button>
     </div>
+  );
+};
+
+const StepMenuItems = ({ form, setForm, category, itemSchema, stepTitle }) => {
+  const schema = itemSchema || category?.catalogItemSchema || [];
+  const categoryTitle = category?.title || 'this service';
+
+  React.useEffect(() => {
+    if (!form.catalogItems?.length) {
+      setForm((p) => (p.catalogItems?.length ? p : { ...p, catalogItems: [emptyCatalogItem()] }));
+    }
+  }, []);
+
+  return (
+    <PackageDraftList
+      items={form.catalogItems}
+      setItems={(updater) => {
+        setForm((p) => ({
+          ...p,
+          catalogItems: typeof updater === 'function' ? updater(p.catalogItems || []) : updater
+        }));
+      }}
+      schema={schema}
+      heading={stepTitle || 'Packages & Blocks'}
+      helper={`Add every package / type under ${categoryTitle}. Later you can add more packages without re-filling business details.`}
+      showApprovalNote
+      minItems={1}
+    />
   );
 };
 
@@ -671,7 +891,7 @@ const StepAvailability = ({ form, setForm }) => {
             return (
               <div key={day} className={`flex items-center gap-3 p-2.5 rounded-xl border ${dayData.isOpen ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100'}`}>
                 <button type="button" onClick={() => toggleDay(day)}
-                  className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${dayData.isOpen ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${dayData.isOpen ? 'bg-primary-500 border-primary-500' : 'bg-white border-slate-300'}`}>
                   {dayData.isOpen && <FiCheck className="w-3 h-3 text-white" />}
                 </button>
                 <span className={`text-xs font-bold w-10 ${dayData.isOpen ? 'text-slate-800' : 'text-slate-400'}`}>{DAY_LABELS[day]}</span>
@@ -703,14 +923,14 @@ const StepServiceArea = ({ form, updateNested }) => (
       <div>
         <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Areas Served</label>
         <input type="text" value={(form.serviceArea.areas || []).join(', ')} onChange={e => updateNested('serviceArea', 'areas', e.target.value.split(',').map(a => a.trim()).filter(Boolean))}
-          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-primary-400 outline-none"
           placeholder="Malviya Nagar, C-Scheme, Mansarovar" />
         <p className="text-[10px] text-slate-400 mt-1">Separate areas with commas</p>
       </div>
       <div>
         <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Pincodes</label>
         <input type="text" value={(form.serviceArea.pincodes || []).join(', ')} onChange={e => updateNested('serviceArea', 'pincodes', e.target.value.split(',').map(p => p.trim()).filter(Boolean))}
-          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-primary-400 outline-none"
           placeholder="302017, 302020, 302021" />
       </div>
       <FormInput label="Service Radius (KM)" type="number" value={form.serviceArea.radiusKm} onChange={v => updateNested('serviceArea', 'radiusKm', Number(v) || 10)} placeholder="10" />
@@ -791,14 +1011,19 @@ const StepDocuments = ({ form, setForm }) => {
 // ════════════════════════════════════════════════════════════════
 // STEP 8: BOOKING CONFIG
 // ════════════════════════════════════════════════════════════════
-const StepBookingConfig = ({ form, updateForm, updateNested }) => (
+const StepBookingConfig = ({ form, updateForm, updateNested, category }) => {
+  const options = listingModeOptions(category?.bookingMode);
+  return (
   <div className="space-y-4">
     <SectionCard title="Booking Mode" icon="📱">
+      <p className="text-[10px] text-slate-500 mb-2">
+        Admin allows: {category?.bookingMode || 'BOTH'} for this service
+      </p>
       <div className="grid grid-cols-2 gap-2">
-        {[['INSTANT', '⚡ Instant'], ['SCHEDULED', '📅 Scheduled'], ['BOTH', '✅ Both'], ['REQUEST_QUOTE', '💬 Quote Only']].map(([val, label]) => (
+        {options.map(([val, label]) => (
           <button key={val} type="button" onClick={() => updateForm('bookingMode', val)}
             className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
-              form.bookingMode === val ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'
+              form.bookingMode === val ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-slate-600 border-slate-200'
             }`}>
             {label}
           </button>
@@ -824,7 +1049,8 @@ const StepBookingConfig = ({ form, updateForm, updateNested }) => (
       </div>
     </SectionCard>
   </div>
-);
+  );
+};
 
 // ════════════════════════════════════════════════════════════════
 // STEP 9: PREVIEW
@@ -881,20 +1107,26 @@ const StepPreview = ({ form, category }) => {
       {renderAnswers(form.bookingRulesFormAnswers, category?.bookingRulesFormSchema, 'Booking Rules')}
 
       {form.catalogItems?.length > 0 && (
-        <SectionCard title="Menu" icon="Layers">
+        <SectionCard title={`Packages (${form.catalogItems.length})`} icon="Layers">
           <div className="space-y-2">
             {form.catalogItems.map((item, index) => (
               <div key={item.id || index} className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-100">
                 {item.photoUrl && <img src={item.photoUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />}
                 <div className="flex-1 min-w-0 flex justify-between">
-                  <h4 className="text-xs font-bold text-slate-800 truncate">{item.title}</h4>
-                  <span className="text-xs font-black text-slate-900 ml-2">₹{item.price}</span>
+                  <h4 className="text-xs font-bold text-slate-800 truncate">{item.title || `Package ${index + 1}`}</h4>
+                  <span className="text-xs font-black text-slate-900 ml-2">₹{item.price || '—'}</span>
                 </div>
               </div>
             ))}
           </div>
         </SectionCard>
       )}
+
+      <div className="rounded-xl border border-amber-100 bg-amber-50 p-3">
+        <p className="text-[11px] font-semibold text-amber-900">
+          Submit sends this to admin. New listings and package updates go live for customers only after approval.
+        </p>
+      </div>
 
       {form.portfolioPhotos?.length > 0 && (
         <SectionCard title="Photos" icon="📸">

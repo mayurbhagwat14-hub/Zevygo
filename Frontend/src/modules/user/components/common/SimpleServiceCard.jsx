@@ -21,7 +21,7 @@ const SimpleServiceCard = memo(({ image, title, onClick }) => {
             decoding="async"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+          <div className="w-full h-full bg-gradient-to-br from-primary-50 to-indigo-50 flex items-center justify-center">
             <svg
               className="w-10 h-10 text-blue-300"
               fill="none"
@@ -41,7 +41,7 @@ const SimpleServiceCard = memo(({ image, title, onClick }) => {
       </div>
 
       <div className="p-3 flex flex-col justify-between flex-1 bg-white">
-        <h3 className="text-xs sm:text-[13px] font-semibold text-gray-800 leading-snug line-clamp-2 capitalize group-hover:text-blue-600 transition-colors">
+        <h3 className="text-xs sm:text-[13px] font-semibold text-gray-800 leading-snug line-clamp-2 capitalize group-hover:text-primary-500 transition-colors">
           {title}
         </h3>
       </div>

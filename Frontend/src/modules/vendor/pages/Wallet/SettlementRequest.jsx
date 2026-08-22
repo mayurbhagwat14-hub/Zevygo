@@ -297,12 +297,12 @@ const SettlementRequest = () => {
                   key={method.id}
                   onClick={() => setFormData(prev => ({ ...prev, paymentMethod: method.id }))}
                   className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === method.id
-                    ? 'border-blue-500 bg-blue-50'
+                    ? 'border-primary-400 bg-primary-50'
                     : 'border-gray-200 bg-gray-50'
                     }`}
                 >
-                  <method.icon className={`w-6 h-6 ${formData.paymentMethod === method.id ? 'text-blue-600' : 'text-gray-500'}`} />
-                  <span className={`text-sm font-semibold ${formData.paymentMethod === method.id ? 'text-blue-700' : 'text-gray-600'}`}>
+                  <method.icon className={`w-6 h-6 ${formData.paymentMethod === method.id ? 'text-primary-500' : 'text-gray-500'}`} />
+                  <span className={`text-sm font-semibold ${formData.paymentMethod === method.id ? 'text-primary-600' : 'text-gray-600'}`}>
                     {method.label}
                   </span>
                 </button>

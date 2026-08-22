@@ -122,12 +122,12 @@ const CashCollectionModal = ({
 
         <div className="p-6 max-h-[70vh] overflow-y-auto">
           {/* Base Amount Section */}
-          <div className="bg-blue-50/50 rounded-2xl p-5 mb-6 border border-blue-100/50">
+          <div className="bg-primary-50/50 rounded-2xl p-5 mb-6 border border-primary-100/50">
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium text-blue-800">Booking Amount</span>
               <span className="text-lg font-bold text-blue-900">₹{baseAmount.toLocaleString()}</span>
             </div>
-            <p className="text-[11px] text-blue-600/80">Original service booking amount</p>
+            <p className="text-[11px] text-primary-500/80">Original service booking amount</p>
           </div>
 
           {/* Extra Items Section */}
@@ -136,7 +136,7 @@ const CashCollectionModal = ({
               <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Extra Services / Items</h4>
               <button
                 onClick={handleAddItem}
-                className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-bold text-primary-500 bg-primary-50 px-3 py-1.5 rounded-lg hover:bg-primary-100 transition-colors"
               >
                 <FiPlus className="w-3.5 h-3.5" />
                 Add Extra
@@ -155,7 +155,7 @@ const CashCollectionModal = ({
                       <input
                         type="text"
                         placeholder="Service name (e.g. Extra pipe)"
-                        className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-all"
+                        className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400 transition-all"
                         value={item.title}
                         onChange={(e) => handleUpdateItem(index, 'title', e.target.value)}
                       />
@@ -165,7 +165,7 @@ const CashCollectionModal = ({
                           <input
                             type="number"
                             placeholder="Price"
-                            className="w-full pl-7 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+                            className="w-full pl-7 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400"
                             value={item.price}
                             onChange={(e) => handleUpdateItem(index, 'price', e.target.value)}
                           />
@@ -174,7 +174,7 @@ const CashCollectionModal = ({
                           <input
                             type="number"
                             placeholder="Qty"
-                            className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+                            className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400"
                             value={item.qty}
                             onChange={(e) => handleUpdateItem(index, 'qty', e.target.value)}
                           />
@@ -226,7 +226,7 @@ const CashCollectionModal = ({
               disabled={submitting || loading}
               className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 hover:brightness-105"
               style={{
-                background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                background: 'linear-gradient(135deg, #0F348F, #0F348F)',
                 boxShadow: '0 8px 16px -4px rgba(59, 130, 246, 0.4)',
               }}
             >
@@ -244,7 +244,7 @@ const CashCollectionModal = ({
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
                     placeholder="0000"
-                    className="w-40 text-center text-3xl font-black tracking-[0.5em] py-3 bg-white border-2 border-blue-100 rounded-2xl focus:border-blue-500 focus:outline-none shadow-inner"
+                    className="w-40 text-center text-3xl font-black tracking-[0.5em] py-3 bg-white border-2 border-primary-100 rounded-2xl focus:border-primary-400 focus:outline-none shadow-inner"
                   />
                 </div>
               </div>
@@ -277,12 +277,12 @@ const CashCollectionModal = ({
               <button
                 onClick={handleInitiate}
                 disabled={submitting || loading}
-                className="w-full py-3 rounded-xl font-bold text-blue-600 bg-blue-50 border border-blue-100 flex items-center justify-center gap-2 hover:bg-blue-100 transition-all"
+                className="w-full py-3 rounded-xl font-bold text-primary-500 bg-primary-50 border border-primary-100 flex items-center justify-center gap-2 hover:bg-primary-100 transition-all"
               >
                 {submitting ? 'Updating...' : 'Update Total & Resend OTP'}
                 <FiClock className="w-4 h-4" />
               </button>
-              <p className="text-[10px] text-blue-500 text-center mt-2 italic">
+              <p className="text-[10px] text-primary-400 text-center mt-2 italic">
                 Total amount changed. You need to resend OTP to confirm current total.
               </p>
             </div>

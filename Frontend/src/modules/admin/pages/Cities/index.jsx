@@ -159,7 +159,7 @@ const CityManagement = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => openEditModal(city)}
-                      className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-2 text-gray-500 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
                     >
                       <HiPencil className="w-5 h-5" />
                     </button>

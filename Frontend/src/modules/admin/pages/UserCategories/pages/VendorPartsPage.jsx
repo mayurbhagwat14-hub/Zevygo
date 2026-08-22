@@ -194,7 +194,7 @@ const VendorPartsPage = () => {
                   <tr key={s._id || s.id} className="hover:bg-gray-50">
                     <td className="p-3 text-xs">
                       {s.categoryId?.title ? (
-                        <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100">
+                        <span className="bg-primary-50 text-primary-500 px-2 py-0.5 rounded-full font-medium border border-primary-100">
                           {s.categoryId.title}
                         </span>
                       ) : (
@@ -206,7 +206,7 @@ const VendorPartsPage = () => {
                     <td className="p-3">₹{s.basePrice || s.price}</td>
                     <td className="p-3 text-sm text-gray-600 truncate max-w-xs">{s.description || "—"}</td>
                     <td className="p-3 text-right flex justify-end gap-2">
-                      <button onClick={() => openEdit(s)} className="p-2 text-blue-600 hover:bg-blue-50 rounded">
+                      <button onClick={() => openEdit(s)} className="p-2 text-primary-500 hover:bg-primary-50 rounded">
                         <FiEdit2 />
                       </button>
                       <button onClick={() => handleDelete(s._id || s.id)} className="p-2 text-red-600 hover:bg-red-50 rounded">

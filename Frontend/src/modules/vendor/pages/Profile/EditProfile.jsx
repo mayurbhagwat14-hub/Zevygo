@@ -566,7 +566,7 @@ const EditProfile = () => {
 
             <button
               onClick={() => setIsAddressModalOpen(true)}
-              className="w-full py-3 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm border border-blue-100 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 bg-primary-50 text-primary-500 rounded-xl font-bold text-sm border border-primary-100 hover:bg-primary-100 transition-colors flex items-center justify-center gap-2"
             >
               <FiMapPin className="w-4 h-4" />
               Build/Change Location on Map
@@ -597,7 +597,7 @@ const EditProfile = () => {
                 <div className="flex flex-wrap gap-2 overflow-hidden">
                   {formData.serviceCategories.length > 0 ? (
                     formData.serviceCategories.map((cat, idx) => (
-                      <span key={idx} className="text-sm bg-blue-50 text-blue-700 px-2 py-1 rounded-md">
+                      <span key={idx} className="text-sm bg-primary-50 text-primary-600 px-2 py-1 rounded-md">
                         {cat}
                       </span>
                     ))
@@ -629,7 +629,7 @@ const EditProfile = () => {
                             className="w-full text-left px-4 py-3 hover:bg-gray-50 font-medium text-gray-700 border-b border-gray-50 last:border-0 flex items-center justify-between"
                           >
                             {cat.title}
-                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${isSelected ? 'bg-primary-500 border-primary-400' : 'border-gray-300'}`}>
                               {isSelected && <span className="text-white text-xs">✓</span>}
                             </div>
                           </button>
@@ -712,7 +712,7 @@ const EditProfile = () => {
                     </div>
                     <div className="flex flex-col items-center">
                       <p className="text-green-600 font-medium text-sm">Document Uploaded</p>
-                      <span className="text-xs text-blue-500 underline mt-1">Click to replace</span>
+                      <span className="text-xs text-primary-400 underline mt-1">Click to replace</span>
                     </div>
                   </div>
                 ) : (

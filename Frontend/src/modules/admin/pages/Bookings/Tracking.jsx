@@ -66,7 +66,7 @@ const Tracking = () => {
     switch (status) {
       case 'completed': return 'bg-green-600';
       case 'work_done': return 'bg-emerald-500';
-      case 'in_progress': return 'bg-blue-500';
+      case 'in_progress': return 'bg-primary-500';
       case 'journey_started':
       case 'visited': return 'bg-purple-500';
       case 'assigned': return 'bg-indigo-500';
@@ -99,7 +99,7 @@ const Tracking = () => {
             placeholder="Search by Booking ID or customer name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            className="w-full pl-12 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 transition-all"
           />
         </div>
       </div>
@@ -131,7 +131,7 @@ const Tracking = () => {
                   bookings.map((booking) => (
                     <tr
                       key={booking._id}
-                      className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedOrder?._id === booking._id ? 'bg-blue-50/50' : ''}`}
+                      className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedOrder?._id === booking._id ? 'bg-primary-50/50' : ''}`}
                       onClick={() => setSelectedOrder(booking)}
                     >
                       <td className="p-4">

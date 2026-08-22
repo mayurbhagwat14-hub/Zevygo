@@ -40,12 +40,12 @@ const Header = ({ location, onLocationClick, onMenuClick, onSearchClick }) => {
       {/* Top Header Row: Logo & Location */}
       <div className="bg-[#0B1528] text-white relative z-30">
         {/* Background Ambient Glow */}
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-80 h-24 bg-blue-600/20 blur-[50px] pointer-events-none rounded-full" />
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-80 h-24 bg-primary-500/20 blur-[50px] pointer-events-none rounded-full" />
 
         <div className="max-w-screen-xl mx-auto flex items-center justify-between gap-3 px-2.5 sm:px-6 pt-3 pb-2 relative z-10">
           {/* Logo on Left */}
           <Link to="/user" className="flex items-center group py-0.5 shrink-0">
-            <Logo className="h-8 sm:h-9 w-auto object-contain filter drop-shadow-[0_2px_8px_rgba(37,99,235,0.4)] transition-transform duration-300 group-hover:scale-105" />
+            <Logo className="h-8 sm:h-9 w-auto object-contain filter drop-shadow-[0_2px_8px_rgba(15,52,143,0.4)] transition-transform duration-300 group-hover:scale-105" />
           </Link>
 
           {/* Location Selector Pill */}

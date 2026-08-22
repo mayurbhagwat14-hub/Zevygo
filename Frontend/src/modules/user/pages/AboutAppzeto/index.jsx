@@ -127,7 +127,7 @@ const AboutAppzeto = () => {
         {/* How We Deal Section */}
         <div className="mb-8">
           <h3 className="text-xl font-bold text-black mb-4">How We Deal</h3>
-          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border border-blue-200 p-5">
+          <div className="bg-gradient-to-br from-primary-50 to-cyan-50 rounded-2xl border border-primary-200 p-5">
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" 

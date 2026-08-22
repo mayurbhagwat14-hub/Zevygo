@@ -44,7 +44,7 @@ const NativeSmartLocks = ({ onKnowMoreClick }) => {
       <div className="bg-white py-6 px-4 -mx-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-black">All intelligent features</h2>
-          <button className="text-blue-600 font-medium text-sm hover:underline">
+          <button className="text-primary-500 font-medium text-sm hover:underline">
             Know more
           </button>
         </div>

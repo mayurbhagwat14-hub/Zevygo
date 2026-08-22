@@ -105,6 +105,12 @@ const categorySchema = new mongoose.Schema({
     enum: ['INSTANT', 'SCHEDULED', 'BOTH', 'REQUEST_QUOTE'],
     default: 'BOTH'
   },
+  /** Delivery (e.g. tiffin) vs provider visits customer on-site */
+  serviceFulfillmentType: {
+    type: String,
+    enum: ['DELIVERY', 'ON_SITE'],
+    default: 'ON_SITE'
+  },
   defaultPricingModel: {
     type: String,
     enum: ['FIXED', 'PER_VISIT', 'HOURLY', 'DAILY', 'MONTHLY', 'YEARLY', 'PER_UNIT', 'CUSTOM_QUOTE'],
@@ -128,7 +134,7 @@ const categorySchema = new mongoose.Schema({
   // Which listing wizard sections are enabled for vendors in this category
   listingSectionConfig: {
     profile: { enabled: { type: Boolean, default: true }, title: { type: String, default: 'Service Details' } },
-    menu: { enabled: { type: Boolean, default: true }, title: { type: String, default: 'Menu' } },
+    menu: { enabled: { type: Boolean, default: true }, title: { type: String, default: 'Packages & Blocks' } },
     pricing: { enabled: { type: Boolean, default: false }, title: { type: String, default: 'Pricing' } },
     availability: { enabled: { type: Boolean, default: false }, title: { type: String, default: 'Availability' } },
     serviceArea: { enabled: { type: Boolean, default: false }, title: { type: String, default: 'Service Area' } },

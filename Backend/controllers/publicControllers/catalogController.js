@@ -545,7 +545,7 @@ const getPublicServiceListings = async (req, res) => {
     const [listings, total] = await Promise.all([
       ServiceListing.find(query)
         .populate('vendorId', 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus')
-        .populate('categoryId', 'title slug homeIconUrl defaultPricingModel vendorFormSchema catalogItemSchema pricingFormSchema availabilityFormSchema serviceAreaFormSchema bookingRulesFormSchema documentsFormSchema')
+        .populate('categoryId', 'title slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType defaultPricingModel vendorFormSchema catalogItemSchema pricingFormSchema availabilityFormSchema serviceAreaFormSchema bookingRulesFormSchema documentsFormSchema')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
@@ -590,7 +590,7 @@ const getPublicServiceListingById = async (req, res) => {
 
     const listing = await ServiceListing.findById(req.params.id)
       .populate('vendorId', 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus')
-      .populate('categoryId', 'title slug homeIconUrl defaultPricingModel vendorFormSchema catalogItemSchema')
+      .populate('categoryId', 'title slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType defaultPricingModel vendorFormSchema catalogItemSchema')
       .lean();
 
     if (!listing || !isListingBookable(listing)) {
@@ -614,6 +614,62 @@ const getPublicServiceListingById = async (req, res) => {
   }
 };
 
+/**
+ * Customer vendor shop — all live listing blocks + packages for one provider
+ * GET /api/public/providers/:vendorId
+ */
+const getPublicProviderProfile = async (req, res) => {
+  try {
+    const Vendor = require('../../models/Vendor');
+    const ServiceListing = require('../../models/ServiceListing');
+    const { isListingBookable, toPublicListingDto } = require('../../utils/serviceListingPublic');
+    const { vendorId } = req.params;
+    const { categoryId } = req.query;
+
+    const vendor = await Vendor.findById(vendorId)
+      .select('name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus businessName')
+      .lean();
+
+    if (!vendor || vendor.approvalStatus !== 'approved' || ['SUSPENDED', 'BLOCKED'].includes(vendor.accountStatus)) {
+      return res.status(404).json({ success: false, message: 'Provider not found' });
+    }
+
+    const query = { vendorId: vendor._id };
+    if (categoryId) query.categoryId = categoryId;
+
+    const listings = await ServiceListing.find(query)
+      .populate('vendorId', 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus businessName')
+      .populate('categoryId', 'title slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType defaultPricingModel vendorFormSchema catalogItemSchema')
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const blocks = listings
+      .filter(isListingBookable)
+      .map(toPublicListingDto)
+      .filter(Boolean);
+
+    res.status(200).json({
+      success: true,
+      provider: {
+        id: vendor._id.toString(),
+        name: vendor.name,
+        businessName: vendor.businessName || '',
+        photo: vendor.profilePhoto,
+        rating: vendor.rating || 0,
+        reviews: vendor.totalReviews || 0,
+        completedJobs: vendor.completedJobs || 0,
+        city: vendor.address?.city || ''
+      },
+      listings: blocks,
+      totalBlocks: blocks.length,
+      totalPackages: blocks.reduce((sum, b) => sum + (b.catalogItems?.length || 0), 0)
+    });
+  } catch (error) {
+    console.error('Get public provider profile error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch provider profile' });
+  }
+};
+
 module.exports = {
   getPublicCategories,
   getPublicBrands,
@@ -622,5 +678,6 @@ module.exports = {
   getPublicHomeContent,
   getPublicHomeData,
   getPublicServiceListings,
-  getPublicServiceListingById
+  getPublicServiceListingById,
+  getPublicProviderProfile
 };

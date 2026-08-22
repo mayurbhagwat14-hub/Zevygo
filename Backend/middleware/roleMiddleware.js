@@ -23,14 +23,12 @@ const isVendor = (req, res, next) => {
   next();
 };
 
-const isWorker = (req, res, next) => {
-  if (req.userRole !== USER_ROLES.WORKER) {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied. Worker role required.'
-    });
-  }
-  next();
+const isWorker = (req, res) => {
+  // ZEVYGO: Worker role retired — vendors fulfill all services
+  return res.status(410).json({
+    success: false,
+    message: 'Worker role is no longer supported. Use the Vendor app.'
+  });
 };
 
 const isAdmin = (req, res, next) => {

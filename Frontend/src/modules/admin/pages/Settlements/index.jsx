@@ -320,9 +320,9 @@ const SettlementManagement = () => {
           title: 'Pending Requests',
           value: pendingCount,
           icon: FiClock,
-          color: 'text-blue-600',
-          bg: 'bg-blue-50',
-          border: 'border-blue-100'
+          color: 'text-primary-500',
+          bg: 'bg-primary-50',
+          border: 'border-primary-100'
         },
         // Fallback to dashboard stats if available, or static
         {
@@ -362,9 +362,9 @@ const SettlementManagement = () => {
           title: 'Vendors with Dues',
           value: totalVendors,
           icon: FiUsers,
-          color: 'text-blue-600',
-          bg: 'bg-blue-50',
-          border: 'border-blue-100'
+          color: 'text-primary-500',
+          bg: 'bg-primary-50',
+          border: 'border-primary-100'
         },
         {
           title: 'Blocked Vendors',
@@ -403,9 +403,9 @@ const SettlementManagement = () => {
           title: 'Total Transactions',
           value: totalTxns,
           icon: FiTrendingUp,
-          color: 'text-blue-600',
-          bg: 'bg-blue-50',
-          border: 'border-blue-100'
+          color: 'text-primary-500',
+          bg: 'bg-primary-50',
+          border: 'border-primary-100'
         },
         {
           title: 'Approved Requests',
@@ -448,9 +448,9 @@ const SettlementManagement = () => {
           title: "Today's Collection",
           value: `₹${dashboard.todayCashCollected?.amount?.toLocaleString() || 0}`,
           icon: FiTrendingUp,
-          color: 'text-blue-600',
-          bg: 'bg-blue-50',
-          border: 'border-blue-100'
+          color: 'text-primary-500',
+          bg: 'bg-primary-50',
+          border: 'border-primary-100'
         },
         {
           title: 'Weekly Collection',
@@ -511,8 +511,8 @@ const SettlementManagement = () => {
                 </div>
 
                 <div className="flex items-center gap-2 mb-2">
-                  <p className="text-2xl font-bold text-blue-600">₹{settlement.amount?.toLocaleString()}</p>
-                  <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase rounded">{settlement.paymentMethod}</span>
+                  <p className="text-2xl font-bold text-primary-500">₹{settlement.amount?.toLocaleString()}</p>
+                  <span className="px-2 py-0.5 bg-primary-50 text-primary-500 text-[10px] font-bold uppercase rounded">{settlement.paymentMethod}</span>
                 </div>
 
                 {settlement.paymentReference && (
@@ -580,7 +580,7 @@ const SettlementManagement = () => {
               <tr key={vendor._id} className="hover:bg-gray-50/50 transition-colors">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${vendor.isBlocked ? 'bg-red-500' : 'bg-blue-600'}`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${vendor.isBlocked ? 'bg-red-500' : 'bg-primary-500'}`}>
                       {vendor.name.charAt(0)}
                     </div>
                     <div>
@@ -596,7 +596,7 @@ const SettlementManagement = () => {
                     </p>
                     <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${vendor.isBlocked ? 'bg-red-500' : 'bg-blue-500'}`}
+                        className={`h-full rounded-full transition-all duration-500 ${vendor.isBlocked ? 'bg-red-500' : 'bg-primary-500'}`}
                         style={{ width: `${Math.min((vendor.amountDue / vendor.cashLimit) * 100, 100)}%` }}
                       />
                     </div>
@@ -612,7 +612,7 @@ const SettlementManagement = () => {
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => navigate(`/admin/settlements/vendor/${vendor._id}`)}
-                      className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-2 text-gray-500 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
                       title="View Ledger"
                     >
                       <FiEye className="w-4 h-4" />
@@ -783,7 +783,7 @@ const SettlementManagement = () => {
         </button>
         <button
           onClick={() => loadData()}
-          className="px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm hover:bg-blue-100 transition-colors"
+          className="px-3 py-2.5 bg-primary-50 text-primary-500 rounded-lg text-sm hover:bg-primary-100 transition-colors"
         >
           <FiClock className="w-4 h-4" />
         </button>
@@ -793,7 +793,7 @@ const SettlementManagement = () => {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[400px]">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="text-gray-500 mt-4 font-medium">Loading data...</p>
           </div>
         ) : (
@@ -933,7 +933,7 @@ const SettlementManagement = () => {
               type="number"
               value={modalInput}
               onChange={(e) => setModalInput(e.target.value)}
-              className="w-full p-3 pl-8 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full p-3 pl-8 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-400 outline-none"
             />
           </div>
           <div className="flex justify-end gap-3 mt-4">

@@ -10,128 +10,45 @@ import { homeContentService, serviceService, categoryService } from "../../../..
 
 const RedirectionSelector = ({
   targetCategoryId,
-  slug,
   onChange,
   label = "Redirection Target",
   categories = [],
-  allServices = []
 }) => {
-  // Local state to manage the UI selections
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedSlug, setSelectedSlug] = useState("");
 
-  // Sync props to state
   useEffect(() => {
-    // 1. Sync the slug (Service selection)
-    setSelectedSlug(slug || "");
-
-    // 2. Determine the correctly selected category
-    // If we have a service slug, we try to find its category from the full service list.
-    // This is the most accurate source of truth.
-    const serviceFromSlug = (slug && allServices?.length)
-      ? allServices.find(s => s.slug === slug)
-      : null;
-
-    if (serviceFromSlug?.categoryId) {
-      // If service found, enforce its category
-      // Handle potential object/string mismatch
-      const catId = serviceFromSlug.categoryId?._id || serviceFromSlug.categoryId;
-      setSelectedCategory(typeof catId === 'object' ? String(catId) : catId);
-    } else if (targetCategoryId) {
-      // Fallback: If no service found (or no slug), trust the explicit targetCategoryId
-      const catId = targetCategoryId?._id || targetCategoryId;
-      setSelectedCategory(typeof catId === 'object' ? String(catId || "") : (catId || ""));
-    } else if (!slug) {
-      // If no slug and no category, reset (e.g. fresh add)
-      setSelectedCategory("");
-    }
-    // Note: If slug exists but service not found AND no targetCategoryId, 
-    // we leave selectedCategory as is (or it might be waiting for services to load).
-
-  }, [slug, targetCategoryId, allServices]);
+    const catId = targetCategoryId?._id || targetCategoryId;
+    setSelectedCategory(typeof catId === 'object' ? String(catId || "") : (catId || ""));
+  }, [targetCategoryId]);
 
   const handleCategoryChange = (e) => {
     const catId = e.target.value;
     setSelectedCategory(catId);
-    setSelectedSlug(""); // Reset service when category changes
-
-    // Notify parent: Only Category selected
-    onChange({ targetCategoryId: catId, slug: null, targetServiceId: null });
+    onChange({ targetCategoryId: catId || null, slug: null, targetServiceId: null });
   };
-
-  const handleServiceChange = (e) => {
-    const svcSlug = e.target.value;
-    setSelectedSlug(svcSlug);
-
-    // Notify parent: Service selected (Category implied)
-    // We pass the currently selected category as well
-    const svc = allServices.find(s => s.slug === svcSlug);
-    onChange({
-      targetCategoryId: selectedCategory,
-      slug: svcSlug || null,
-      targetServiceId: svc ? (svc.id || svc._id) : null
-    });
-  };
-
-  const filteredServices = selectedCategory
-    ? allServices.filter(s => {
-      const sCatId = s.categoryId?._id || s.categoryId;
-      return String(sCatId) === String(selectedCategory);
-    })
-    : [];
 
   return (
     <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
       <label className="block text-sm font-bold text-gray-700 mb-3">{label}</label>
-
-      <div className="space-y-4">
-        {/* Step 1: Category Selection */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-            1. Select Category
-          </label>
-          <select
-            value={selectedCategory}
-            onChange={handleCategoryChange}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
-          >
-            <option value="">-- Choose Category --</option>
-            {(categories || []).map((c) => (
-              <option key={c.id || c._id} value={c.id || c._id}>
-                {c.title || "Untitled Category"}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Step 2: Service Selection */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-            2. Select Service
-          </label>
-          <select
-            value={selectedSlug}
-            onChange={handleServiceChange}
-            disabled={!selectedCategory}
-            className={`w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white transition-all text-sm ${!selectedCategory ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-              }`}
-          >
-            <option value="" disabled>-- Select Service --</option>
-            {filteredServices.map((s) => (
-              <option key={s.id || s._id} value={s.slug || ""}>
-                {s.title || "Untitled Service"}
-              </option>
-            ))}
-            {selectedCategory && filteredServices.length === 0 && (
-              <option disabled>No services found in this category</option>
-            )}
-          </select>
-          {selectedSlug && (
-            <p className="text-xs text-blue-600 mt-1 font-medium">
-              * Will redirect to Service Details page
-            </p>
-          )}
-        </div>
+      <div className="space-y-2">
+        <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+          Open Category Listings
+        </label>
+        <select
+          value={selectedCategory}
+          onChange={handleCategoryChange}
+          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all text-sm"
+        >
+          <option value="">-- Choose Category --</option>
+          {(categories || []).map((c) => (
+            <option key={c.id || c._id} value={c.id || c._id}>
+              {c.title || "Untitled Category"}
+            </option>
+          ))}
+        </select>
+        <p className="text-[10px] text-gray-400 mt-1">
+          Customer opens vendor listing blocks for this category (no nearby vendor search).
+        </p>
       </div>
     </div>
   );
@@ -276,26 +193,6 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
   };
 
 
-
-  // Fetch services for redirection selector
-  const [allServices, setAllServices] = useState([]);
-
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const params = {};
-        if (selectedCity) params.cityId = selectedCity;
-
-        const response = await serviceService.getAll(params);
-        if (response.success) {
-          setAllServices(response.services || []);
-        }
-      } catch (error) {
-        console.error("Failed to fetch services", error);
-      }
-    };
-    fetchServices();
-  }, [selectedCity]);
 
   const updateCategory = (id, patch) => {
     const next = ensureIds(catalog);
@@ -615,10 +512,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                       </td>
                       <td className="py-2.5 px-3">
                         <div className="text-sm text-gray-600">
-                          {b.slug
-                            ? `Service: ${allServices.find(s => s.slug === b.slug)?.title || b.slug}`
-                            : (b.targetCategoryId ? getCategoryTitle(b.targetCategoryId) : "—")
-                          }
+                          {b.targetCategoryId ? getCategoryTitle(b.targetCategoryId) : "—"}
                         </div>
                       </td>
                       <td className="py-2.5 px-3">
@@ -633,7 +527,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                               setBannerForm({ ...b });
                               setIsBannerModalOpen(true);
                             }}
-                            className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                            className="p-1.5 rounded-lg bg-primary-50 text-primary-500 hover:bg-primary-100 transition-colors"
                             title="Edit"
                           >
                             <FiEdit2 className="w-3.5 h-3.5" />
@@ -744,7 +638,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                               setPromoForm({ ...p });
                               setIsPromoModalOpen(true);
                             }}
-                            className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                            className="p-1.5 rounded-lg bg-primary-50 text-primary-500 hover:bg-primary-100 transition-colors"
                             title="Edit"
                           >
                             <FiEdit2 className="w-3.5 h-3.5" />
@@ -835,10 +729,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                         </td>
                         <td className="py-4 px-4">
                           <div className="text-sm text-gray-600">
-                            {s.slug
-                              ? `Service: ${allServices.find(svc => svc.slug === s.slug)?.title || s.slug}`
-                              : (s.targetCategoryId ? getCategoryTitle(s.targetCategoryId) : "—")
-                            }
+                            {s.targetCategoryId ? getCategoryTitle(s.targetCategoryId) : "—"}
                           </div>
                         </td>
                         <td className="py-4 px-4">
@@ -850,7 +741,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                                 setNoteworthyForm({ ...s });
                                 setIsNoteworthyModalOpen(true);
                               }}
-                              className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                              className="p-2 rounded-lg bg-primary-50 text-primary-500 hover:bg-primary-100 transition-colors"
                               title="Edit"
                             >
                               <FiEdit2 className="w-4 h-4" />
@@ -959,10 +850,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                       </td>
                       <td className="py-4 px-4">
                         <div className="text-sm text-gray-600">
-                          {s.slug
-                            ? `Service: ${allServices.find(svc => svc.slug === s.slug)?.title || s.slug}`
-                            : (s.targetCategoryId ? getCategoryTitle(s.targetCategoryId) : "—")
-                          }
+                          {s.targetCategoryId ? getCategoryTitle(s.targetCategoryId) : "—"}
                         </div>
                       </td>
                       <td className="py-4 px-4">
@@ -974,7 +862,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                               setBookedForm({ ...s });
                               setIsBookedModalOpen(true);
                             }}
-                            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                            className="p-2 rounded-lg bg-primary-50 text-primary-500 hover:bg-primary-100 transition-colors"
                             title="Edit"
                           >
                             <FiEdit2 className="w-4 h-4" />
@@ -1065,7 +953,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                               });
                               setIsCategorySectionModalOpen(true);
                             }}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1.5 text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
                             title="Edit"
                           >
                             <FiEdit2 className="w-4 h-4" />
@@ -1095,7 +983,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                         <div>
                           <div className="flex justify-between items-center mb-2">
                             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Content Preview</span>
-                            <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md text-xs font-bold">{(sec.cards || []).length} Cards</span>
+                            <span className="bg-primary-50 text-primary-600 px-2 py-0.5 rounded-md text-xs font-bold">{(sec.cards || []).length} Cards</span>
                           </div>
                           <div className="flex -space-x-2 overflow-hidden py-1 h-12 items-center">
                             {(sec.cards || []).length === 0 && (
@@ -1173,7 +1061,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                     </td>
                     <td className="py-4 px-4">
                       {c.homeBadge ? (
-                        <span className="inline-block px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded">{c.homeBadge}</span>
+                        <span className="inline-block px-2 py-1 text-xs font-semibold bg-primary-100 text-primary-600 rounded">{c.homeBadge}</span>
                       ) : (
                         <span className="text-sm text-gray-400">—</span>
                       )}
@@ -1252,16 +1140,16 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
               />
               {uploading && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-blue-600 text-sm font-medium">
+                  <div className="flex items-center justify-between text-primary-500 text-sm font-medium">
                     <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
                       Uploading...
                     </div>
                     <span>{uploadProgress}%</span>
                   </div>
-                  <div className="w-full bg-blue-100 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-primary-100 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="bg-blue-600 h-full transition-all duration-300 ease-out"
+                      className="bg-primary-500 h-full transition-all duration-300 ease-out"
                       style={{ width: `${uploadProgress}%` }}
                     ></div>
                   </div>
@@ -1292,7 +1180,6 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
           </div>
           <RedirectionSelector
             categories={categories}
-            allServices={allServices}
             targetCategoryId={bannerForm.targetCategoryId}
             slug={bannerForm.slug}
             onChange={(patch) => setBannerForm((p) => ({ ...p, ...patch }))}
@@ -1370,16 +1257,16 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
               />
               {uploading && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-blue-600 text-sm font-medium">
+                  <div className="flex items-center justify-between text-primary-500 text-sm font-medium">
                     <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
                       Uploading...
                     </div>
                     <span>{uploadProgress}%</span>
                   </div>
-                  <div className="w-full bg-blue-100 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-primary-100 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="bg-blue-600 h-full transition-all duration-300 ease-out"
+                      className="bg-primary-500 h-full transition-all duration-300 ease-out"
                       style={{ width: `${uploadProgress}%` }}
                     ></div>
                   </div>
@@ -1441,7 +1328,6 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
           </div>
           <RedirectionSelector
             categories={categories}
-            allServices={allServices}
             targetCategoryId={promoForm.targetCategoryId}
             slug={promoForm.slug}
             onChange={(patch) => setPromoForm((p) => ({ ...p, ...patch }))}
@@ -1530,16 +1416,16 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
               />
               {uploading && (
                 <div className="space-y-2 mt-2">
-                  <div className="flex items-center justify-between text-blue-600 text-sm font-medium">
+                  <div className="flex items-center justify-between text-primary-500 text-sm font-medium">
                     <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
                       Uploading...
                     </div>
                     <span>{uploadProgress}%</span>
                   </div>
-                  <div className="w-full bg-blue-100 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-primary-100 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="bg-blue-600 h-full transition-all duration-300 ease-out"
+                      className="bg-primary-500 h-full transition-all duration-300 ease-out"
                       style={{ width: `${uploadProgress}%` }}
                     ></div>
                   </div>
@@ -1562,7 +1448,6 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
 
           <RedirectionSelector
             categories={categories}
-            allServices={allServices}
             targetCategoryId={noteworthyForm.targetCategoryId}
             slug={noteworthyForm.slug}
             onChange={(patch) => setNoteworthyForm((p) => ({ ...p, ...patch }))}
@@ -1642,16 +1527,16 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
               />
               {uploading && (
                 <div className="space-y-2 mt-2">
-                  <div className="flex items-center justify-between text-blue-600 text-sm font-medium">
+                  <div className="flex items-center justify-between text-primary-500 text-sm font-medium">
                     <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
                       Uploading...
                     </div>
                     <span>{uploadProgress}%</span>
                   </div>
-                  <div className="w-full bg-blue-100 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-primary-100 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="bg-blue-600 h-full transition-all duration-300 ease-out"
+                      className="bg-primary-500 h-full transition-all duration-300 ease-out"
                       style={{ width: `${uploadProgress}%` }}
                     ></div>
                   </div>
@@ -1752,7 +1637,6 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
           </div>
           <RedirectionSelector
             categories={categories}
-            allServices={allServices}
             targetCategoryId={bookedForm.targetCategoryId}
             slug={bookedForm.slug}
             onChange={(patch) => setBookedForm((p) => ({ ...p, ...patch }))}
@@ -1800,7 +1684,6 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
           </div>
           <RedirectionSelector
             categories={categories}
-            allServices={allServices}
             targetCategoryId={categorySectionForm.seeAllTargetCategoryId}
             slug={categorySectionForm.seeAllSlug}
             onChange={(patch) => setCategorySectionForm((p) => ({
@@ -1888,7 +1771,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                             });
                             setIsCardModalOpen(true);
                           }}
-                          className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                          className="p-2 rounded-lg bg-primary-50 text-primary-500 hover:bg-primary-100 transition-colors"
                           title="Edit"
                         >
                           <FiEdit2 className="w-4 h-4" />
@@ -1983,16 +1866,16 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
               />
               {uploading && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-blue-600 text-sm font-medium">
+                  <div className="flex items-center justify-between text-primary-500 text-sm font-medium">
                     <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
                       Uploading...
                     </div>
                     <span>{uploadProgress}%</span>
                   </div>
-                  <div className="w-full bg-blue-100 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-primary-100 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="bg-blue-600 h-full transition-all duration-300 ease-out"
+                      className="bg-primary-500 h-full transition-all duration-300 ease-out"
                       style={{ width: `${uploadProgress}%` }}
                     ></div>
                   </div>
@@ -2109,7 +1992,6 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
           </div>
           <RedirectionSelector
             categories={categories}
-            allServices={allServices}
             targetCategoryId={cardForm.targetCategoryId}
             slug={cardForm.slug}
             onChange={(patch) => setCardForm((p) => ({ ...p, ...patch }))}

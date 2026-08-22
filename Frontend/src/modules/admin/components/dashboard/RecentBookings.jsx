@@ -6,7 +6,7 @@ import { formatCurrency } from '../../utils/adminHelpers';
 const statusBadge = (status) => {
   const s = (status || 'OTHER').toUpperCase();
   const map = {
-    ACCEPTED: 'bg-blue-100 text-blue-700',
+    ACCEPTED: 'bg-primary-100 text-primary-600',
     ASSIGNED: 'bg-yellow-100 text-yellow-700',
     VISITED: 'bg-cyan-100 text-cyan-700',
     WORK_DONE: 'bg-emerald-100 text-emerald-700',

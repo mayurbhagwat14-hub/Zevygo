@@ -133,8 +133,8 @@ const Notifications = () => {
     const type = (originalType || '').toLowerCase();
 
     if (['payment', 'refund', 'wallet', 'payout'].some(t => type.includes(t))) return '#10B981'; // Green
-    if (['booking', 'job', 'work', 'visit', 'journey', 'vendor'].some(t => type.includes(t))) return '#3B82F6'; // Blue
-    if (['alert', 'general'].some(t => type.includes(t))) return '#2563EB';
+    if (['booking', 'job', 'work', 'visit', 'journey', 'vendor'].some(t => type.includes(t))) return '#0F348F'; // Blue
+    if (['alert', 'general'].some(t => type.includes(t))) return '#0F348F';
 
     return '#6B7280'; // Gray
   };

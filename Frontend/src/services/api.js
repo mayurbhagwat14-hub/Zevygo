@@ -1,5 +1,10 @@
 import axios from 'axios';
-import { apiCache } from '../utils/apiCache';
+import {
+  apiCache,
+  buildGetCacheKey,
+  shouldSkipGetCache,
+  invalidateAfterMutation
+} from '../utils/apiCache';
 
 // API Base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -41,17 +46,12 @@ api.interceptors.request.use(
     const { access } = getTokenKeys(config.url);
     const token = sessionStorage.getItem(access) || localStorage.getItem(access);
 
-    // For debugging
-    // console.log(`Request to ${config.url}, using token key: ${access}, token exists: ${!!token}`);
-
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Track if we're currently refreshing
@@ -59,38 +59,35 @@ let isRefreshing = false;
 let failedQueue = [];
 
 const processQueue = (error, token = null) => {
-  failedQueue.forEach(prom => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
+  failedQueue.forEach((prom) => {
+    if (error) prom.reject(error);
+    else prom.resolve(token);
   });
   failedQueue = [];
 };
 
-// Response interceptor - Handle token refresh
+// Response interceptor - Handle token refresh + invalidate GET cache on writes
 api.interceptors.response.use(
   (response) => {
+    const method = (response.config?.method || 'get').toLowerCase();
+    if (method !== 'get' && method !== 'head' && method !== 'options') {
+      invalidateAfterMutation(response.config?.url || '');
+    }
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
 
-    // If error is 401 and we haven't tried to refresh yet
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then(token => {
+          .then((token) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
             return api(originalRequest);
           })
-          .catch(err => {
-            return Promise.reject(err);
-          });
+          .catch((err) => Promise.reject(err));
       }
 
       originalRequest._retry = true;
@@ -100,45 +97,37 @@ api.interceptors.response.use(
       const refreshToken = sessionStorage.getItem(refresh) || localStorage.getItem(refresh);
 
       if (!refreshToken) {
-        // No refresh token, logout
         handleLogout(role);
         return Promise.reject(error);
       }
 
       try {
-        // Determine correct refresh endpoint based on current path
-        let refreshEndpoint = '/users/auth/refresh-token'; // Default to user
+        let refreshEndpoint = '/users/auth/refresh-token';
         if (role === 'vendor') refreshEndpoint = '/vendors/auth/refresh-token';
         else if (role === 'worker') refreshEndpoint = '/workers/auth/refresh-token';
         else if (role === 'admin') refreshEndpoint = '/admin/auth/refresh-token';
 
-        // Try to refresh the token
         const response = await axios.post(`${API_BASE_URL}${refreshEndpoint}`, {
           refreshToken
         });
 
         const { accessToken } = response.data;
 
-        // Save new access token - Try session first, then local (update where it was found)
         if (sessionStorage.getItem(access)) {
           sessionStorage.setItem(access, accessToken);
         } else {
           localStorage.setItem(access, accessToken);
         }
 
-        // Update authorization header
-        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 
-        // Process queued requests
         processQueue(null, accessToken);
         isRefreshing = false;
 
-        // Retry original request
         return api(originalRequest);
       } catch (refreshError) {
         console.error('RefreshToken failed:', refreshError);
-        // Refresh failed, logout
         processQueue(refreshError, null);
         isRefreshing = false;
         handleLogout(role);
@@ -146,20 +135,53 @@ api.interceptors.response.use(
       }
     }
 
-    // Handle 403 Forbidden - Role mismatch or Invalid Token
     if (error.response?.status === 403) {
       console.error('Access Denied (403):', error.response.data.message);
-      // Removed automatic logout to prevent login loops during debugging
     }
 
     return Promise.reject(error);
   }
 );
 
+/**
+ * Cached GET with in-flight dedupe (stops StrictMode / multi-mount spam).
+ * Opt out: api.get(url, { skipCache: true })
+ * Custom TTL seconds: api.get(url, { cacheTtl: 60 })
+ */
+const rawGet = api.get.bind(api);
+api.get = (url, config = {}) => {
+  const skipCache = config.skipCache === true || shouldSkipGetCache(url);
+  const ttlSeconds = Number.isFinite(config.cacheTtl) ? config.cacheTtl : 45;
+  const key = buildGetCacheKey(url, config.params);
+
+  if (!skipCache) {
+    const cached = apiCache.get(key);
+    if (cached) return Promise.resolve(cached);
+
+    const pending = apiCache.getInflight(key);
+    if (pending) return pending;
+  }
+
+  const request = rawGet(url, config)
+    .then((res) => {
+      if (!skipCache && res?.status >= 200 && res?.status < 300) {
+        apiCache.set(key, res, ttlSeconds);
+      }
+      apiCache.clearInflight(key);
+      return res;
+    })
+    .catch((err) => {
+      apiCache.clearInflight(key);
+      throw err;
+    });
+
+  if (!skipCache) apiCache.setInflight(key, request);
+  return request;
+};
+
 // Handle logout
 export const handleLogout = (role = null) => {
   if (!role) {
-    // Determine role from path if not provided
     const path = window.location.pathname;
     if (path.startsWith('/admin')) role = 'admin';
     else if (path.startsWith('/vendor')) role = 'vendor';
@@ -167,13 +189,12 @@ export const handleLogout = (role = null) => {
     else role = 'user';
   }
 
-  // Clear role-specific tokens selectively
+  apiCache.clear();
+
   const clearTokens = (prefix) => {
-    // Clear both sessionStorage and localStorage to prevent state mismatch
     sessionStorage.removeItem(`${prefix}AccessToken`);
     sessionStorage.removeItem(`${prefix}RefreshToken`);
     sessionStorage.removeItem(`${prefix}Data`);
-
     localStorage.removeItem(`${prefix}AccessToken`);
     localStorage.removeItem(`${prefix}RefreshToken`);
     localStorage.removeItem(`${prefix}Data`);
@@ -195,7 +216,6 @@ export const handleLogout = (role = null) => {
       window.location.href = '/admin/login';
     }
   } else {
-    // User
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userData');

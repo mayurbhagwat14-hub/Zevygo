@@ -244,7 +244,7 @@ const ProfileDetails = () => {
                 <div className="flex flex-wrap gap-1.5">
                   {profile.serviceCategory && (Array.isArray(profile.serviceCategory) ? profile.serviceCategory : profile.serviceCategory.split(', ')).filter(Boolean).length > 0 ? (
                     (Array.isArray(profile.serviceCategory) ? profile.serviceCategory : profile.serviceCategory.split(', ')).filter(Boolean).map((cat, i) => (
-                      <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                      <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-lg bg-primary-50 text-primary-600 text-xs font-bold border border-primary-100">
                         {cat}
                       </span>
                     ))

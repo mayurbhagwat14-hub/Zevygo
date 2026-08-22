@@ -16,6 +16,8 @@ const { isListingBookable, overlayApprovedVersion, listingDisplayPrice } = requi
 const Settings = require('../../models/Settings');
 const { calculateBookingPricing } = require('../../utils/bookingPricing');
 const { resolveAdvancePaymentConfig } = require('../../utils/advancePaymentConfig');
+const { isBookingTypeAllowed } = require('../../utils/listingBookingMode');
+const { resolveServiceFulfillmentType } = require('../../utils/bookingStatusLabels');
 
 const LISTING_BOOKING_POPULATE = 'title categoryName status portfolioPhotos pricing pricingModel bookingMode';
 
@@ -123,7 +125,7 @@ const createListingBooking = async (req, res) => {
 
   const listingDoc = await ServiceListing.findById(serviceListingId)
     .populate('vendorId', 'name approvalStatus accountStatus')
-    .populate('categoryId', 'title icon image slug homeIconUrl');
+    .populate('categoryId', 'title icon image slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType');
 
   if (!listingDoc || !isListingBookable(listingDoc)) {
     return res.status(404).json({ success: false, message: 'This listing is not available for booking.' });
@@ -135,6 +137,23 @@ const createListingBooking = async (req, res) => {
   }
 
   const live = overlayApprovedVersion(listingDoc);
+  const categoryDoc = listingDoc.categoryId;
+
+  const resolvedBookingType = bookingType
+    || (String(live.bookingMode || categoryDoc?.bookingMode || 'BOTH').toUpperCase() === 'INSTANT'
+      ? 'instant'
+      : 'scheduled');
+
+  if (!isBookingTypeAllowed(resolvedBookingType, live.bookingMode, categoryDoc?.bookingMode)) {
+    const modeLabel = String(live.bookingMode || categoryDoc?.bookingMode || 'BOTH').toUpperCase();
+    return res.status(400).json({
+      success: false,
+      message: modeLabel === 'INSTANT'
+        ? 'This listing only accepts instant bookings.'
+        : 'This listing only accepts scheduled bookings.'
+    });
+  }
+
   const catalogItems = live.catalogItems || [];
   const selectedItem = catalogItemId
     ? catalogItems.find((item) => String(item.id || item._id) === String(catalogItemId) && item.isActive !== false)
@@ -152,12 +171,9 @@ const createListingBooking = async (req, res) => {
 
   const pendingPenalty = user.wallet?.penalty || 0;
   const settingsDoc = await Settings.findOne({ type: 'global' }).lean();
-  const categoryDoc = listingDoc.categoryId;
   const advanceConfig = resolveAdvancePaymentConfig({
     settings: settingsDoc || {},
-    category: categoryDoc,
-    listing: live,
-    catalogItem: selectedItem
+    category: categoryDoc
   });
   const pricing = calculateBookingPricing(
     itemPrice || listingDisplayPrice(live.pricing),
@@ -234,7 +250,8 @@ const createListingBooking = async (req, res) => {
     serviceName: serviceTitle,
     serviceCategory: reqServiceCategory || live.categoryName || category?.title || 'General',
     categoryIcon: reqCategoryIcon || category?.homeIconUrl || category?.icon || category?.image || null,
-    bookingType: bookingType || 'scheduled',
+    bookingType: resolvedBookingType,
+    serviceFulfillmentType: resolveServiceFulfillmentType({ category: categoryDoc }),
     description: live.description,
     serviceImages: live.portfolioPhotos || [],
     bookedItems: formattedBookedItems,
@@ -403,7 +420,7 @@ const createBooking = async (req, res) => {
 
     // 2. Fetch Category if exists
     const categoryId = service.categoryId || service.categoryIds?.[0];
-    const category = categoryId ? await Category.findById(categoryId).select('title icon image slug').lean() : null;
+    const category = categoryId ? await Category.findById(categoryId).select('title icon image slug serviceFulfillmentType bookingMode paymentConfig').lean() : null;
 
     // Calculate total value from booked items or fallback to service base price
     if (totalServiceValue === 0) {
@@ -627,6 +644,7 @@ const createBooking = async (req, res) => {
       brandName: reqBrandName || brandName,
       brandIcon: reqBrandIcon || brandIcon,
       bookingType: bookingType || 'scheduled',
+      serviceFulfillmentType: resolveServiceFulfillmentType({ category: finalCategory || category }),
 
       description: service.description,
       serviceImages: service.images || [],

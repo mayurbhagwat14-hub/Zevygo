@@ -11,6 +11,24 @@ import { useSocket } from '../../../../context/SocketContext';
 
 import PendingJobCard from '../../components/bookings/PendingJobCard';
 
+const REQUEST_QUEUE_TABS = [
+  { id: 'instant', label: '⚡ Instant', status: 'requests_instant' },
+  { id: 'scheduled', label: '📅 Scheduled', status: 'requests_scheduled' },
+];
+
+const mapAlertFromApi = (b) => ({
+  ...b,
+  id: b._id || b.id,
+  serviceName: b.serviceName || b.serviceId?.title || 'New Booking Request',
+  serviceCategory: b.serviceCategory || b.serviceId?.categoryId?.title || 'General Service',
+  customerName: b.userId?.name || 'Customer',
+  bookingType: b.bookingType,
+  serviceListingId: b.serviceListingId,
+  isDirectRequest: Boolean(b.serviceListingId),
+  finalAmount: b.finalAmount,
+  requireAdvancePayment: b.requireAdvancePayment,
+});
+
 const BookingAlerts = () => {
   const navigate = useNavigate();
   const socket = useSocket();
@@ -18,84 +36,71 @@ const BookingAlerts = () => {
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState({ id: null, type: null });
   const [globalConfig, setGlobalConfig] = useState({ maxSearchTime: 5 });
+  const [requestQueue, setRequestQueue] = useState('instant');
+
+  const fetchAlerts = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const statsRes = await vendorDashboardService.getDashboardStats();
+      let localConfig = { maxSearchTime: 5 };
+      if (statsRes.success && statsRes.data?.config) {
+        localConfig = statsRes.data.config;
+        setGlobalConfig(localConfig);
+      }
+
+      const statusParam = REQUEST_QUEUE_TABS.find((t) => t.id === requestQueue)?.status || 'requests_instant';
+      const response = await getBookings({ status: statusParam, limit: 50 });
+
+      if (response.success && response.data) {
+        let bookings = response.data;
+
+        const mergedPending = [];
+
+        bookings.forEach((b) => {
+          const bId = b._id || b.id;
+          const expiresAt = b.expiresAt || (b.createdAt && localConfig
+            ? new Date(new Date(b.createdAt).getTime() + (localConfig.maxSearchTime || 5) * 60000).toISOString()
+            : null);
+          const isExpired = expiresAt && new Date(expiresAt) <= new Date();
+          if (!isExpired) {
+            mergedPending.push({ ...b, id: bId, expiresAt });
+          }
+        });
+
+        const apiIds = new Set(mergedPending.map((b) => String(b.id)));
+        const localPending = JSON.parse(localStorage.getItem('vendorPendingJobs') || '[]');
+
+        localPending.forEach((localB) => {
+          const id = String(localB.id || localB._id);
+          if (!apiIds.has(id)) {
+            const createdAt = localB.createdAt ? new Date(localB.createdAt).getTime() : Date.now();
+            const expiresAt = localB.expiresAt || (localB.createdAt && localConfig
+              ? new Date(createdAt + (localConfig.maxSearchTime || 5) * 60000).toISOString()
+              : null);
+            const isExpired = (expiresAt && new Date(expiresAt) <= new Date()) || (Date.now() - createdAt > 300000);
+            const isInstant = localB.bookingType === 'instant'
+              || String(localB.scheduledTime || '').toUpperCase() === 'ASAP';
+            const matchesQueue = requestQueue === 'instant' ? isInstant : !isInstant;
+
+            if (!isExpired && matchesQueue && (localB.status === 'requested' || localB.status === 'searching')) {
+              mergedPending.push(localB);
+            }
+          }
+        });
+
+        localStorage.setItem('vendorPendingJobs', JSON.stringify(mergedPending));
+        setAlerts(mergedPending.map(mapAlertFromApi));
+      }
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+      toast.error('Failed to load alerts');
+    } finally {
+      setLoading(false);
+    }
+  }, [requestQueue]);
 
   // Fetch pending alerts
   useEffect(() => {
-    const fetchAlerts = async () => {
-      try {
-        setLoading(true);
-        // Fetch stats to get global config (maxSearchTime)
-        const statsRes = await vendorDashboardService.getDashboardStats();
-        let localConfig = { maxSearchTime: 5 };
-        if (statsRes.success && statsRes.data?.config) {
-          localConfig = statsRes.data.config;
-          setGlobalConfig(localConfig);
-        }
-
-        const response = await getBookings();
-
-        if (response.success && response.data) {
-          let bookings = [];
-          const vendorData = JSON.parse(localStorage.getItem('vendorData') || '{}');
-          const currentVendorId = String(vendorData._id || vendorData.id || '');
-
-          bookings = response.data.filter(b => {
-            const status = b.status?.toLowerCase();
-            const isRelevantStatus = status === 'searching' || status === 'requested';
-            const bVendorId = b.vendorId?._id || b.vendorId;
-            const isAssignedToMe = !bVendorId || String(bVendorId) === currentVendorId;
-            return isRelevantStatus && isAssignedToMe;
-          });
-
-          // Merge logic: Keep if in API OR if added recently (last 2 mins)
-          const mergedPending = [];
-
-          // Add active bookings from API, skipping expired ones
-          bookings.forEach(b => {
-            const bId = b._id || b.id;
-            const expiresAt = b.expiresAt || (b.createdAt && localConfig ? new Date(new Date(b.createdAt).getTime() + (localConfig.maxSearchTime || 5) * 60000).toISOString() : null);
-            const isExpired = expiresAt && new Date(expiresAt) <= new Date();
-            if (!isExpired) {
-              mergedPending.push({ ...b, id: bId, expiresAt });
-            }
-          });
-
-          const apiIds = new Set(mergedPending.map(b => String(b.id)));
-          const localPending = JSON.parse(localStorage.getItem('vendorPendingJobs') || '[]');
-
-          localPending.forEach(localB => {
-            const id = String(localB.id || localB._id);
-            if (!apiIds.has(id)) {
-              const createdAt = localB.createdAt ? new Date(localB.createdAt).getTime() : Date.now();
-              const expiresAt = localB.expiresAt || (localB.createdAt && localConfig ? new Date(createdAt + (localConfig.maxSearchTime || 5) * 60000).toISOString() : null);
-              const isExpired = (expiresAt && new Date(expiresAt) <= new Date()) || (Date.now() - createdAt > 300000);
-
-              if (!isExpired && (localB.status === 'requested' || localB.status === 'searching')) {
-                mergedPending.push(localB);
-              }
-            }
-          });
-
-          localStorage.setItem('vendorPendingJobs', JSON.stringify(mergedPending));
-
-          // Map for PendingJobCard parity (now using already calculated/filtered results)
-          const mappedAlerts = mergedPending.map(b => ({
-            ...b,
-            serviceName: b.serviceName || b.serviceId?.title || 'New Booking Request',
-            serviceCategory: b.serviceCategory || b.serviceId?.categoryId?.title || 'General Service',
-            customerName: b.userId?.name || 'Customer'
-          }));
-
-          setAlerts(mappedAlerts);
-        }
-      } catch (error) {
-        console.error('Error fetching alerts:', error);
-        toast.error('Failed to load alerts');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchAlerts();
 
     const handleUpdate = () => fetchAlerts();
@@ -104,7 +109,7 @@ const BookingAlerts = () => {
     return () => {
       window.removeEventListener('vendorJobsUpdated', handleUpdate);
     };
-  }, []);
+  }, [fetchAlerts]);
 
   // Socket listener for booking_taken (using shared socket from context)
   useEffect(() => {
@@ -172,8 +177,15 @@ const BookingAlerts = () => {
     if (loadingAction.id) return;
     setLoadingAction({ id: bookingId, type: 'accept' });
     try {
-      await acceptBooking(bookingId);
-      toast.success('Booking accepted!');
+      const res = await acceptBooking(bookingId);
+      const data = res?.data || res;
+      const advance = data?.advanceAmount || booking.advanceAmount;
+      const needsAdvance = data?.requireAdvancePayment && Number(advance) > 0;
+      toast.success(
+        needsAdvance
+          ? `Accepted! Waiting for advance ₹${Number(advance).toLocaleString('en-IN')}`
+          : 'Booking accepted!'
+      );
       // Remove from list
       setAlerts(prev => prev.filter(a => (a._id || a.id) !== bookingId));
 
@@ -225,6 +237,24 @@ const BookingAlerts = () => {
       <Header title="Pending Alerts" showBack={true} />
 
       <main className="px-4 py-4 space-y-4 max-w-lg mx-auto">
+        {!loading && (
+          <div className="flex gap-2">
+            {REQUEST_QUEUE_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setRequestQueue(tab.id)}
+                className={`flex-1 py-2 rounded-xl font-semibold text-xs transition-all border ${
+                  requestQueue === tab.id
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : 'bg-white text-neutral-600 border-neutral-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
         {loading ? (
           <div className="py-20 flex justify-center">
             <Loader />

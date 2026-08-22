@@ -12,7 +12,7 @@ export const LISTING_SECTIONS = {
   menu: {
     type: 'menu',
     icon: FiLayers,
-    defaultTitle: 'Menu'
+    defaultTitle: 'Packages & Blocks'
   },
   pricing: {
     schemaKey: 'pricingFormSchema',
@@ -49,7 +49,7 @@ export const LISTING_SECTIONS = {
 
 export const ADMIN_SCHEMA_OPTIONS = [
   { key: 'vendorFormSchema', label: 'Service Details', section: 'profile' },
-  { key: 'catalogItemSchema', label: 'Menu Items', section: 'menu' },
+  { key: 'catalogItemSchema', label: 'Packages & Options', section: 'menu' },
   { key: 'pricingFormSchema', label: 'Pricing', section: 'pricing' },
   { key: 'availabilityFormSchema', label: 'Availability', section: 'availability' },
   { key: 'serviceAreaFormSchema', label: 'Service Area', section: 'serviceArea' },
@@ -119,46 +119,68 @@ export const getActiveListingForms = (category, commonForms = []) => {
     category?.listingForms
   );
 
-  if (merged.length > 0) return merged;
+  let forms = merged;
 
-  // Legacy fallback from vendorFormSchema / catalog / section config
-  const legacy = [];
-  if ((category?.vendorFormSchema || []).length > 0 && isSectionEnabled(category, 'profile')) {
-    legacy.push({
-      id: 'legacy_profile',
-      key: 'profile',
-      title: sectionTitle(category, 'profile'),
-      type: 'fields',
-      fields: category.vendorFormSchema,
-      order: 0
+  if (!forms.length) {
+    // Legacy fallback from vendorFormSchema / catalog / section config
+    const legacy = [];
+    if ((category?.vendorFormSchema || []).length > 0 && isSectionEnabled(category, 'profile')) {
+      legacy.push({
+        id: 'legacy_profile',
+        key: 'profile',
+        title: sectionTitle(category, 'profile'),
+        type: 'fields',
+        fields: category.vendorFormSchema,
+        order: 0
+      });
+    }
+    Object.entries(LISTING_SECTIONS).forEach(([sectionKey, meta], idx) => {
+      if (['profile', 'menu'].includes(sectionKey)) return;
+      if (!isSectionEnabled(category, sectionKey)) return;
+      const schema = category?.[meta.schemaKey] || [];
+      if (!schema.length && !meta.hasPhotos) return;
+      legacy.push({
+        id: `legacy_${sectionKey}`,
+        key: sectionKey,
+        title: sectionTitle(category, sectionKey),
+        type: meta.hasPhotos ? 'photos' : 'fields',
+        fields: schema,
+        order: idx + 2,
+        answersKey: meta.answersKey
+      });
     });
+    forms = legacy;
   }
-  if (isSectionEnabled(category, 'menu')) {
-    legacy.push({
-      id: 'legacy_menu',
-      key: 'menu',
-      title: sectionTitle(category, 'menu'),
-      type: 'menu',
-      fields: category.catalogItemSchema || [],
-      order: 1
-    });
-  }
-  Object.entries(LISTING_SECTIONS).forEach(([sectionKey, meta], idx) => {
-    if (['profile', 'menu'].includes(sectionKey)) return;
-    if (!isSectionEnabled(category, sectionKey)) return;
-    const schema = category?.[meta.schemaKey] || [];
-    if (!schema.length && !meta.hasPhotos) return;
-    legacy.push({
-      id: `legacy_${sectionKey}`,
-      key: sectionKey,
-      title: sectionTitle(category, sectionKey),
-      type: meta.hasPhotos ? 'photos' : 'fields',
-      fields: schema,
-      order: idx + 2,
-      answersKey: meta.answersKey
-    });
-  });
-  return legacy;
+
+  // Every service category gets packages/blocks (Driver, Tiffin, Guard, etc.)
+  return ensurePackagesForm(forms, category);
+};
+
+/**
+ * Guarantee a packages/menu form exists for any category so vendors can
+ * add bookable blocks without depending on Driver-only admin config.
+ */
+export const ensurePackagesForm = (forms = [], category = null) => {
+  const list = Array.isArray(forms) ? [...forms] : [];
+  if (list.some((f) => f?.type === 'menu')) return list;
+
+  const menuTitle = sectionTitle(category, 'menu') || 'Packages & Blocks';
+  // Insert after first fields/profile form when possible
+  const insertAt = Math.max(
+    0,
+    list.findIndex((f) => f?.type === 'fields') + 1
+  );
+  const packageForm = {
+    id: 'auto_packages',
+    key: 'menu',
+    title: menuTitle === 'Menu' ? 'Packages & Blocks' : menuTitle,
+    type: 'menu',
+    fields: category?.catalogItemSchema || [],
+    order: insertAt,
+    enabled: true
+  };
+  list.splice(insertAt, 0, packageForm);
+  return list;
 };
 
 export const buildListingSteps = (category, commonForms = []) => {
@@ -176,7 +198,7 @@ export const buildListingSteps = (category, commonForms = []) => {
         key: `form_${formDef.id}`,
         formId: formDef.id,
         formKey: formDef.key,
-        label: formDef.title || 'Menu',
+        label: formDef.title || 'Packages & Blocks',
         icon: FORM_TYPE_ICONS.menu,
         type: 'menu',
         schema: formDef.fields || []
@@ -209,6 +231,22 @@ export const buildListingSteps = (category, commonForms = []) => {
       answersKey: formDef.answersKey || null // legacy only
     });
   });
+
+  // Safety: if somehow no menu step, still add packages before preview
+  if (!steps.some((s) => s.type === 'menu')) {
+    const previewIdx = steps.findIndex((s) => s.key === 'preview');
+    const packageStep = {
+      key: 'form_auto_packages',
+      formId: 'auto_packages',
+      formKey: 'menu',
+      label: 'Packages & Blocks',
+      icon: FORM_TYPE_ICONS.menu,
+      type: 'menu',
+      schema: category?.catalogItemSchema || []
+    };
+    if (previewIdx >= 0) steps.splice(previewIdx, 0, packageStep);
+    else steps.push(packageStep);
+  }
 
   steps.push({ key: 'preview', label: 'Preview', icon: FiEye });
   return steps;

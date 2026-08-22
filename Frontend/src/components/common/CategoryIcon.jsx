@@ -24,12 +24,12 @@ const categoryConfigMap = {
   'driver': {
     Icon: FaCarSide,
     bgGradient: 'from-blue-600 via-blue-500 to-indigo-600',
-    glow: 'rgba(37, 99, 235, 0.4)',
+    glow: 'rgba(15, 52, 143, 0.4)',
   },
   'driver-booking': {
     Icon: FaCarSide,
     bgGradient: 'from-blue-600 via-blue-500 to-indigo-600',
-    glow: 'rgba(37, 99, 235, 0.4)',
+    glow: 'rgba(15, 52, 143, 0.4)',
   },
 
   // Cook / Maharaj
@@ -134,7 +134,7 @@ const categoryConfigMap = {
   // Plumber
   'plumber': {
     Icon: FaFaucetDrip,
-    bgGradient: 'from-blue-500 via-cyan-500 to-teal-600',
+    bgGradient: 'from-primary-500 via-cyan-500 to-teal-600',
     glow: 'rgba(59, 130, 246, 0.4)',
   },
 
@@ -151,8 +151,8 @@ const categoryConfigMap = {
   },
   'fridge': {
     Icon: FaSnowflake,
-    bgGradient: 'from-blue-500 via-indigo-600 to-cyan-500',
-    glow: 'rgba(37, 99, 235, 0.4)',
+    bgGradient: 'from-primary-500 via-indigo-600 to-cyan-500',
+    glow: 'rgba(15, 52, 143, 0.4)',
   },
   'washing-machine': {
     Icon: GiWashingMachine,
@@ -192,7 +192,7 @@ const getDefaultConfig = (slugOrTitle = '') => {
   return {
     Icon: HiSparkles,
     bgGradient: 'from-blue-600 via-indigo-600 to-purple-600',
-    glow: 'rgba(37, 99, 235, 0.4)',
+    glow: 'rgba(15, 52, 143, 0.4)',
   };
 };
 
@@ -201,7 +201,7 @@ const CategoryIcon = ({ slug = '', title = '', size = 'md', className = '' }) =>
   const safeConfig = config || getDefaultConfig('');
   const Icon = safeConfig.Icon || HiSparkles;
   const bgGradient = safeConfig.bgGradient || 'from-blue-600 via-indigo-600 to-purple-600';
-  const glow = safeConfig.glow || 'rgba(37, 99, 235, 0.4)';
+  const glow = safeConfig.glow || 'rgba(15, 52, 143, 0.4)';
 
   const sizeClasses = {
     sm: 'w-10 h-10 rounded-xl text-lg',

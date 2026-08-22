@@ -6,7 +6,6 @@ import ErrorBoundary from '../components/common/ErrorBoundary';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import PublicRoute from '../../../components/auth/PublicRoute';
 import CashLimitModal from '../components/common/CashLimitModal'; // Import
-import GlobalBookingAlert from '../components/common/GlobalBookingAlert';
 // import useAppNotifications from '../../../hooks/useAppNotifications.jsx'; // Handled globally
 
 // Lazy load wrapper with error handling (same as user app)
@@ -39,8 +38,6 @@ const lazyLoad = (importFunc) => {
 const Login = lazyLoad(() => import('../pages/login'));
 const Signup = lazyLoad(() => import('../pages/signup'));
 const Dashboard = lazyLoad(() => import('../pages/Dashboard'));
-const BookingAlert = lazyLoad(() => import('../pages/BookingAlert'));
-const BookingAlerts = lazyLoad(() => import('../pages/BookingAlerts'));
 const BookingDetails = lazyLoad(() => import('../pages/BookingDetails'));
 const BookingTimeline = lazyLoad(() => import('../pages/BookingTimeline'));
 const ActiveJobs = lazyLoad(() => import('../pages/ActiveJobs'));
@@ -75,11 +72,10 @@ const VendorRoutes = () => {
   const location = useLocation();
 
   // Check if current route should hide bottom nav (auth routes or map)
-  // Check if current route should hide bottom nav (auth routes or map or booking alert)
   const shouldHideBottomNav = location.pathname === '/vendor/login' ||
     location.pathname === '/vendor/signup' ||
     location.pathname.endsWith('/map') ||
-    location.pathname.includes('/booking-alert/') ||
+    location.pathname.endsWith('/billing') ||
     location.pathname.includes('/add-service') ||
     location.pathname.includes('/edit-service') ||
     location.pathname.includes('/profile/service-form');
@@ -100,8 +96,9 @@ const VendorRoutes = () => {
               {/* Protected routes (auth required) */}
               <Route path="/" element={<ProtectedRoute userType="vendor"><Navigate to="dashboard" replace /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute userType="vendor"><Dashboard /></ProtectedRoute>} />
-              <Route path="/booking-alerts" element={<ProtectedRoute userType="vendor"><BookingAlerts /></ProtectedRoute>} />
-              <Route path="/booking-alert/:id" element={<ProtectedRoute userType="vendor"><BookingAlert /></ProtectedRoute>} />
+              {/* Legacy alert popup screens → Jobs Requests queue */}
+              <Route path="/booking-alerts" element={<ProtectedRoute userType="vendor"><Navigate to="/vendor/jobs" replace /></ProtectedRoute>} />
+              <Route path="/booking-alert/:id" element={<ProtectedRoute userType="vendor"><Navigate to="/vendor/jobs" replace /></ProtectedRoute>} />
               <Route path="/booking/:id" element={<ProtectedRoute userType="vendor"><BookingDetails /></ProtectedRoute>} />
               <Route path="/booking/:id/map" element={<ProtectedRoute userType="vendor"><BookingMap /></ProtectedRoute>} />
               <Route path="/booking/:id/billing" element={<ProtectedRoute userType="vendor"><BillingPage /></ProtectedRoute>} />
@@ -134,11 +131,8 @@ const VendorRoutes = () => {
       {/* BottomNav is OUTSIDE Suspense so it persists during page loads */}
       {shouldShowBottomNav && <BottomNav />}
 
-      {/* Global Alert for Cash Limit */}
-      {!shouldHideBottomNav && <CashLimitModal />}
-
-      {/* Global New Booking Alert Modal */}
-      {!shouldHideBottomNav && <GlobalBookingAlert />}
+      {/* Keep mounted across routes so wallet is not re-fetched on every navigation */}
+      <CashLimitModal />
     </ErrorBoundary>
   );
 };

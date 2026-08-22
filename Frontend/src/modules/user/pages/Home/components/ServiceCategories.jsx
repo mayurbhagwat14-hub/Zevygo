@@ -1,5 +1,6 @@
 import React from 'react';
 import CategoryCard from '../../../components/common/CategoryCard';
+import { resolveCategoryBookingMode } from '../../../../../utils/listingBookingMode';
 
 const toAssetUrl = (url) => {
   if (!url) return '';
@@ -81,7 +82,7 @@ const ServiceCategories = React.memo(({ categories, onCategoryClick, onSeeAllCli
         <button
           type="button"
           onClick={onSeeAllClick}
-          className="text-blue-600 hover:text-blue-700 text-xs font-bold transition-colors cursor-pointer"
+          className="text-primary-500 hover:text-primary-600 text-xs font-bold transition-colors cursor-pointer"
         >
           View All
         </button>
@@ -111,7 +112,7 @@ const ServiceCategories = React.memo(({ categories, onCategoryClick, onSeeAllCli
                 }
                 onClick={() => onCategoryClick?.(category)}
                 hasSaleBadge={category.hasSaleBadge}
-                isInstant={category.supportedBookingTypes?.includes('instant')}
+                bookingMode={resolveCategoryBookingMode(category)}
                 index={index}
               />
             </div>

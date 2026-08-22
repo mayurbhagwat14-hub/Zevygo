@@ -393,6 +393,14 @@ export const publicCatalogService = {
     return response.data;
   },
 
+  getProviderProfile: async (vendorId, params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.categoryId) queryParams.append('categoryId', params.categoryId);
+    const q = queryParams.toString();
+    const response = await api.get(`/public/providers/${vendorId}${q ? `?${q}` : ''}`);
+    return response.data;
+  },
+
   // Invalidate all public caches (useful after admin updates)
   invalidateCache: () => {
     apiCache.invalidatePrefix('public:');

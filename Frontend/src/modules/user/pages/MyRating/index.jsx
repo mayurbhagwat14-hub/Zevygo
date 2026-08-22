@@ -61,7 +61,7 @@ const MyRating = () => {
       <main className="px-4 py-6 space-y-6">
         {isLoading && pagination.page === 1 ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <FiLoader className="w-10 h-10 text-blue-600 animate-spin mb-4" />
+            <FiLoader className="w-10 h-10 text-primary-500 animate-spin mb-4" />
             <p className="text-gray-500 font-medium">Fetching your reviews...</p>
           </div>
         ) : ratings.length > 0 ? (
@@ -73,7 +73,7 @@ const MyRating = () => {
               >
                 <div className="flex justify-between items-start">
                   <div className="flex gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center overflow-hidden border border-blue-100/50">
+                    <div className="w-12 h-12 rounded-2xl bg-primary-50 flex items-center justify-center overflow-hidden border border-primary-100/50">
                       {rating.vendorId?.profilePhoto ? (
                         <img src={rating.vendorId.profilePhoto} alt={rating.vendorId.name} className="w-full h-full object-cover" />
                       ) : (
@@ -95,13 +95,13 @@ const MyRating = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                    <span className="text-[10px] font-black text-blue-600 uppercase">{rating.serviceName || rating.serviceId?.title}</span>
+                  <div className="bg-primary-50 px-3 py-1 rounded-full border border-primary-100">
+                    <span className="text-[10px] font-black text-primary-500 uppercase">{rating.serviceName || rating.serviceId?.title}</span>
                   </div>
                 </div>
 
                 {rating.review && (
-                  <p className="text-gray-600 text-sm leading-relaxed font-medium pl-2 border-l-4 border-blue-500/20">
+                  <p className="text-gray-600 text-sm leading-relaxed font-medium pl-2 border-l-4 border-primary-400/20">
                     "{rating.review}"
                   </p>
                 )}
@@ -121,7 +121,7 @@ const MyRating = () => {
                   </div>
                   <button
                     onClick={() => navigate(`/user/booking/${rating._id}`)}
-                    className="text-[11px] font-black text-blue-600 hover:underline"
+                    className="text-[11px] font-black text-primary-500 hover:underline"
                   >
                     View Details
                   </button>
@@ -150,7 +150,7 @@ const MyRating = () => {
             </p>
             <button
               onClick={() => navigate('/user/bookings')}
-              className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-blue-200 active:scale-95 transition-all"
+              className="mt-6 px-8 py-3 bg-primary-500 text-white rounded-2xl font-black text-sm shadow-lg shadow-primary-200 active:scale-95 transition-all"
             >
               Go to My Bookings
             </button>

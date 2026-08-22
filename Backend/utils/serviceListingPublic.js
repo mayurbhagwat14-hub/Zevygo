@@ -110,6 +110,8 @@ const toPublicListingDto = (listing) => {
       title: category?.title || live.categoryName,
       slug: category?.slug,
       icon: category?.homeIconUrl,
+      bookingMode: category?.bookingMode || 'BOTH',
+      serviceFulfillmentType: category?.serviceFulfillmentType || 'ON_SITE',
       paymentConfig: category?.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: 0 }
     },
     provider: {

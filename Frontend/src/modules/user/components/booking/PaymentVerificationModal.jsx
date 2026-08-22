@@ -123,7 +123,7 @@ const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline }) => 
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-5 relative overflow-hidden">
               <div className="flex flex-col gap-1 relative z-10">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-primary-500 bg-primary-50 border border-primary-100 px-2 py-0.5 rounded-md">
                     {categoryName}
                   </span>
                   {brandName && (

@@ -83,7 +83,7 @@ const ReportsOverview = () => {
       title: 'Platform Comm.',
       value: `₹${stats?.platformCommission?.toLocaleString() || 0}`,
       icon: FiTrendingUp,
-      iconBox: 'bg-white border-2 border-blue-500 text-blue-600',
+      iconBox: 'bg-white border-2 border-primary-400 text-primary-500',
       link: '/admin/reports/revenue'
     },
     {

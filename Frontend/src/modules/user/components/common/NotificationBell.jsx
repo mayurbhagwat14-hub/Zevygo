@@ -89,11 +89,11 @@ const NotificationBell = ({ notificationCount = 0 }) => {
       }}
     >
       {/* Outer Shadow Container */}
-      <div className="absolute inset-0 rounded-full z-0 bg-[#2563EB] shadow-xs hover:shadow-md transition-shadow" />
+      <div className="absolute inset-0 rounded-full z-0 bg-[#0F348F] shadow-xs hover:shadow-md transition-shadow" />
 
       {/* Inner Button */}
       <button
-        className="relative z-10 w-full h-full rounded-full flex items-center justify-center bg-[#2563EB]"
+        className="relative z-10 w-full h-full rounded-full flex items-center justify-center bg-[#0F348F]"
       >
         <FiBell
           ref={bellRef}

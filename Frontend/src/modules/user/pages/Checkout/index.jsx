@@ -17,6 +17,12 @@ import { userAuthService } from '../../../../services/authService';
 import { useCart } from '../../../../context/CartContext';
 import LiveBookingCard from '../../components/booking/LiveBookingCard';
 import resolveAdvancePaymentConfig from '../../utils/advancePaymentConfig';
+import {
+  customerBookingTypeOptions,
+  defaultBookingTypeForListing,
+  isBookingTypeAllowed
+} from '../../../../utils/listingBookingMode';
+import { useBranding } from '../../../../context/BrandingContext';
 import { Button, Badge } from '../../../../components/ui';
 import { APP_NAME } from '../../../../theme/brand';
 
@@ -73,6 +79,20 @@ const Checkout = () => {
   }); // 'instant' | 'scheduled'
 
   const isListingBooking = Boolean(listing || cartItems[0]?.serviceListingId);
+
+  const listingBookingOptions = useMemo(() => {
+    if (!isListingBooking || !listing) return [];
+    return customerBookingTypeOptions(listing.bookingMode, listing.category?.bookingMode);
+  }, [isListingBooking, listing]);
+
+  const showBookingTypeToggle = !isListingBooking || listingBookingOptions.length > 1;
+
+  useEffect(() => {
+    if (isListingBooking && listing) {
+      const defaultType = defaultBookingTypeForListing(listing.bookingMode, listing.category?.bookingMode);
+      setBookingType(defaultType);
+    }
+  }, [isListingBooking, listing?.id, listing?.bookingMode]);
 
   // Check if Razorpay is loaded (defer to avoid blocking initial render)
   useEffect(() => {
@@ -542,16 +562,19 @@ const Checkout = () => {
       if (bookingType === 'scheduled') {
         if (!selectedDate || !selectedTime) {
           toast.error('Please select time slot');
+          setShowTimeSlotModal(true);
           return;
         }
         if (!addressDetails) {
           toast.error('Please select address');
+          setShowAddressModal(true);
           return;
         }
       } else {
         // Instant
         if (!addressDetails) {
           toast.error('Please select address');
+          setShowAddressModal(true);
           return;
         }
       }
@@ -1119,11 +1142,9 @@ const Checkout = () => {
     }
     return resolveAdvancePaymentConfig({
       settings: { advancePaymentPercent },
-      category: listing.category,
-      listing,
-      catalogItem: catalogItem || null
+      category: listing.category
     });
-  }, [isListingBooking, listing, catalogItem, advancePaymentPercent]);
+  }, [isListingBooking, listing, advancePaymentPercent]);
 
   const requiresAdvance = listingAdvanceConfig.requireAdvancePayment;
   const effectiveAdvancePct = listingAdvanceConfig.advancePaymentPercent;
@@ -1315,92 +1336,105 @@ const Checkout = () => {
             const categoryName = item.categoryTitle || item.category;
 
             return (
-              <div key={item._id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative overflow-hidden">
-                {/* Brand Header */}
-                {(brandName || categoryName) && (
-                  <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-50">
-                    {item.sectionIcon ? (
-                      <img src={toAssetUrl(item.sectionIcon)} className="w-5 h-5 rounded-md object-cover border border-gray-100" alt="" />
-                    ) : (
-                      <div className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                        {(brandName || "B").charAt(0)}
+              <div key={item._id} className="bg-white border border-gray-100 rounded-[24px] p-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden">
+                <div className="flex justify-between items-start mb-3">
+                  {/* Brand Header */}
+                  {(brandName || categoryName) ? (
+                    <div className="flex items-center gap-2">
+                      {item.sectionIcon ? (
+                        <img src={toAssetUrl(item.sectionIcon)} className="w-6 h-6 rounded-lg object-cover border border-gray-100" alt="" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-lg bg-gray-50 flex items-center justify-center text-[11px] font-black text-gray-500 border border-gray-100">
+                          {(brandName || "B").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex flex-col leading-tight">
+                        {brandName && <span className="text-[12px] font-black text-gray-800">{brandName}</span>}
+                        {categoryName && <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{categoryName}</span>}
                       </div>
-                    )}
-                    <div className="flex flex-col leading-none">
-                      {brandName && <span className="text-xs font-bold text-gray-900">{brandName}</span>}
-                      {categoryName && <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mt-0.5">{categoryName}</span>}
                     </div>
-                  </div>
-                )}
+                  ) : <div />}
 
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 pr-4">
-                    <h3 className="text-base font-bold text-gray-900 mb-1 leading-snug">{item.title}</h3>
-                    {item.description && (
-                      <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
-                    )}
-                    {item.duration && (
-                      <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
-                        <FiClock className="w-3 h-3" />
-                        {item.duration}
-                      </div>
-                    )}
-                  </div>
-                  {!item.isPlan && (
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5">
-                        <button
-                          onClick={() => handleQuantityChange(item._id, -1)}
-                          className="p-1.5 hover:bg-white rounded-md transition-all shadow-sm"
-                        >
-                          <FiMinus className="w-3.5 h-3.5 text-gray-600" />
-                        </button>
-                        <span className="w-6 text-center text-sm font-bold text-gray-900">{item.serviceCount || 1}</span>
-                        <button
-                          onClick={() => handleQuantityChange(item._id, 1)}
-                          className="p-1.5 hover:bg-white rounded-md transition-all shadow-sm"
-                        >
-                          <FiPlus className="w-3.5 h-3.5 text-gray-900" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
                   {!item.isPlan && (
                     <button
                       onClick={() => handleRemoveItem(item._id)}
-                      className="absolute top-3 right-3 p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors active:scale-95"
                     >
                       <FiTrash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-bold text-black">
-                    {calculateItemPrice(item) === 0 ? (
-                      <span className="text-green-600">Free</span>
-                    ) : (
-                      `₹${(item.price || 0).toLocaleString('en-IN')}`
-                    )}
-                  </span>
-                  {calculateItemPrice(item) === 0 && (
-                    <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
-                      WITH PLAN
-                    </span>
+
+                <div className="flex gap-4">
+                  {/* Image */}
+                  {(item.photoUrl || item.image || item.icon) ? (
+                    <img src={toAssetUrl(item.photoUrl || item.image || item.icon)} alt="" className="w-[84px] h-[84px] rounded-[16px] object-cover bg-gray-50 shrink-0 border border-gray-100/50" />
+                  ) : (
+                    <div className="w-[84px] h-[84px] rounded-[16px] bg-gradient-to-br from-primary-50 to-indigo-50 flex items-center justify-center shrink-0 border border-gray-100/50">
+                      <span className="text-2xl font-black text-blue-200">{(item.title || 'P').charAt(0).toUpperCase()}</span>
+                    </div>
                   )}
-                  {calculateItemPrice(item) > 0 && (() => {
-                    const unitPrice = item.unitPrice || (item.price / (item.serviceCount || 1));
-                    const unitOriginalPrice = item.originalPrice || unitPrice;
-                    const currentTotal = item.price;
-                    const originalTotal = unitOriginalPrice * (item.serviceCount || 1);
-                    if (originalTotal > currentTotal) {
-                      return (
-                        <span className="text-sm text-gray-400 line-through">
-                          ₹{originalTotal.toLocaleString('en-IN')}
+
+                  {/* Details */}
+                  <div className="flex-1 min-w-0 py-0.5 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-[16px] font-black text-gray-900 leading-tight tracking-tight truncate">{item.title}</h3>
+                      {item.description && (
+                        <p className="text-[12px] text-gray-500 font-medium mt-1 line-clamp-1">{item.description}</p>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-3">
+                      {/* Price */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[18px] font-black text-[#0F348F] tracking-tight">
+                          {calculateItemPrice(item) === 0 ? (
+                            <span className="text-green-600">Free</span>
+                          ) : (
+                            `₹${(item.price || 0).toLocaleString('en-IN')}`
+                          )}
                         </span>
-                      );
-                    }
-                    return null;
-                  })()}
+                        {calculateItemPrice(item) === 0 && (
+                          <span className="text-[9px] font-black bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
+                            WITH PLAN
+                          </span>
+                        )}
+                        {calculateItemPrice(item) > 0 && (() => {
+                          const unitPrice = item.unitPrice || (item.price / (item.serviceCount || 1));
+                          const unitOriginalPrice = item.originalPrice || unitPrice;
+                          const currentTotal = item.price;
+                          const originalTotal = unitOriginalPrice * (item.serviceCount || 1);
+                          if (originalTotal > currentTotal) {
+                            return (
+                              <span className="text-[12px] font-medium text-gray-400 line-through">
+                                ₹{originalTotal.toLocaleString('en-IN')}
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+
+                      {/* Quantity Control */}
+                      {!item.isPlan && (
+                        <div className="flex items-center gap-2.5 bg-[#f8f9fc] border border-gray-100 rounded-[12px] p-1 shadow-sm shrink-0">
+                          <button
+                            onClick={() => handleQuantityChange(item._id, -1)}
+                            className="w-7 h-7 flex items-center justify-center bg-white rounded-[8px] shadow-sm text-gray-600 hover:text-gray-900 active:scale-95 transition-all"
+                          >
+                            <FiMinus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-4 text-center text-[13px] font-black text-gray-900">{item.serviceCount || 1}</span>
+                          <button
+                            onClick={() => handleQuantityChange(item._id, 1)}
+                            className="w-7 h-7 flex items-center justify-center bg-[#0F348F] rounded-[8px] shadow-sm text-white hover:bg-[#122652] active:scale-95 transition-all"
+                          >
+                            <FiPlus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )
@@ -1508,8 +1542,8 @@ const Checkout = () => {
               {requiresAdvance && totalAmount > 0 && (
                 <div className="mt-3 pt-3 border-t border-dashed border-slate-200 space-y-2">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-blue-600 font-medium">Advance ({effectiveAdvancePct}% after accept)</span>
-                    <span className="font-bold text-blue-600">₹{advanceDue.toLocaleString('en-IN')}</span>
+                    <span className="text-primary-500 font-medium">Advance ({effectiveAdvancePct}% after accept)</span>
+                    <span className="font-bold text-primary-500">₹{advanceDue.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-500">Balance (after service)</span>
@@ -1525,9 +1559,9 @@ const Checkout = () => {
         </div>
 
         {/* Important Note regarding Base Price */}
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex items-start gap-4 shadow-sm">
-          <div className="bg-blue-100 p-2 rounded-full shrink-0 mt-0.5">
-            <FiInfo className="w-5 h-5 text-blue-600" />
+        <div className="bg-primary-50 border border-primary-100 rounded-xl p-4 mb-6 flex items-start gap-4 shadow-sm">
+          <div className="bg-primary-100 p-2 rounded-full shrink-0 mt-0.5">
+            <FiInfo className="w-5 h-5 text-primary-500" />
           </div>
           <div>
             <h4 className="text-sm font-bold text-blue-900 mb-1">Note</h4>
@@ -1576,19 +1610,22 @@ const Checkout = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
 
         {/* Booking Type Toggle */}
+        {showBookingTypeToggle && (
         <div className="px-4 pt-3 pb-0">
           <div className="flex bg-neutral-100 p-1 rounded-xl mb-1">
             <button
               type="button"
               onClick={() => setBookingType('instant')}
-              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${bookingType === 'instant' ? 'bg-white shadow-sm text-neutral-900' : 'text-neutral-500'}`}
+              disabled={isListingBooking && listing && !isBookingTypeAllowed('instant', listing.bookingMode, listing.category?.bookingMode)}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-40 ${bookingType === 'instant' ? 'bg-white shadow-sm text-neutral-900' : 'text-neutral-500'}`}
             >
               <span className="text-warning-500">⚡</span> Book
             </button>
             <button
               type="button"
               onClick={() => setBookingType('scheduled')}
-              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${bookingType === 'scheduled' ? 'bg-white shadow-sm text-neutral-900' : 'text-neutral-500'}`}
+              disabled={isListingBooking && listing && !isBookingTypeAllowed('scheduled', listing.bookingMode, listing.category?.bookingMode)}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-40 ${bookingType === 'scheduled' ? 'bg-white shadow-sm text-neutral-900' : 'text-neutral-500'}`}
             >
               <span>📅</span> Slot
             </button>
@@ -1603,7 +1640,20 @@ const Checkout = () => {
               <span className="font-bold">📅 Scheduled:</span> Request goes to your selected provider at chosen slot
             </p>
           )}
+          {isListingBooking && bookingType === 'instant' && (
+            <p className="text-xs text-center text-amber-600 font-medium mt-1 mb-1">
+              <span className="font-bold">⚡ Instant:</span> ASAP request to your selected provider
+            </p>
+          )}
         </div>
+        )}
+        {!showBookingTypeToggle && isListingBooking && listingBookingOptions[0] && (
+          <div className="px-4 pt-3 pb-0">
+            <p className="text-xs text-center font-bold text-neutral-600 bg-neutral-100 rounded-xl py-2">
+              {listingBookingOptions[0].label}
+            </p>
+          </div>
+        )}
 
         {/* Address and Slot Display */}
         <div className="px-4 pt-2 pb-2 border-b border-neutral-100">
@@ -1732,6 +1782,7 @@ const Checkout = () => {
               (houseNumber || addressDetails) ?
                 (currentStep === 'payment' ? handlePayment : handleSearchVendors) :
                 handleProceed}
+            className="!bg-[#0F348F] !bg-none !shadow-[#0F348F]/25 hover:!bg-[#122652]"
           >
             {searchingVendors ? (isListingBooking ? 'Sending request...' : 'Searching for vendors...') :
               currentStep === 'payment' ? (totalAmount === 0 ? 'Confirm Booking (Free)' : (paymentMethod === 'online' ? 'Proceed to Pay' : 'Confirm Booking')) :
@@ -1780,7 +1831,7 @@ const Checkout = () => {
                   type="text"
                   value={contactDetails.name}
                   onChange={(e) => setContactDetails(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full mt-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400"
                   placeholder="Enter name"
                 />
               </div>
@@ -1796,7 +1847,7 @@ const Checkout = () => {
                       const val = e.target.value.replace(/\D/g, '');
                       setContactDetails(prev => ({ ...prev, phone: val }));
                     }}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400"
                     placeholder="9999999999"
                   />
                 </div>

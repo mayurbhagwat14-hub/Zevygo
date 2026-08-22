@@ -17,9 +17,9 @@ const TrustStatsRow = memo(() => {
       icon: FiCheckCircle,
       value: '99.4%',
       label: 'Satisfaction',
-      bgColor: 'bg-blue-50',
-      iconColor: 'text-blue-600',
-      borderColor: 'border-blue-100'
+      bgColor: 'bg-primary-50',
+      iconColor: 'text-primary-500',
+      borderColor: 'border-primary-100'
     },
     {
       id: 3,

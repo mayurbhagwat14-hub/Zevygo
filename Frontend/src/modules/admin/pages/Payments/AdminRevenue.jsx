@@ -99,7 +99,7 @@ const AdminRevenue = () => {
       case 'completed': return 'bg-green-100 text-green-700 border-green-200';
       case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'failed': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-blue-100 text-blue-700 border-blue-200';
+      default: return 'bg-primary-100 text-primary-600 border-primary-200';
     }
   };
 
@@ -107,7 +107,7 @@ const AdminRevenue = () => {
     switch (type) {
       case 'commission': return 'text-green-600';
       case 'platform_fee': return 'text-purple-600';
-      case 'convenience_fee': return 'text-blue-600';
+      case 'convenience_fee': return 'text-primary-500';
       case 'gst': return 'text-indigo-600';
       case 'tds_deduction': return 'text-amber-600';
       case 'refund': return 'text-red-600';
@@ -168,12 +168,12 @@ const AdminRevenue = () => {
           className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
         >
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-blue-50 rounded-xl">
-              <FiPieChart className="w-6 h-6 text-blue-600" />
+            <div className="p-3 bg-primary-50 rounded-xl">
+              <FiPieChart className="w-6 h-6 text-primary-500" />
             </div>
           </div>
           <p className="text-gray-500 text-sm font-medium">Total Commissions</p>
-          <h3 className="text-2xl font-bold text-blue-600 mt-1">
+          <h3 className="text-2xl font-bold text-primary-500 mt-1">
             {loading ? (
               <div className="h-8 w-24 bg-gray-100 animate-pulse rounded"></div>
             ) : (

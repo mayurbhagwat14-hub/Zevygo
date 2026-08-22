@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const COLORS = {
-  ACCEPTED: '#3B82F6',
+  ACCEPTED: '#0F348F',
   ASSIGNED: '#F59E0B',
   VISITED: '#06B6D4',
   WORK_DONE: '#10B981',

@@ -64,7 +64,7 @@ const Wallet = () => {
       case 'earnings_credit':
         return <FiArrowUp className="w-5 h-5 text-green-500" />;
       case 'settlement':
-        return <FiSend className="w-5 h-5 text-blue-500" />;
+        return <FiSend className="w-5 h-5 text-primary-400" />;
       case 'withdrawal':
         return <FiDollarSign className="w-5 h-5 text-purple-500" />;
       case 'tds_deduction':

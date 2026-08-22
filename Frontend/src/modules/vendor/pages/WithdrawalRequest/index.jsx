@@ -228,7 +228,7 @@ const WithdrawalRequest = () => {
 
           <div className="flex items-center justify-between mb-6 relative z-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
+              <div className="w-10 h-10 rounded-2xl bg-primary-50 flex items-center justify-center text-primary-500 shadow-sm border border-primary-100">
                 <FiCreditCard className="w-5 h-5" />
               </div>
               <div>
@@ -239,7 +239,7 @@ const WithdrawalRequest = () => {
             {isBankSaved && !showBankForm && (
               <button
                 onClick={() => setShowBankForm(true)}
-                className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-all border border-gray-200 active:scale-95"
+                className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center text-gray-500 hover:text-primary-500 hover:bg-primary-50 transition-all border border-gray-200 active:scale-95"
               >
                 <FiEdit2 className="w-4 h-4" />
               </button>
@@ -256,7 +256,7 @@ const WithdrawalRequest = () => {
                   name="accountHolderName"
                   value={bankAccount.accountHolderName}
                   onChange={handleBankInputChange}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none text-sm font-bold text-gray-800 placeholder:font-medium transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary-400 focus:bg-white focus:ring-4 focus:ring-primary-400/10 outline-none text-sm font-bold text-gray-800 placeholder:font-medium transition-all"
                   placeholder="e.g. John Doe"
                 />
               </div>
@@ -269,7 +269,7 @@ const WithdrawalRequest = () => {
                   name="bankName"
                   value={bankAccount.bankName}
                   onChange={handleBankInputChange}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none text-sm font-bold text-gray-800 placeholder:font-medium transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary-400 focus:bg-white focus:ring-4 focus:ring-primary-400/10 outline-none text-sm font-bold text-gray-800 placeholder:font-medium transition-all"
                   placeholder="e.g. HDFC Bank"
                 />
               </div>
@@ -282,7 +282,7 @@ const WithdrawalRequest = () => {
                   name="accountNumber"
                   value={bankAccount.accountNumber}
                   onChange={handleBankInputChange}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none text-xl font-bold text-gray-900 tracking-wide placeholder:font-medium transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary-400 focus:bg-white focus:ring-4 focus:ring-primary-400/10 outline-none text-xl font-bold text-gray-900 tracking-wide placeholder:font-medium transition-all"
                   placeholder="0000000000"
                   inputMode="numeric"
                 />
@@ -299,7 +299,7 @@ const WithdrawalRequest = () => {
                   onChange={handleBankInputChange}
                   className={`w-full px-4 py-3 bg-gray-50 rounded-xl border focus:bg-white focus:ring-4 outline-none text-xl font-bold text-gray-900 tracking-wide placeholder:font-medium transition-all ${bankAccount.confirmAccountNumber && bankAccount.accountNumber !== bankAccount.confirmAccountNumber
                     ? 'border-red-200 focus:border-red-500 focus:ring-red-500/10'
-                    : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500/10'
+                    : 'border-gray-200 focus:border-primary-400 focus:ring-primary-400/10'
                     }`}
                   placeholder="0000000000"
                   inputMode="numeric"
@@ -320,7 +320,7 @@ const WithdrawalRequest = () => {
                   name="ifscCode"
                   value={bankAccount.ifscCode}
                   onChange={handleBankInputChange}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none text-sm font-bold text-gray-800 placeholder:font-medium transition-all uppercase"
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary-400 focus:bg-white focus:ring-4 focus:ring-primary-400/10 outline-none text-sm font-bold text-gray-800 placeholder:font-medium transition-all uppercase"
                   placeholder="HDFC0000123"
                   maxLength={11}
                 />
@@ -334,7 +334,7 @@ const WithdrawalRequest = () => {
                   name="upiId"
                   value={bankAccount.upiId}
                   onChange={handleBankInputChange}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none text-sm font-bold text-gray-800 placeholder:font-medium transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary-400 focus:bg-white focus:ring-4 focus:ring-primary-400/10 outline-none text-sm font-bold text-gray-800 placeholder:font-medium transition-all"
                   placeholder="username@okaxis"
                 />
               </div>
@@ -350,14 +350,14 @@ const WithdrawalRequest = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-blue-50/50 rounded-2xl p-5 border border-blue-100 shadow-sm relative group cursor-pointer hover:border-blue-200 transition-all" onClick={() => setShowBankForm(true)}>
+            <div className="bg-primary-50/50 rounded-2xl p-5 border border-primary-100 shadow-sm relative group cursor-pointer hover:border-primary-200 transition-all" onClick={() => setShowBankForm(true)}>
               <div className="space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Account Holder</p>
                     <p className="font-bold text-gray-900 text-sm">{bankAccount.accountHolderName}</p>
                   </div>
-                  <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
+                  <div className="bg-primary-50 p-2 rounded-lg text-primary-500">
                     <FiCreditCard className="w-5 h-5" />
                   </div>
                 </div>

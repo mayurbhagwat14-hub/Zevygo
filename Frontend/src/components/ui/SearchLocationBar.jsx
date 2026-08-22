@@ -46,7 +46,7 @@ const SearchLocationBar = ({
 
   return (
     <div
-      className={`relative flex items-center w-full rounded-2xl bg-white border border-white/70 shadow-xs h-[40px] sm:h-[42px] transition-all hover:shadow-md hover:border-blue-500 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 ${className}`}
+      className={`relative flex items-center w-full rounded-2xl bg-white border border-white/70 shadow-xs h-[40px] sm:h-[42px] transition-all hover:shadow-md hover:border-primary-400 focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-400/20 ${className}`}
       onClick={readOnly ? onClick : undefined}
       onKeyDown={
         readOnly
@@ -58,7 +58,7 @@ const SearchLocationBar = ({
       role={readOnly ? 'button' : undefined}
       tabIndex={readOnly ? 0 : undefined}
     >
-      <FiSearch className="absolute left-3.5 w-4 h-4 text-blue-600 shrink-0 pointer-events-none drop-shadow-xs" aria-hidden />
+      <FiSearch className="absolute left-3.5 w-4 h-4 text-primary-500 shrink-0 pointer-events-none drop-shadow-xs" aria-hidden />
       <input
         type="search"
         value={value}
@@ -74,8 +74,8 @@ const SearchLocationBar = ({
       />
       {!value && hint && (
         <span className="pointer-events-none absolute left-9.5 right-3 text-[13px] text-slate-500 truncate font-medium">
-          Search for <span className="text-blue-600 font-bold">{hint}</span>
-          <span className="animate-pulse ml-0.5 text-blue-600 font-black">|</span>
+          Search for <span className="text-primary-500 font-bold">{hint}</span>
+          <span className="animate-pulse ml-0.5 text-primary-500 font-black">|</span>
         </span>
       )}
     </div>

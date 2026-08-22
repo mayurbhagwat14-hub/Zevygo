@@ -191,7 +191,7 @@ const AllVendors = () => {
                 key={status}
                 onClick={() => setFilterStatus(status)}
                 className={`px-3 py-2 rounded-lg text-xs font-bold capitalize transition-all whitespace-nowrap ${filterStatus === status
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'bg-primary-500 text-white shadow-sm'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
               >
@@ -237,7 +237,7 @@ const AllVendors = () => {
                         <td className="px-4 py-3">
                           <div>
                             <p className="font-bold text-gray-800 text-xs">{vendor.businessName || 'N/A'}</p>
-                            <p className="text-[10px] text-blue-600 font-medium">
+                            <p className="text-[10px] text-primary-500 font-medium">
                               {Array.isArray(vendor.service) ? vendor.service.join(', ') : (vendor.service || 'No service')}
                             </p>
                           </div>
@@ -255,7 +255,7 @@ const AllVendors = () => {
                             {/* View Details */}
                             <button
                               onClick={() => handleViewDetails(vendor)}
-                              className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-1.5 text-primary-400 hover:bg-primary-50 rounded-lg transition-colors"
                               title="View Details"
                             >
                               <FiEye className="w-3.5 h-3.5" />
@@ -344,7 +344,7 @@ const AllVendors = () => {
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-slate-500 uppercase">Selected Services</span>
-                  <span className="font-bold text-blue-700">
+                  <span className="font-bold text-primary-600">
                     {Array.isArray(selectedVendor.service) ? selectedVendor.service.join(', ') : (selectedVendor.service || 'N/A')}
                   </span>
                 </div>
@@ -392,17 +392,17 @@ const AllVendors = () => {
             <div className="bg-white p-4 rounded-xl border border-slate-200">
               <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-3 flex items-center justify-between">
                 <span>Vendor Form Specs & Custom Answers</span>
-                <span className="text-[10px] text-blue-600 font-bold">Category Specs</span>
+                <span className="text-[10px] text-primary-500 font-bold">Category Specs</span>
               </h3>
               {(!selectedVendor.serviceDetails || Object.keys(selectedVendor.serviceDetails).length === 0) ? (
                 <p className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-lg border border-dashed">No custom form details submitted by vendor.</p>
               ) : (
                 <div className="space-y-4">
                   {Object.entries(selectedVendor.serviceDetails).map(([catTitle, details]) => (
-                    <div key={catTitle} className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-blue-200/50">
+                    <div key={catTitle} className="p-3 bg-primary-50/50 border border-primary-100 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-primary-200/50">
                         <span className="text-xs font-black text-blue-900">{catTitle}</span>
-                        <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">Form Answers</span>
+                        <span className="text-[10px] font-bold bg-primary-500 text-white px-2 py-0.5 rounded-full">Form Answers</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         {Object.entries(details || {}).map(([key, val]) => {
@@ -482,7 +482,7 @@ const AllVendors = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                       download
-                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700"
+                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-primary-500 hover:text-primary-600"
                     >
                       <FiDownload className="w-3.5 h-3.5" />
                       View / Download
@@ -502,7 +502,7 @@ const AllVendors = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                       download
-                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700"
+                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-primary-500 hover:text-primary-600"
                     >
                       <FiDownload className="w-3.5 h-3.5" />
                       View / Download
@@ -522,7 +522,7 @@ const AllVendors = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                       download
-                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700"
+                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-primary-500 hover:text-primary-600"
                     >
                       <FiDownload className="w-3.5 h-3.5" />
                       View / Download

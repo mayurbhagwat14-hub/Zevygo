@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FiMapPin, FiClock, FiDollarSign, FiUser, FiPhone, FiNavigation, FiArrowRight, FiEdit, FiCheckCircle, FiCreditCard, FiX, FiCheck, FiTool, FiXCircle, FiAward, FiPackage, FiAlertCircle } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,8 +8,8 @@ import BottomNav from '../../components/layout/BottomNav';
 import { Loader } from '../../../../components/ui';
 import {
   getBookingById,
+  invalidateBookingCache,
   updateBookingStatus,
-  assignWorker as assignWorkerApi,
   startSelfJob,
   vendorReached,
   verifySelfVisit,
@@ -24,6 +24,15 @@ import vendorWalletService from '../../../../services/vendorWalletService';
 import { toast } from 'react-hot-toast';
 import { useAppNotifications } from '../../../../hooks/useAppNotifications';
 import { useLocationTracking } from '../../../../hooks/useLocationTracking';
+import {
+  getStatusLabel,
+  getVendorActionLabels,
+  resolveServiceFulfillmentType
+} from '../../../../utils/bookingStatusLabels';
+import {
+  canVendorStartService,
+  isAdvancePaymentDue
+} from '../../../../utils/bookingPaymentGuard';
 
 export default function BookingDetails() {
   const { id } = useParams();
@@ -39,6 +48,7 @@ export default function BookingDetails() {
 
 
   const [actionLoading, setActionLoading] = useState(false);
+  const refreshTimerRef = useRef(null);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: '',
@@ -47,9 +57,10 @@ export default function BookingDetails() {
     type: 'warning'
   });
 
-  const loadBooking = async () => {
+  const loadBooking = useCallback(async ({ showSpinner = true } = {}) => {
+    if (!id) return;
     try {
-      setLoading(true);
+      if (showSpinner) setLoading(true);
       let billData = null;
 
       const [bookingRes, billRes] = await Promise.all([
@@ -69,7 +80,10 @@ export default function BookingDetails() {
         id: apiData._id || apiData.id,
         user: apiData.userId || apiData.user || { name: apiData.customerName || 'Customer', phone: apiData.customerPhone || 'Hidden' },
         customerName: apiData.userId?.name || apiData.customerName || 'Customer',
-        customerPhone: apiData.userId?.phone || apiData.customerPhone || 'Hidden',
+        customerPhone: apiData.customerPhoneHidden
+          ? null
+          : (apiData.userId?.phone || apiData.customerPhone || null),
+        customerPhoneHidden: Boolean(apiData.customerPhoneHidden),
         serviceType: apiData.serviceId?.title || apiData.serviceName || apiData.serviceType || 'Service',
         items: apiData.bookedItems || [],
         location: {
@@ -106,9 +120,14 @@ export default function BookingDetails() {
           date: apiData.scheduledDate ? new Date(apiData.scheduledDate).toLocaleDateString() : 'Today',
           time: apiData.scheduledTime || apiData.timeSlot?.start ? `${apiData.timeSlot.start} - ${apiData.timeSlot.end}` : 'Flexible'
         },
+        paymentPhase: apiData.paymentPhase,
+        requireAdvancePayment: apiData.requireAdvancePayment,
+        advanceAmount: apiData.advanceAmount,
+        balanceAmount: apiData.balanceAmount,
         status: apiData.status,
         description: apiData.description || apiData.notes || 'No description provided',
-        assignedTo: apiData.workerId ? { name: apiData.workerId.name } : (apiData.assignedAt ? { name: 'You (Self)' } : null),
+        // Vendor owns the job after accept — no Worker role
+        assignedTo: { name: 'You (Self)' },
         workerResponse: apiData.workerResponse,
         workerResponseAt: apiData.workerResponseAt,
         paymentMethod: apiData.paymentMethod,
@@ -122,18 +141,31 @@ export default function BookingDetails() {
     } catch (error) {
       // Error loading booking
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadBooking();
-    window.addEventListener('vendorJobsUpdated', loadBooking);
-
-    return () => {
-      window.removeEventListener('vendorJobsUpdated', loadBooking);
-    };
   }, [id]);
+
+  // Initial load only — do NOT refetch on every global vendorJobsUpdated (was spamming GET)
+  useEffect(() => {
+    loadBooking({ showSpinner: true });
+  }, [loadBooking]);
+
+  // Soft refresh on rare relevant events, debounced
+  useEffect(() => {
+    const softRefresh = () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = setTimeout(() => {
+        invalidateBookingCache(id);
+        loadBooking({ showSpinner: false });
+      }, 1200);
+    };
+
+    window.addEventListener('vendorBookingDetailRefresh', softRefresh);
+    return () => {
+      window.removeEventListener('vendorBookingDetailRefresh', softRefresh);
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
+  }, [id, loadBooking]);
 
 
   // ADDED: Socket for Live Location Tracking in Details Page
@@ -141,55 +173,70 @@ export default function BookingDetails() {
 
   // Optimized Live Location Tracking with distance filter and heading
   const isTrackingActive = booking?.status === 'journey_started' || booking?.status === 'visited';
-  useLocationTracking(socket, id, isTrackingActive, {
+  const { forceEmit } = useLocationTracking(socket, id, isTrackingActive, {
     distanceFilter: 10, // Only emit when moved 10+ meters
     interval: 3000,     // Minimum 3s between emissions
     enableHighAccuracy: true
   });
 
-  // Listen for Real-Time Booking Updates (e.g. Online Payment)
   useEffect(() => {
-    if (socket && id) {
-      const handleBookingUpdate = (data) => {
-        // Check if update is for this booking
-        if (data.bookingId === id || data.relatedId === id || data._id === id) {
-
-          // Update local state to trigger effects immediately
-          setBooking(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              ...data, // Merge updates
-              status: data.status || prev.status,
-              paymentStatus: data.paymentStatus || prev.paymentStatus
-            };
-          });
-
-          // Also trigger a full reload to be safe/sync
-          window.dispatchEvent(new Event('vendorJobsUpdated'));
-
-          // Check if this update is a payment success, if so, trigger reload for fresh state
-          const isPaymentSuccess =
-            data.paymentStatus === 'SUCCESS' ||
-            data.paymentStatus === 'paid' ||
-            data.type === 'payment_success';
-
-          if (isPaymentSuccess) {
-            toast.success('Online Payment Received!');
-            setTimeout(() => window.location.reload(), 1500);
-          }
-        }
-      };
-
-      socket.on('booking_updated', handleBookingUpdate);
-      socket.on('payment_success', handleBookingUpdate);
-
-      return () => {
-        socket.off('booking_updated', handleBookingUpdate);
-        socket.off('payment_success', handleBookingUpdate);
-      };
+    if (socket && id && isTrackingActive) {
+      socket.emit('join_tracking', id);
+      forceEmit();
     }
-  }, [socket, id]);
+    // forceEmit intentionally omitted — stable enough via socket/id/status; avoid re-emit loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socket, id, isTrackingActive]);
+
+  const fulfillmentType = booking
+    ? resolveServiceFulfillmentType({ booking })
+    : 'ON_SITE';
+  const actionLabels = getVendorActionLabels(fulfillmentType);
+  const advanceBlocksService = booking && !canVendorStartService(booking);
+  const advanceDue = booking && isAdvancePaymentDue(booking);
+
+  // Listen for Real-Time Booking Updates (e.g. Online Payment) — local merge only, no event storm
+  useEffect(() => {
+    if (!socket || !id) return;
+
+    const handleBookingUpdate = (data) => {
+      const related =
+        String(data?.bookingId || '') === String(id) ||
+        String(data?.relatedId || '') === String(id) ||
+        String(data?._id || '') === String(id);
+      if (!related) return;
+
+      setBooking((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          ...data,
+          status: data.status || prev.status,
+          paymentStatus: data.paymentStatus || prev.paymentStatus,
+          paymentPhase: data.paymentPhase || prev.paymentPhase,
+        };
+      });
+
+      const isPaymentSuccess =
+        data.paymentStatus === 'SUCCESS' ||
+        data.paymentStatus === 'paid' ||
+        data.type === 'payment_success';
+
+      if (isPaymentSuccess) {
+        toast.success('Online Payment Received!');
+        invalidateBookingCache(id);
+        loadBooking({ showSpinner: false });
+      }
+    };
+
+    socket.on('booking_updated', handleBookingUpdate);
+    socket.on('payment_success', handleBookingUpdate);
+
+    return () => {
+      socket.off('booking_updated', handleBookingUpdate);
+      socket.off('payment_success', handleBookingUpdate);
+    };
+  }, [socket, id, loadBooking]);
 
   const handleVerifyVisit = async () => {
     const otp = otpInput.join('');
@@ -311,7 +358,7 @@ export default function BookingDetails() {
           await updateBookingStatus(id, newStatus);
           window.dispatchEvent(new Event('vendorJobsUpdated'));
           toast.success(`Status updated to ${newStatus.replace('_', ' ')} successfully!`);
-          loadBooking();
+          await loadBooking({ showSpinner: false });
         } catch (error) {
           console.error('Error updating status:', error);
           toast.error('Failed to update status. Please try again.');
@@ -340,7 +387,7 @@ export default function BookingDetails() {
           });
           window.dispatchEvent(new Event('vendorJobsUpdated'));
           toast.success('Final settlement marked as done!');
-          loadBooking();
+          await loadBooking({ showSpinner: false });
         } catch (error) {
           console.error('Error updating settlement:', error);
           toast.error('Failed to update settlement. Please try again.');
@@ -376,6 +423,29 @@ export default function BookingDetails() {
       console.error('Verify OTP error:', error);
       toast.error('Verification failed');
       throw error;
+    }
+  };
+
+  const handlePayWorkerClick = () => {
+    setIsPayWorkerModalOpen(true);
+  };
+
+  const handlePayWorkerSubmit = async (paymentDetails) => {
+    setPaySubmitting(true);
+    try {
+      await updateBookingStatus(id, booking.status, {
+        workerPaymentStatus: 'PAID',
+        workerPaymentDetails: paymentDetails
+      });
+      toast.success('Worker marked as paid!');
+      setIsPayWorkerModalOpen(false);
+      window.dispatchEvent(new Event('vendorJobsUpdated'));
+      await loadBooking({ showSpinner: false });
+    } catch (error) {
+      console.error('Error paying worker:', error);
+      toast.error('Failed to record worker payment.');
+    } finally {
+      setPaySubmitting(false);
     }
   };
 
@@ -420,11 +490,15 @@ export default function BookingDetails() {
   }
 
   const handleCallUser = () => {
+    if (booking.customerPhoneHidden) {
+      toast.error('Customer phone is available after you accept the request.');
+      return;
+    }
     const phone = booking.user?.phone || booking.customerPhone;
     if (phone) {
       window.location.href = `tel:${phone}`;
     } else {
-      alert('Phone number not available');
+      toast.error('Phone number not available');
     }
   };
 
@@ -438,14 +512,15 @@ export default function BookingDetails() {
     try {
       setLoading(true);
       await startSelfJob(id);
-      toast.success('Journey Started');
+      forceEmit();
+      toast.success(fulfillmentType === 'DELIVERY' ? 'Delivery started' : 'Journey started');
       // Refresh to update status
       const response = await getBookingById(id);
       const apiData = response.data || response;
       setBooking(prev => ({ ...prev, status: apiData.status }));
     } catch (error) {
       console.error('Error starting self journey:', error);
-      toast.error('Failed to start journey');
+      toast.error(error?.response?.data?.message || 'Failed to start journey');
       return;
     } finally {
       setLoading(false);
@@ -513,7 +588,7 @@ export default function BookingDetails() {
   });
 
   // Tax Logic
-  const originalGST = bill ? (bill.originalGST || 0) : (originalBase * 0.18);
+  const originalGST = bill ? (bill.originalGST || 0) : (parseFloat(booking?.tax) || 0);
   const totalGST = originalGST + extraServiceGST + partsGST;
 
   // Final Total from bill or booking
@@ -536,8 +611,8 @@ export default function BookingDetails() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Service Type</p>
-              <p className="text-xl font-bold" style={{ color: themeColors.button }}>
+              <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Service Type</p>
+              <p className="text-[22px] font-black tracking-tight" style={{ color: '#0F348F' }}>
                 {booking.serviceType}
               </p>
             </div>
@@ -577,12 +652,17 @@ export default function BookingDetails() {
               </div>
               <div>
                 <p className="font-semibold text-gray-800">{booking.user?.name || booking.customerName || 'Customer'}</p>
-                <p className="text-sm text-gray-600">{booking.user?.phone || booking.customerPhone || 'Phone hidden'}</p>
+                <p className="text-sm text-gray-600">
+                  {booking.customerPhoneHidden
+                    ? 'Phone available after you accept'
+                    : (booking.user?.phone || booking.customerPhone || 'Phone hidden')}
+                </p>
               </div>
             </div>
             <button
               onClick={handleCallUser}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              disabled={booking.customerPhoneHidden}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-40"
               style={{ backgroundColor: `${themeColors.button}15` }}
             >
               <FiPhone className="w-5 h-5" style={{ color: themeColors.button }} />
@@ -657,9 +737,9 @@ export default function BookingDetails() {
                 // Open directly to trigger app intent
                 window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
               }}
-              className="flex-1 py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-200"
+              className="flex-1 py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-primary-200"
               style={{
-                background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                background: 'linear-gradient(135deg, #0F348F, #0F348F)',
               }}
             >
               <FiNavigation className="w-5 h-5" />
@@ -786,24 +866,29 @@ export default function BookingDetails() {
           </div>
         </div>
 
-        {/* Payment Invoice Card - Dark Header Style (Exact Match with Billing) */}
-        <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100 mb-6">
-          <div className="bg-gray-900 px-6 py-6 text-white text-center">
-            <p className="text-gray-400 text-xs font-medium uppercase tracking-widest mb-1">TOTAL INVOICE AMOUNT</p>
-            <h2 className="text-4xl font-black">₹{finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
-            {isPlanBenefit && (
-              <span className="inline-block mt-2 bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase">
-                Plan Benefit Applied
-              </span>
-            )}
+        {/* Payment Invoice Card - Premium Dark Blue Style */}
+        <div className="bg-white rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgba(26,54,115,0.12)] border border-gray-100 mb-6">
+          <div className="bg-[#0F348F] px-6 py-8 text-white text-center relative overflow-hidden">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
+            
+            <div className="relative z-10">
+              <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mb-2">TOTAL INVOICE AMOUNT</p>
+              <h2 className="text-[40px] font-black tracking-tight leading-none">₹{finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+              {isPlanBenefit && (
+                <span className="inline-block mt-4 bg-amber-400/20 text-amber-300 border border-amber-400/30 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase">
+                  Plan Benefit Applied
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="p-6 space-y-6 text-sm">
             {/* Services Section */}
             <div>
-              <h4 className="font-bold text-gray-900 flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
-                <span className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs"><FiTool /></span>
-                Services
+              <h4 className="font-black text-gray-900 flex items-center gap-2 mb-3 pb-3 border-b border-gray-100 uppercase tracking-widest text-[11px]">
+                <span className="w-6 h-6 rounded-full bg-[#0F348F]/10 text-[#0F348F] flex items-center justify-center text-xs"><FiTool /></span>
+                Services Breakdown
               </h4>
               <div className="space-y-2 pl-2">
                 <div className="flex justify-between text-gray-600">
@@ -832,9 +917,9 @@ export default function BookingDetails() {
                 </div>
 
                 {/* Service Subtotal */}
-                <div className="flex justify-between font-bold text-gray-800 pt-1">
-                  <span>Total Service</span>
-                  <span>₹{(originalBase + extraServiceBase + originalGST + extraServiceGST).toFixed(2)}</span>
+                <div className="flex justify-between font-black text-gray-900 pt-3 mt-2 border-t border-gray-100">
+                  <span>Total Service Value</span>
+                  <span className="text-[#0F348F]">₹{(originalBase + extraServiceBase + originalGST + extraServiceGST).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -896,7 +981,7 @@ export default function BookingDetails() {
             {bill?.transportCharges > 0 && (
               <div className="mt-4">
                 <h4 className="font-bold text-gray-900 flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
-                  <span className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs"><FiPackage /></span>
+                  <span className="w-6 h-6 rounded-full bg-primary-50 text-primary-500 flex items-center justify-center text-xs"><FiPackage /></span>
                   Transport Charges
                 </h4>
                 <div className="flex justify-between pl-2 font-bold text-gray-800">
@@ -1003,160 +1088,6 @@ export default function BookingDetails() {
           </div>
         )}
 
-        {/* Worker & Job Status Card (Enhanced) */}
-        {booking.assignedTo && booking.assignedTo?.name !== 'You (Self)' && (
-          <div className="bg-white rounded-2xl p-5 mb-5 shadow-lg border border-gray-100">
-            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden border-2 border-white shadow-sm flex items-center justify-center">
-                  <FiUser className="w-6 h-6 text-gray-400" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-sm">{booking.assignedTo.name}</h3>
-                  <p className="text-xs text-gray-500 font-medium">Service Partner</p>
-                </div>
-              </div>
-
-              {/* Call Button */}
-              {booking.assignedTo?.phone && (
-                <a href={`tel:${booking.assignedTo.phone}`} className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 hover:bg-green-100 transition-colors">
-                  <FiPhone className="w-5 h-5" />
-                </a>
-              )}
-            </div>
-
-            {/* Status Section - Premium Design */}
-            <div className="rounded-2xl p-6 relative overflow-hidden"
-              style={{
-                background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)',
-                boxShadow: 'inset 0 0 40px rgba(74, 222, 128, 0.05)'
-              }}>
-
-              {/* Decorative background blur */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-green-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 -translate-y-1/2 translate-x-1/2"></div>
-
-              <div className="flex justify-between items-center mb-6 relative z-10">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                  <span className="text-xs font-bold text-green-800 uppercase tracking-widest">Live Status</span>
-                </div>
-                {booking.workerAcceptedAt && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/60 border border-green-100/50 backdrop-blur-sm shadow-sm">
-                    <FiClock className="w-3 h-3 text-green-600" />
-                    <span className="text-[10px] text-green-700 font-bold font-mono">
-                      {new Date(booking.workerAcceptedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Status Display */}
-              {!booking.workerResponse || booking.workerResponse === 'PENDING' ? (
-                <div className="flex items-center gap-4 text-amber-600 bg-white/80 backdrop-blur-md p-4 rounded-xl border border-amber-100 shadow-sm relative z-10">
-                  <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                    <FiClock className="w-5 h-5 animate-pulse" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-sm text-gray-900">Awaiting Acceptance</p>
-                    <p className="text-xs text-amber-700/80 font-medium mt-0.5">Worker has not responded yet</p>
-                  </div>
-                </div>
-              ) : booking.workerResponse === 'ACCEPTED' ? (
-                <div className="space-y-6 relative z-10">
-                  {/* Progress Steps Visual - Pro Design */}
-                  <div className="relative px-2">
-                    {/* Track Line */}
-                    <div className="absolute left-6 right-6 top-[15px] h-1.5 bg-gray-100/80 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-700 ease-out shadow-[0_0_10px_rgba(16,185,129,0.3)]" style={{
-                        width: booking.status === 'completed' || booking.status === 'work_done' ? '100%' :
-                          booking.status === 'in_progress' || booking.status === 'visited' ? '66%' :
-                            booking.status === 'journey_started' ? '33%' : '0%'
-                      }}>
-                        <div className="w-full h-full bg-white/20 animate-[shimmer_2s_infinite]"></div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-start relative">
-                      {/* Accepted Step */}
-                      <div className="flex flex-col items-center gap-2 group cursor-default">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white shadow-lg shadow-green-200 ring-4 ring-white z-10 transition-transform group-hover:scale-110 duration-300">
-                          <FiCheck className="w-4 h-4 text-white" />
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-800 tracking-wide uppercase bg-white/50 px-2 py-0.5 rounded-full backdrop-blur-sm">Accepted</span>
-                      </div>
-
-                      {/* Started Step */}
-                      <div className="flex flex-col items-center gap-2 group cursor-default">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg ring-4 ring-white z-10 transition-all duration-500 group-hover:scale-110 ${['journey_started', 'visited', 'in_progress', 'work_done', 'completed'].includes(booking.status) ? 'bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-green-200' : 'bg-white text-gray-300 border-2 border-dashed border-gray-200'}`}>
-                          <FiNavigation className="w-4 h-4" />
-                        </div>
-                        <span className={`text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full backdrop-blur-sm transition-colors ${['journey_started', 'visited', 'in_progress', 'work_done', 'completed'].includes(booking.status) ? 'text-emerald-800 bg-white/50' : 'text-gray-400'}`}>On Way</span>
-                      </div>
-
-                      {/* Working Step */}
-                      <div className="flex flex-col items-center gap-2 group cursor-default">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg ring-4 ring-white z-10 transition-all duration-500 group-hover:scale-110 ${['visited', 'in_progress', 'work_done', 'completed'].includes(booking.status) ? 'bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-green-200' : 'bg-white text-gray-300 border-2 border-dashed border-gray-200'}`}>
-                          <FiTool className="w-4 h-4" />
-                        </div>
-                        <span className={`text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full backdrop-blur-sm transition-colors ${['visited', 'in_progress', 'work_done', 'completed'].includes(booking.status) ? 'text-emerald-800 bg-white/50' : 'text-gray-400'}`}>Working</span>
-                      </div>
-
-                      {/* Done Step */}
-                      <div className="flex flex-col items-center gap-2 group cursor-default">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg ring-4 ring-white z-10 transition-all duration-500 group-hover:scale-110 ${['work_done', 'completed'].includes(booking.status) ? 'bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-green-200' : 'bg-white text-gray-300 border-2 border-dashed border-gray-200'}`}>
-                          <FiCheckCircle className="w-4 h-4" />
-                        </div>
-                        <span className={`text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full backdrop-blur-sm transition-colors ${['work_done', 'completed'].includes(booking.status) ? 'text-emerald-800 bg-white/50' : 'text-gray-400'}`}>Done</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Clear Text Status with Glass Effect */}
-                  <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-white/50 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-inner ${booking.status === 'journey_started' ? 'bg-blue-50 text-blue-600' :
-                      booking.status === 'in_progress' ? 'bg-orange-50 text-orange-600' :
-                        ['work_done', 'completed'].includes(booking.status) ? 'bg-green-50 text-green-600' :
-                          'bg-gray-100 text-gray-500'
-                      }`}>
-                      {booking.status === 'journey_started' ? <FiNavigation className="w-6 h-6 drop-shadow-sm" /> :
-                        booking.status === 'in_progress' ? <FiTool className="w-6 h-6 animate-pulse drop-shadow-sm" /> :
-                          ['work_done', 'completed'].includes(booking.status) ? <FiCheckCircle className="w-6 h-6 drop-shadow-sm" /> :
-                            <FiCheck className="w-6 h-6 text-gray-400" />}
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-900 text-base tracking-tight mb-0.5">
-                        {booking.status === 'journey_started' ? 'Worker is On the Way' :
-                          booking.status === 'visited' ? 'Worker Reached Location' :
-                            booking.status === 'in_progress' ? 'Work In Progress' :
-                              ['work_done', 'completed'].includes(booking.status) ? 'Work Completed' :
-                                'Worker Accepted Job'}
-                      </p>
-                      <p className="text-xs text-gray-500 font-medium">
-                        {booking.status === 'journey_started' ? 'Tracking is active. Monitor live location.' :
-                          booking.status === 'visited' ? 'Waiting for OTP verification to start work.' :
-                            booking.status === 'in_progress' ? 'Service is currently being performed.' :
-                              ['work_done', 'completed'].includes(booking.status) ? 'Service marked as done. Pending final checks.' :
-                                'Worker is preparing to start the journey.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">
-                  <FiXCircle className="w-5 h-5" />
-                  <div className="flex-1">
-                    <p className="font-bold text-sm">Request Declined</p>
-                    <p className="text-[10px] opacity-80">Worker is unavailable.</p>
-                  </div>
-                  <button onClick={handleAssignWorker} className="px-3 py-1 bg-white border border-red-200 rounded shadow-sm text-xs font-bold text-red-600 hover:bg-red-50">
-                    Reassign
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Payment Collection Section */}
         {canCollectCash(booking) && (
           <div
@@ -1221,8 +1152,7 @@ export default function BookingDetails() {
                 <button
                   onClick={() => navigate(`/vendor/booking/${booking.id || id}/billing`)}
                   disabled={loading}
-                  className="w-full py-4 rounded-xl font-bold bg-blue-600 text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg"
-                  style={{ background: 'linear-gradient(135deg, #3B82F6, #2563EB)' }}
+                  className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_8px_20px_rgba(26,54,115,0.2)] bg-[#0F348F] hover:bg-[#122652]"
                 >
                   <FiDollarSign className="w-5 h-5" />
                   {booking.paymentMethod === 'plan_benefit' ? 'Prepare/Edit Final Bill' : 'Prepare Bill & Collect Cash'}
@@ -1359,46 +1289,34 @@ export default function BookingDetails() {
             <FiArrowRight className="w-5 h-5" />
           </button>
 
-          {(booking.status === 'confirmed' || (booking.assignedTo && booking.workerResponse === 'rejected')) && (
-            <div className="flex gap-3">
-              <button
-                onClick={handleAssignToSelf}
-                className="flex-1 py-4 rounded-xl font-semibold border-2 transition-all active:scale-95"
-                style={{
-                  borderColor: themeColors.button,
-                  color: themeColors.button,
-                  background: 'white',
-                }}
-              >
-                Do it Myself
-              </button>
-              <button
-                onClick={handleAssignWorker}
-                className="flex-1 py-4 rounded-xl font-semibold text-white transition-all active:scale-95 px-4"
-                style={{
-                  background: themeColors.button,
-                  boxShadow: `0 4px 12px ${themeColors.button}40`,
-                }}
-              >
-                {booking.workerResponse === 'rejected' ? 'Reassign' : 'Assign'}
-              </button>
+          {/* Advance payment pending — service locked */}
+          {advanceDue && (
+            <div className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+              <FiCreditCard className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-900 text-sm">Waiting for customer advance</p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Customer must pay ₹{(booking.advanceAmount || 0).toLocaleString('en-IN')} advance before you can start this job.
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Self-Job Operational Buttons */}
-          {booking.assignedTo?.name === 'You (Self)' && (
+          {/* Vendor job actions (no worker assign step) */}
+          {!['requested', 'searching', 'rejected', 'cancelled'].includes(booking.status) && (
             <div className="space-y-3 pt-2">
-              {(booking.status === 'confirmed' || booking.status === 'assigned') && (
+              {(booking.status === 'confirmed' || booking.status === 'assigned' || booking.status === 'accepted') && (
                 <button
                   onClick={handleStartJourney}
-                  className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg"
+                  disabled={advanceBlocksService}
+                  className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     background: 'linear-gradient(135deg, #10B981, #059669)',
                     boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
                   }}
                 >
                   <FiNavigation className="w-5 h-5" />
-                  Start Journey
+                  {actionLabels.startJourney}
                 </button>
               )}
 
@@ -1414,12 +1332,12 @@ export default function BookingDetails() {
                   }}
                   className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg"
                   style={{
-                    background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                    background: 'linear-gradient(135deg, #0F348F, #0F348F)',
                     boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
                   }}
                 >
                   <FiMapPin className="w-5 h-5" />
-                  Arrived (Arrived at customer's site)
+                  {actionLabels.arrived}
                 </button>
               )}
 
@@ -1433,7 +1351,7 @@ export default function BookingDetails() {
                   }}
                 >
                   <FiCheckCircle className="w-5 h-5" />
-                  Work Done
+                  {actionLabels.workDone}
                 </button>
               )}
             </div>

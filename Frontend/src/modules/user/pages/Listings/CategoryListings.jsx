@@ -17,6 +17,11 @@ const CategoryListings = () => {
   const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
+    setPage(1);
+  }, [categoryId, currentCity?.name]);
+
+  useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       try {
         setLoading(true);
@@ -25,23 +30,21 @@ const CategoryListings = () => {
           page,
           limit: 20
         });
+        if (cancelled) return;
         const items = res.listings || [];
         setListings(page === 1 ? items : (prev) => [...prev, ...items]);
         const total = res.pagination?.total || items.length;
         setHasMore(page * 20 < total);
       } catch (err) {
         console.error(err);
-        if (page === 1) setListings([]);
+        if (!cancelled && page === 1) setListings([]);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     load();
+    return () => { cancelled = true; };
   }, [categoryId, currentCity?.name, page]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [categoryId, currentCity?.name]);
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-8">
@@ -80,7 +83,9 @@ const CategoryListings = () => {
             <ListingCard
               key={listing.id}
               listing={listing}
-              onClick={() => navigate(`/user/listings/${listing.id}`, { state: { listing } })}
+              onClick={() => {
+                navigate(`/user/listings/${listing.id}`, { state: { listing } });
+              }}
             />
           ))
         )}

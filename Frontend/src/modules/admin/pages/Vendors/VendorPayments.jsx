@@ -31,7 +31,7 @@ const VendorPayments = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 rounded-2xl text-white shadow-lg shadow-blue-200">
+        <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 rounded-2xl text-white shadow-lg shadow-primary-200">
           <div className="flex justify-between items-start mb-4">
             <div className="p-2 bg-white/20 rounded-lg">
               <FiDollarSign className="w-6 h-6" />
@@ -115,7 +115,7 @@ const VendorPayments = () => {
                     <td className="px-6 py-4">
                       <button
                         className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${vendor.wallet?.balance > 0
-                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            ? 'bg-primary-500 text-white hover:bg-primary-600'
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                           }`}
                         disabled={!(vendor.wallet?.balance > 0)}

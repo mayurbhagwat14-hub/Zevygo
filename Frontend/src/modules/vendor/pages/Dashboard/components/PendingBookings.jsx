@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { acceptBooking, rejectBooking } from '../../../services/bookingService';
 import PendingJobCard from '../../../components/bookings/PendingJobCard';
 
-const PendingBookings = memo(({ bookings, setPendingBookings, setActiveAlertBooking, maxSearchTimeMins = 5 }) => {
+const PendingBookings = memo(({ bookings, setPendingBookings }) => {
   const navigate = useNavigate();
   const [loadingAction, setLoadingAction] = React.useState({ id: null, type: null });
 
@@ -30,7 +30,16 @@ const PendingBookings = memo(({ bookings, setPendingBookings, setActiveAlertBook
 
         window.dispatchEvent(new CustomEvent('removeVendorBooking', { detail: { id: bId } }));
         window.dispatchEvent(new Event('vendorStatsUpdated'));
-        toast.success('Booking accepted successfully!');
+        window.dispatchEvent(new Event('vendorJobsUpdated'));
+        const data = response?.data || response;
+        const advance = data?.advanceAmount || booking.advanceAmount;
+        const needsAdvance = data?.requireAdvancePayment && Number(advance) > 0;
+        toast.success(
+          needsAdvance
+            ? `Accepted! Waiting for advance ₹${Number(advance).toLocaleString('en-IN')}`
+            : 'Booking accepted successfully!'
+        );
+        navigate('/vendor/jobs');
       }
     } catch (error) {
       console.error('Error accepting:', error);
@@ -56,6 +65,7 @@ const PendingBookings = memo(({ bookings, setPendingBookings, setActiveAlertBook
         localStorage.setItem('vendorPendingJobs', JSON.stringify(updated));
 
         window.dispatchEvent(new CustomEvent('removeVendorBooking', { detail: { id: bId } }));
+        window.dispatchEvent(new Event('vendorJobsUpdated'));
         toast.success('Booking rejected');
       }
     } catch (error) {
@@ -69,13 +79,14 @@ const PendingBookings = memo(({ bookings, setPendingBookings, setActiveAlertBook
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-base font-bold text-gray-800">Pending Alerts</h2>
+        <h2 className="text-base font-bold text-gray-800">New Requests</h2>
         <button
-          onClick={() => navigate('/vendor/booking-alerts')}
+          type="button"
+          onClick={() => navigate('/vendor/jobs')}
           className="text-sm font-medium"
           style={{ color: themeColors.button }}
         >
-          View All
+          Open Jobs
         </button>
       </div>
       <div className="space-y-3">
@@ -85,10 +96,9 @@ const PendingBookings = memo(({ bookings, setPendingBookings, setActiveAlertBook
             booking={booking}
             onAccept={handleAcceptBooking}
             onReject={handleRejectBooking}
-            onClick={() => setActiveAlertBooking(booking)}
+            onClick={() => navigate('/vendor/jobs')}
             loadingAction={loadingAction.id === (booking.id || booking._id) ? loadingAction.type : null}
-            showTimer={true}
-            maxSearchTimeMins={maxSearchTimeMins}
+            showTimer={false}
           />
         ))}
       </div>

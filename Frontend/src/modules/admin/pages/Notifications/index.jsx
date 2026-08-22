@@ -77,7 +77,7 @@ const Notifications = () => {
       case 'vendor_withdrawal_request':
         return <FiDollarSign className="text-green-500" />;
       case 'vendor_approval_request':
-        return <FiUserCheck className="text-blue-500" />;
+        return <FiUserCheck className="text-primary-400" />;
       case 'vendor_cash_limit_exceeded':
         return <FiDollarSign className="text-red-500" />;
       default:
@@ -103,8 +103,8 @@ const Notifications = () => {
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-              <FiBell className="text-blue-600 text-lg" />
+            <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+              <FiBell className="text-primary-500 text-lg" />
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-900">Notifications</h1>
@@ -125,7 +125,7 @@ const Notifications = () => {
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1"
+                className="px-3 py-1.5 text-xs font-semibold text-primary-500 hover:bg-primary-50 rounded-lg transition-colors flex items-center gap-1"
               >
                 <FiCheckCircle className="text-sm" />
                 Mark All Read
@@ -161,7 +161,7 @@ const Notifications = () => {
               key={f}
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${filter === f
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary-500 text-white'
                 : 'text-gray-500 hover:bg-gray-100'
                 }`}
             >
@@ -175,7 +175,7 @@ const Notifications = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
             <p className="text-xs text-gray-500 mt-2">Loading notifications...</p>
           </div>
         ) : filteredNotifications.length === 0 ? (
@@ -192,7 +192,7 @@ const Notifications = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  className={`p-4 hover:bg-gray-50 transition-colors flex items-start gap-3 ${!notification.isRead ? 'bg-blue-50/30' : ''
+                  className={`p-4 hover:bg-gray-50 transition-colors flex items-start gap-3 ${!notification.isRead ? 'bg-primary-50/30' : ''
                     }`}
                 >
                   {/* Icon */}
@@ -221,7 +221,7 @@ const Notifications = () => {
                       {!notification.isRead && (
                         <button
                           onClick={() => markAsRead(notification._id)}
-                          className="text-[10px] font-semibold text-blue-600 hover:underline flex items-center gap-1"
+                          className="text-[10px] font-semibold text-primary-500 hover:underline flex items-center gap-1"
                         >
                           <FiCheck className="text-xs" />
                           Mark as read
@@ -239,7 +239,7 @@ const Notifications = () => {
 
                   {/* Unread indicator */}
                   {!notification.isRead && (
-                    <div className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0 mt-2"></div>
+                    <div className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-2"></div>
                   )}
                 </motion.div>
               ))}

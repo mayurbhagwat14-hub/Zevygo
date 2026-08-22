@@ -135,7 +135,7 @@ const PaymentOverview = () => {
   const getTypeColor = (type) => {
     switch (type) {
       case 'credit': return 'text-green-600 bg-green-50 border-green-100';
-      case 'payment': return 'text-blue-600 bg-blue-50 border-blue-100'; // Online Payment
+      case 'payment': return 'text-primary-500 bg-primary-50 border-primary-100'; // Online Payment
       case 'cash_collected': return 'text-amber-600 bg-amber-50 border-amber-100'; // Cash
       case 'debit': return 'text-orange-600 bg-orange-50 border-orange-100';
       case 'refund': return 'text-purple-600 bg-purple-50 border-purple-100';
@@ -197,7 +197,7 @@ const PaymentOverview = () => {
             <p className="text-gray-500 text-xs font-medium uppercase tracking-wider">Net Revenue</p>
             <h3 className="text-2xl font-bold text-gray-800 mt-1">{formatCurrency(stats.netRevenue)}</h3>
           </div>
-          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+          <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-500">
             <FiTrendingUp className="w-5 h-5" />
           </div>
         </div>
@@ -212,7 +212,7 @@ const PaymentOverview = () => {
             placeholder="Search transactions..."
             value={filters.search}
             onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 transition-all"
           />
         </div>
 
@@ -220,7 +220,7 @@ const PaymentOverview = () => {
           <select
             value={filters.status}
             onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-primary-400"
           >
             <option value="all">All Status</option>
             <option value="completed">Completed</option>
@@ -232,7 +232,7 @@ const PaymentOverview = () => {
           <select
             value={filters.type}
             onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-primary-400"
           >
             <option value="all">All Types</option>
             <option value="credit">Credit (Platform)</option>
@@ -272,7 +272,7 @@ const PaymentOverview = () => {
                 <tr>
                   <td colSpan="7" className="py-8 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                      <div className="w-6 h-6 border-2 border-primary-400 border-t-transparent rounded-full animate-spin mb-2"></div>
                       <p className="text-sm">Loading transactions...</p>
                     </div>
                   </td>
@@ -295,7 +295,7 @@ const PaymentOverview = () => {
                           <span className="text-sm font-medium text-gray-800">
                             {tx.userId?.name || tx.vendorId?.businessName || tx.vendorId?.name || tx.workerId?.name || 'Unknown'}
                           </span>
-                          {tx.userId && <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-medium">User</span>}
+                          {tx.userId && <span className="text-[10px] bg-primary-100 text-blue-800 px-1.5 py-0.5 rounded font-medium">User</span>}
                           {tx.vendorId && <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-medium">Vendor</span>}
                           {tx.workerId && <span className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-medium">Worker</span>}
                         </div>

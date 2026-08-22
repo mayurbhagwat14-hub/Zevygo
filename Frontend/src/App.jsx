@@ -8,7 +8,7 @@ import { CartProvider } from './context/CartContext';
 import { CityProvider } from './context/CityContext';
 import { BrandingProvider } from './context/BrandingContext';
 import { initializePushNotifications, setupForegroundNotificationHandler } from './services/pushNotificationService';
-import { LocationPermissionChecker } from './components/common';
+import { LocationPermissionChecker, ScrollToTop } from './components/common';
 
 function App() {
   // Initialize push notifications on app load
@@ -17,31 +17,20 @@ function App() {
 
     // Setup foreground notification handler
     setupForegroundNotificationHandler((payload) => {
-      // console.log('📬 Notification received:', payload);
-
-      // Dispatch update events for listening components to refresh UI
-      window.dispatchEvent(new Event('vendorJobsUpdated'));
-      window.dispatchEvent(new Event('vendorStatsUpdated'));
-
-      window.dispatchEvent(new Event('userBookingsUpdated'));
-
-      // Also dispatch generic one if needed
-      window.dispatchEvent(new Event('appNotificationReceived'));
-
-      // REDUNDANT: We now have a rich SwipeableNotification in SocketContext.jsx 
-      // which handles all internal socket notifications (emitted by Backend along with Push).
-      // Showing a toast here results in "double alerts" for the user.
-      /*
-      toast(payload.notification?.body || 'New notification', {
-        icon: '🔔',
-        duration: 2000,
-      });
-      */
+      // Debounced refresh — avoid API storms when many pushes arrive
+      clearTimeout(window.__zevygoNotifRefreshTimer);
+      window.__zevygoNotifRefreshTimer = setTimeout(() => {
+        window.dispatchEvent(new Event('vendorJobsUpdated'));
+        window.dispatchEvent(new Event('vendorStatsUpdated'));
+        window.dispatchEvent(new Event('userBookingsUpdated'));
+        window.dispatchEvent(new Event('appNotificationReceived'));
+      }, 1500);
     });
   }, []);
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <BrandingProvider>
         <SocketProvider>
         <CityProvider>

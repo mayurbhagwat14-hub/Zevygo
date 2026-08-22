@@ -68,7 +68,7 @@ const MyRatings = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <FiLoader className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-4" />
+          <FiLoader className="w-10 h-10 text-primary-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-500 font-medium">Loading your ratings...</p>
         </div>
       </div>
@@ -125,7 +125,7 @@ const MyRatings = () => {
               <div key={idx} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-50 space-y-4">
                 <div className="flex justify-between items-start">
                   <div className="flex gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center overflow-hidden border border-blue-100/50">
+                    <div className="w-12 h-12 rounded-2xl bg-primary-50 flex items-center justify-center overflow-hidden border border-primary-100/50">
                       {rating.userId?.profilePhoto ? (
                         <img src={rating.userId.profilePhoto} alt="User" className="w-full h-full object-cover" />
                       ) : (
@@ -153,7 +153,7 @@ const MyRatings = () => {
                 </div>
 
                 {rating.review && (
-                  <p className="text-gray-600 text-sm leading-relaxed font-medium pl-2 border-l-4 border-blue-500/20">
+                  <p className="text-gray-600 text-sm leading-relaxed font-medium pl-2 border-l-4 border-primary-400/20">
                     "{rating.review}"
                   </p>
                 )}
@@ -170,7 +170,7 @@ const MyRatings = () => {
                   <div className="pt-3 border-t border-gray-50 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold text-gray-400 uppercase">Service by:</span>
-                      <span className="text-[11px] font-black text-blue-600">{rating.workerId.name}</span>
+                      <span className="text-[11px] font-black text-primary-500">{rating.workerId.name}</span>
                     </div>
                     <span className="text-[10px] font-bold text-gray-300">#{rating.bookingNumber}</span>
                   </div>

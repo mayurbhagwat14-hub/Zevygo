@@ -100,7 +100,7 @@ const MyBookings = () => {
             >
               <FiArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">My Bookings</h1>
+            <h1 className="text-base sm:text-lg font-bold text-slate-800">My Bookings</h1>
           </div>
           <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200/60">
             <NotificationBell />
@@ -176,8 +176,22 @@ const MyBookings = () => {
                           #{booking.bookingNumber || (booking._id || booking.id).substring(0, 8)}
                         </span>
                         {booking.serviceCategory && (
-                          <span className="inline-block text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100/80 truncate">
+                          <span className="inline-block text-[10px] font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded border border-primary-100/80 truncate">
                             {booking.serviceCategory}
+                          </span>
+                        )}
+                        {booking.serviceListingId && (
+                          <span className="inline-block text-[10px] font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded border border-violet-100/80">
+                            Direct
+                          </span>
+                        )}
+                        {(booking.bookingType === 'instant' || String(booking.scheduledTime || '').toUpperCase() === 'ASAP') ? (
+                          <span className="inline-block text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100/80">
+                            ⚡ Instant
+                          </span>
+                        ) : (
+                          <span className="inline-block text-[10px] font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-100/80">
+                            📅 Scheduled
                           </span>
                         )}
                       </div>
@@ -185,7 +199,7 @@ const MyBookings = () => {
                     </div>
 
                     {/* Title */}
-                    <h3 className="text-sm font-extrabold text-slate-900 leading-snug line-clamp-1 group-hover:text-blue-600 transition-colors mb-2">
+                    <h3 className="text-sm font-extrabold text-slate-900 leading-snug line-clamp-1 group-hover:text-primary-500 transition-colors mb-2">
                       {booking.serviceName || 'Service Request'}
                     </h3>
 
@@ -199,7 +213,7 @@ const MyBookings = () => {
                     {/* Slot & Location Info Box */}
                     <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs mb-3">
                       <div className="flex items-center gap-2 min-w-0">
-                        <FiCalendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <FiCalendar className="w-3.5 h-3.5 text-primary-500 shrink-0" />
                         <div className="min-w-0">
                           <p className="text-[9px] font-bold text-slate-400 uppercase leading-none">Slot</p>
                           <p className="font-bold text-slate-800 text-[11px] truncate mt-0.5">
@@ -227,7 +241,7 @@ const MyBookings = () => {
                           ₹{(booking.finalAmount || booking.totalAmount || 0).toLocaleString('en-IN')}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1 text-xs font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
+                      <div className="flex items-center gap-1 text-xs font-bold text-primary-500 group-hover:text-primary-600 transition-colors">
                         <span>Details</span>
                         <FiChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </div>

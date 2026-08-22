@@ -85,9 +85,7 @@
     ],
     "children": [
       "Home",
-      "Manage Categories",
-      "Manage Brands",
-      "Manage Services"
+      "Manage Categories"
     ]
   },
   {

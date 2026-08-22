@@ -247,7 +247,7 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) =>
                           </h4>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             {item.isCategory ? (
-                              <span className="text-[10px] font-bold bg-blue-50 text-blue-500 px-2 py-0.5 rounded-md uppercase tracking-tighter">Category</span>
+                              <span className="text-[10px] font-bold bg-primary-50 text-primary-400 px-2 py-0.5 rounded-md uppercase tracking-tighter">Category</span>
                             ) : (
                               <span className="text-[11px] font-semibold text-gray-500 flex items-center gap-1">
                                 {item.brandName || item.category || 'Service'}
@@ -298,7 +298,7 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) =>
                 {trendingServices.length > 0 && (
                   <section>
                     <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2 mb-3">
-                      <FiTrendingUp className="text-blue-500" /> Trending Services
+                      <FiTrendingUp className="text-primary-400" /> Trending Services
                     </h3>
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
                       {trendingServices.map((service) => (

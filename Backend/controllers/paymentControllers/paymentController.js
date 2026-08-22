@@ -7,6 +7,7 @@ const { PAYMENT_STATUS, BOOKING_STATUS } = require('../../utils/constants');
 const { createOrder, verifyPayment, refundPayment } = require('../../services/razorpayService');
 const { createNotification } = require('../notificationControllers/notificationController');
 const { recordBookingEarning } = require('../../services/earningTrackerService');
+const { getDueChargeAmount } = require('../../utils/bookingPaymentGuard');
 
 /**
  * Create Razorpay order for booking payment
@@ -44,19 +45,7 @@ const createPaymentOrder = async (req, res) => {
     }
 
     // Determine charge amount: advance vs final balance
-    let chargeAmount = booking.finalAmount;
-    let paymentType = 'full';
-
-    if (booking.status === BOOKING_STATUS.AWAITING_PAYMENT && booking.paymentPhase === 'advance_pending') {
-      chargeAmount = booking.advanceAmount || Math.round(booking.finalAmount * 0.3);
-      paymentType = 'advance';
-    } else if (
-      (booking.status === BOOKING_STATUS.WORK_DONE || booking.paymentPhase === 'final_pending')
-      && booking.paymentPhase !== 'fully_paid'
-    ) {
-      chargeAmount = booking.balanceAmount || booking.userPayableAmount || booking.finalAmount;
-      paymentType = 'final';
-    }
+    const { amount: chargeAmount, type: paymentType } = getDueChargeAmount(booking);
 
     if (!chargeAmount || chargeAmount <= 0) {
       return res.status(400).json({
@@ -349,16 +338,25 @@ const processWalletPayment = async (req, res) => {
       });
     }
 
-    // Check if payment already done
-    if (booking.paymentStatus === PAYMENT_STATUS.SUCCESS) {
+    // Check if payment already done (fully paid)
+    if (booking.paymentPhase === 'fully_paid' && booking.paymentStatus === PAYMENT_STATUS.SUCCESS) {
       return res.status(400).json({
         success: false,
         message: 'Payment already completed for this booking'
       });
     }
 
+    const { amount: chargeAmount, type: paymentType } = getDueChargeAmount(booking);
+
+    if (!chargeAmount || chargeAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No payment due for this booking'
+      });
+    }
+
     // Check wallet balance
-    if (user.wallet.balance < booking.finalAmount) {
+    if (user.wallet.balance < chargeAmount) {
       return res.status(400).json({
         success: false,
         message: 'Insufficient wallet balance'
@@ -366,32 +364,46 @@ const processWalletPayment = async (req, res) => {
     }
 
     // Deduct from user wallet
-    user.wallet.balance -= booking.finalAmount;
+    user.wallet.balance -= chargeAmount;
     await user.save();
 
     const Transaction = require('../../models/Transaction');
     await Transaction.create({
       userId,
       bookingId: booking._id,
-      amount: booking.finalAmount,
+      amount: chargeAmount,
       type: 'debit',
       paymentMethod: 'wallet',
       status: 'completed',
-      description: `Wallet payment for booking ${booking.bookingNumber}`,
+      description: `${paymentType === 'advance' ? 'Advance' : paymentType === 'final' ? 'Final' : ''} wallet payment for booking ${booking.bookingNumber}`.trim(),
       balanceAfter: user.wallet.balance
     });
 
     // Update booking payment status
-    booking.paymentStatus = PAYMENT_STATUS.SUCCESS;
     booking.paymentMethod = 'wallet';
-    booking.paymentId = `WALLET_${Date.now()}`;
 
-    // Update booking status
-    if ([BOOKING_STATUS.PENDING, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.AWAITING_PAYMENT].includes(booking.status)) {
+    if (paymentType === 'advance') {
+      booking.paymentStatus = PAYMENT_STATUS.SUCCESS;
+      booking.paymentPhase = 'advance_paid';
+      booking.advancePaidAt = new Date();
       booking.status = BOOKING_STATUS.CONFIRMED;
-    } else if (booking.status === BOOKING_STATUS.WORK_DONE) {
+      booking.balanceAmount = Math.max(0, (booking.finalAmount || 0) - (booking.advanceAmount || 0));
+    } else if (paymentType === 'final') {
+      booking.paymentStatus = PAYMENT_STATUS.SUCCESS;
+      booking.paymentPhase = 'fully_paid';
       booking.status = BOOKING_STATUS.COMPLETED;
       booking.completedAt = new Date();
+      booking.paymentId = `WALLET_${Date.now()}`;
+    } else {
+      booking.paymentStatus = PAYMENT_STATUS.SUCCESS;
+      booking.paymentPhase = 'fully_paid';
+      booking.paymentId = `WALLET_${Date.now()}`;
+      if ([BOOKING_STATUS.PENDING, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.AWAITING_PAYMENT].includes(booking.status)) {
+        booking.status = BOOKING_STATUS.CONFIRMED;
+      } else if (booking.status === BOOKING_STATUS.WORK_DONE) {
+        booking.status = BOOKING_STATUS.COMPLETED;
+        booking.completedAt = new Date();
+      }
     }
 
     await booking.save();
@@ -664,17 +676,61 @@ const confirmPayAtHome = async (req, res) => {
       });
     }
 
-    if (booking.paymentStatus === PAYMENT_STATUS.SUCCESS) {
+    if (booking.paymentPhase === 'fully_paid' && booking.paymentStatus === PAYMENT_STATUS.SUCCESS) {
       return res.status(400).json({
         success: false,
         message: 'Payment already completed for this booking'
       });
     }
 
-    // Update booking status — NO earnings set (VendorBill handles that later)
+    // Advance must be paid online — cannot skip with pay-at-home
+    if (
+      booking.status === BOOKING_STATUS.AWAITING_PAYMENT
+      && booking.paymentPhase === 'advance_pending'
+      && booking.requireAdvancePayment
+    ) {
+      return res.status(402).json({
+        success: false,
+        message: 'Advance payment must be completed online before the booking can proceed.',
+        code: 'ADVANCE_PENDING'
+      });
+    }
+
+    // Customer opts to pay remaining balance at door after service
+    if (
+      booking.status === BOOKING_STATUS.WORK_DONE
+      && booking.paymentPhase === 'final_pending'
+    ) {
+      booking.paymentMethod = 'pay_at_home';
+      await booking.save();
+
+      if (booking.vendorId) {
+        await createNotification({
+          vendorId: booking.vendorId,
+          type: 'payment_pending',
+          title: 'Pay at Home Selected',
+          message: `Customer will pay the remaining ₹${booking.balanceAmount || booking.userPayableAmount || 0} at home for booking ${booking.bookingNumber}.`,
+          relatedId: booking._id,
+          relatedType: 'booking'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Pay at home confirmed for remaining balance',
+        data: booking
+      });
+    }
+
+    // Pre-service pay-at-home (categories without advance requirement)
     booking.paymentMethod = 'pay_at_home';
     booking.paymentStatus = PAYMENT_STATUS.PENDING;
-    booking.status = BOOKING_STATUS.CONFIRMED;
+    if ([BOOKING_STATUS.PENDING, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.AWAITING_PAYMENT].includes(booking.status)) {
+      booking.status = BOOKING_STATUS.CONFIRMED;
+      if (!booking.requireAdvancePayment) {
+        booking.paymentPhase = 'advance_paid';
+      }
+    }
 
     await booking.save();
 

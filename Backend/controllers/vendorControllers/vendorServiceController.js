@@ -6,7 +6,19 @@ const { logAudit } = require('../../utils/auditLogger');
 const cloudinaryService = require('../../services/cloudinaryService');
 const { LISTING_STATUS, SERVICE_STATUS, VENDOR_STATUS } = require('../../utils/constants');
 const { normalizeDynamicAnswers, coerceNumber, coercePricing, coerceNestedNumbers, normalizeCatalogItems, extractListingTitle } = require('../../utils/listingPayload');
-const { mergeListingForms } = require('../../utils/listingFormsMerge');
+const { resolveListingForms } = require('../../utils/listingFormsMerge');
+const { constrainListingBookingMode } = require('../../utils/listingBookingMode');
+
+const sanitizeVendorBookingConfig = (bookingConfig = {}) => {
+  const cleaned = coerceNestedNumbers(bookingConfig || {}, [
+    'minAdvanceBookingMinutes', 'maxAdvanceBookingDays',
+    'minServiceDurationMinutes', 'maxServiceDurationMinutes'
+  ]);
+  // Advance payment is Admin-only (Category.paymentConfig) — strip vendor overrides
+  delete cleaned.requireAdvancePayment;
+  delete cleaned.advancePaymentPercent;
+  return cleaned;
+};
 
 /**
  * Get vendor's service listings
@@ -122,15 +134,13 @@ const createServiceListing = async (req, res) => {
 
     const normalizedMenu = await normalizeCatalogItems(catalogItems, vendorId);
     const settingsDoc = await Settings.findOne({ type: 'global' }).select('commonListingForms').lean();
-    const mergedForms = mergeListingForms(settingsDoc?.commonListingForms || [], category.listingForms || []);
-    const hasMenuForm = mergedForms.some((f) => f.type === 'menu');
-    const requireMenu = mergedForms.length
-      ? hasMenuForm
-      : category.listingSectionConfig?.menu?.enabled !== false;
+    // Packages/blocks required for every category (Driver, Tiffin, Guard, etc.)
+    const resolvedForms = resolveListingForms(settingsDoc?.commonListingForms || [], category);
+    const requireMenu = resolvedForms.some((f) => f.type === 'menu');
     if (!isDraft && requireMenu && normalizedMenu.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Add at least one menu item before submitting.'
+        message: 'Add at least one package / block before submitting.'
       });
     }
 
@@ -234,11 +244,8 @@ const createServiceListing = async (req, res) => {
       shortDescription: shortDescription ? String(shortDescription).trim() : String(cleanedAnswers.shortDescription || cleanedAnswers.tagline || '').trim(),
       experience: coerceNumber(experience, 0),
       languages: Array.isArray(languages) ? languages.filter(Boolean) : [],
-      bookingMode: bookingMode || category.bookingMode || 'BOTH',
-      bookingConfig: coerceNestedNumbers(bookingConfig || {}, [
-        'minAdvanceBookingMinutes', 'maxAdvanceBookingDays',
-        'minServiceDurationMinutes', 'maxServiceDurationMinutes', 'advancePaymentPercent'
-      ]),
+      bookingMode: constrainListingBookingMode(bookingMode, category.bookingMode),
+      bookingConfig: sanitizeVendorBookingConfig(bookingConfig),
       pricingModel: pricingModel || category.defaultPricingModel || 'FIXED',
       pricing: cleanedPricing,
       availability: availability || {},
@@ -358,7 +365,7 @@ const updateServiceListing = async (req, res) => {
       if (!isDraft && processedCatalogItems.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'Add at least one menu item before submitting.'
+          message: 'Add at least one package / block before submitting.'
         });
       }
     }
@@ -371,33 +378,36 @@ const updateServiceListing = async (req, res) => {
       catalogItems: listing.catalogItems
     };
 
-    // Check if listing is currently approved -> Snapshot approved version for live customers
-    if (listing.status === LISTING_STATUS.APPROVED && !isDraft) {
-      listing.approvedVersion = {
-        title: listing.title,
-        description: listing.description,
-        shortDescription: listing.shortDescription,
-        experience: listing.experience,
-        languages: listing.languages,
-        pricingModel: listing.pricingModel,
-        bookingMode: listing.bookingMode,
-        bookingConfig: listing.bookingConfig,
-        pricing: listing.pricing,
-        availability: listing.availability,
-        serviceArea: listing.serviceArea,
-        cancellation: listing.cancellation,
-        dynamicFormAnswers: listing.dynamicFormAnswers,
-        pricingFormAnswers: listing.pricingFormAnswers,
-        availabilityFormAnswers: listing.availabilityFormAnswers,
-        serviceAreaFormAnswers: listing.serviceAreaFormAnswers,
-        bookingRulesFormAnswers: listing.bookingRulesFormAnswers,
-        documentsFormAnswers: listing.documentsFormAnswers,
-        listingFormAnswers: listing.listingFormAnswers,
-        portfolioPhotos: listing.portfolioPhotos,
-        portfolioVideos: listing.portfolioVideos,
-        documents: listing.documents,
-        catalogItems: listing.catalogItems
-      };
+    // Live listing edit → keep approved snapshot for customers until admin re-approves
+    // (includes package/block changes; never apply edits live while status is APPROVED)
+    if (listing.status === LISTING_STATUS.APPROVED) {
+      if (!listing.approvedVersion || !listing.hasPendingEdits) {
+        listing.approvedVersion = {
+          title: listing.title,
+          description: listing.description,
+          shortDescription: listing.shortDescription,
+          experience: listing.experience,
+          languages: listing.languages,
+          pricingModel: listing.pricingModel,
+          bookingMode: listing.bookingMode,
+          bookingConfig: listing.bookingConfig,
+          pricing: listing.pricing,
+          availability: listing.availability,
+          serviceArea: listing.serviceArea,
+          cancellation: listing.cancellation,
+          dynamicFormAnswers: listing.dynamicFormAnswers,
+          pricingFormAnswers: listing.pricingFormAnswers,
+          availabilityFormAnswers: listing.availabilityFormAnswers,
+          serviceAreaFormAnswers: listing.serviceAreaFormAnswers,
+          bookingRulesFormAnswers: listing.bookingRulesFormAnswers,
+          documentsFormAnswers: listing.documentsFormAnswers,
+          listingFormAnswers: listing.listingFormAnswers,
+          portfolioPhotos: listing.portfolioPhotos,
+          portfolioVideos: listing.portfolioVideos,
+          documents: listing.documents,
+          catalogItems: listing.catalogItems
+        };
+      }
       listing.hasPendingEdits = true;
       listing.pendingEditSubmittedAt = new Date();
       listing.status = LISTING_STATUS.PENDING_REVIEW;
@@ -409,14 +419,14 @@ const updateServiceListing = async (req, res) => {
     if (shortDescription !== undefined) listing.shortDescription = String(shortDescription).trim();
     if (experience !== undefined) listing.experience = coerceNumber(experience, listing.experience);
     if (languages) listing.languages = Array.isArray(languages) ? languages.filter(Boolean) : languages;
-    if (bookingMode) listing.bookingMode = bookingMode;
+    if (bookingMode) {
+      const catMode = category?.bookingMode || listing.categoryId?.bookingMode || 'BOTH';
+      listing.bookingMode = constrainListingBookingMode(bookingMode, catMode);
+    }
     if (bookingConfig) {
       listing.bookingConfig = {
-        ...listing.bookingConfig,
-        ...coerceNestedNumbers(bookingConfig, [
-          'minAdvanceBookingMinutes', 'maxAdvanceBookingDays',
-          'minServiceDurationMinutes', 'maxServiceDurationMinutes', 'advancePaymentPercent'
-        ])
+        ...listing.bookingConfig?.toObject?.() || listing.bookingConfig || {},
+        ...sanitizeVendorBookingConfig(bookingConfig)
       };
     }
     if (pricingModel) listing.pricingModel = pricingModel;
@@ -533,8 +543,10 @@ const updateServiceListing = async (req, res) => {
     res.status(200).json({
       success: true,
       message: listing.hasPendingEdits
-        ? 'Changes submitted for review! Currently approved version remains live for customers until approved.'
-        : isDraft ? 'Draft saved.' : 'Service listing updated successfully.',
+        ? 'Details & packages sent for admin approval. Customers still see the last approved version until then.'
+        : isDraft
+          ? 'Draft saved.'
+          : 'Service listing updated and sent for admin approval.',
       service: listing
     });
   } catch (error) {

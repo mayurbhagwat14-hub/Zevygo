@@ -510,7 +510,7 @@ const BookingMap = () => {
             className="w-full h-full object-contain drop-shadow-xl rounded-full"
           />
         </div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-blue-500/30 rounded-full animate-ping z-10 pointer-events-none"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-primary-500/30 rounded-full animate-ping z-10 pointer-events-none"></div>
         <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-12 h-3 bg-black/20 blur-sm rounded-full z-0"></div>
       </div>
     </OverlayView>
@@ -527,7 +527,7 @@ const BookingMap = () => {
     mapId: mapId || '8e0a97af9386fefc',
   }), [mapId]);
 
-  if (!isLoaded || loading) return <div className="h-screen bg-gray-100 flex items-center justify-center"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (!isLoaded || loading) return <div className="h-screen bg-gray-100 flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   return (
     <div className="h-screen flex flex-col relative bg-white overflow-hidden">
@@ -590,7 +590,7 @@ const BookingMap = () => {
                   const dest = coords ? `${coords.lat},${coords.lng}` : encodeURIComponent(booking?.address?.addressLine1 || '');
                   window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest}`, '_blank');
                 }}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                className="flex-1 py-3 bg-primary-500 hover:bg-primary-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
               >
                 Open Maps
               </button>
@@ -610,8 +610,8 @@ const BookingMap = () => {
           >
             <div className="pointer-events-auto bg-white/95 backdrop-blur-xl px-6 py-2.5 rounded-full shadow-2xl flex items-center gap-6 border border-white/20 ring-1 ring-black/5">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
-                  <FiMapPin className="w-4 h-4 text-blue-600" />
+                <div className="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center">
+                  <FiMapPin className="w-4 h-4 text-primary-500" />
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Remaining</p>
@@ -659,7 +659,7 @@ const BookingMap = () => {
               <PolylineF
                 path={routePath}
                 options={{
-                  strokeColor: "#2563EB", // Brand Blue
+                  strokeColor: "#0F348F", // Brand Blue
                   strokeWeight: 8,
                   strokeOpacity: 1,
                   zIndex: 50
@@ -698,7 +698,7 @@ const BookingMap = () => {
               }
             }
           }}
-          className={`absolute top-40 right-4 p-4 rounded-full shadow-2xl transition-all active:scale-90 z-50 ${isAutoCenter ? 'bg-blue-600 text-white animate-pulse' : 'bg-white text-gray-700'}`}
+          className={`absolute top-40 right-4 p-4 rounded-full shadow-2xl transition-all active:scale-90 z-50 ${isAutoCenter ? 'bg-primary-500 text-white animate-pulse' : 'bg-white text-gray-700'}`}
           style={{ boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}
         >
           <FiCrosshair className="w-6 h-6" />
@@ -723,8 +723,8 @@ const BookingMap = () => {
         {/* Time & Distance Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-sm font-medium text-blue-600 mb-1 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+            <p className="text-sm font-medium text-primary-500 mb-1 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse"></span>
               {duration ? `Trip time: ${duration}` : 'Calculating path...'}
             </p>
             <h2 className="text-2xl font-black text-gray-900 tracking-tight">Job Location</h2>
@@ -739,7 +739,7 @@ const BookingMap = () => {
 
         {/* Address Section */}
         <div className="bg-gray-50 rounded-2xl p-4 flex items-start gap-4 mb-4 border border-gray-100">
-          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-600 border border-gray-100 shrink-0">
+          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-primary-500 border border-gray-100 shrink-0">
             <FiMapPin className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
@@ -767,7 +767,7 @@ const BookingMap = () => {
           )}
 
           {(booking?.userId?.phone || booking?.customerPhone) && (
-            <a href={`tel:${booking.userId?.phone || booking.customerPhone}`} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95">
+            <a href={`tel:${booking.userId?.phone || booking.customerPhone}`} className="flex-1 bg-primary-500 hover:bg-primary-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary-500/30 transition-all active:scale-95">
               <FiPhone className="w-5 h-5" /> Call
             </a>
           )}

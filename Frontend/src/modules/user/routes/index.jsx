@@ -55,6 +55,7 @@ const lazyLoad = (importFunc) => {
 
 // Lazy load all user pages for code splitting with error handling
 const Home = lazyLoad(() => import('../pages/Home'));
+const AllServices = lazyLoad(() => import('../pages/AllServices'));
 const Rewards = lazyLoad(() => import('../pages/Rewards'));
 const Account = lazyLoad(() => import('../pages/Account'));
 const Native = lazyLoad(() => import('../pages/Native'));
@@ -81,6 +82,7 @@ const HelpSupport = lazyLoad(() => import('../pages/HelpSupport'));
 const CancellationPolicy = lazyLoad(() => import('../pages/CancellationPolicy'));
 const CategoryListings = lazyLoad(() => import('../pages/Listings/CategoryListings'));
 const ListingDetail = lazyLoad(() => import('../pages/Listings/ListingDetail'));
+const VendorProfile = lazyLoad(() => import('../pages/VendorProfile'));
 
 // Loading fallback component
 import LogoLoader from '../../../components/common/LogoLoader';
@@ -124,8 +126,10 @@ const UserRoutes = () => {
 
               {/* Protected routes (auth required) */}
               <Route path="/" element={<ProtectedRoute userType="user"><Home /></ProtectedRoute>} />
+              <Route path="/all-services" element={<ProtectedRoute userType="user"><AllServices /></ProtectedRoute>} />
               <Route path="/category/:categoryId" element={<ProtectedRoute userType="user"><CategoryListings /></ProtectedRoute>} />
               <Route path="/listings/:id" element={<ProtectedRoute userType="user"><ListingDetail /></ProtectedRoute>} />
+              <Route path="/provider/:vendorId" element={<ProtectedRoute userType="user"><VendorProfile /></ProtectedRoute>} />
               <Route path="/native" element={<ProtectedRoute userType="user"><Native /></ProtectedRoute>} />
 
               <Route path="/rewards" element={<ProtectedRoute userType="user"><Rewards /></ProtectedRoute>} />

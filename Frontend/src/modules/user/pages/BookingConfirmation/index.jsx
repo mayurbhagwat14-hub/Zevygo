@@ -327,8 +327,8 @@ const BookingConfirmation = () => {
           {/* Advance Payment Required */}
           {!isSearching && needsAdvancePayment && (
             <div className="flex flex-col items-center justify-center mb-6">
-              <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-4 border border-blue-100">
-                <FiCreditCard className="w-10 h-10 text-blue-600" />
+              <div className="w-20 h-20 rounded-full bg-primary-50 flex items-center justify-center mb-4 border border-primary-100">
+                <FiCreditCard className="w-10 h-10 text-primary-500" />
               </div>
               <h1 className="text-2xl font-black text-gray-900 mb-2">Provider Accepted!</h1>
               <p className="text-sm text-gray-500 text-center max-w-[280px] font-medium leading-relaxed mb-1">
@@ -568,10 +568,10 @@ const BookingConfirmation = () => {
                 {(booking.requireAdvancePayment && (booking.advanceAmount > 0 || booking.balanceAmount > 0)) && booking.paymentMethod !== 'plan_benefit' && (
                   <>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-blue-600 font-medium">
+                      <span className="text-primary-500 font-medium">
                         Advance {booking.paymentPhase === 'advance_paid' ? '(Paid ✓)' : '(Due now)'}
                       </span>
-                      <span className={`font-bold ${booking.paymentPhase === 'advance_paid' ? 'text-green-600' : 'text-blue-600'}`}>
+                      <span className={`font-bold ${booking.paymentPhase === 'advance_paid' ? 'text-green-600' : 'text-primary-500'}`}>
                         ₹{(booking.advanceAmount || 0).toLocaleString('en-IN')}
                       </span>
                     </div>

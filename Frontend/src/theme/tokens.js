@@ -6,18 +6,18 @@
  */
 
 export const colors = {
-  // Brand
+  // Brand — deep royal blue (#0F348F)
   primary: {
-    50: '#EFF6FF',
-    100: '#DBEAFE',
-    200: '#BFDBFE',
-    300: '#93C5FD',
-    400: '#60A5FA',
-    500: '#2563EB',
-    600: '#1D4ED8',
-    700: '#1E40AF',
-    800: '#1E3A8A',
-    900: '#172554',
+    50: '#F2F5FC',
+    100: '#E4EBF8',
+    200: '#C5D2EF',
+    300: '#9BB0E0',
+    400: '#5B78C4',
+    500: '#0F348F', // Core brand / buttons
+    600: '#0C2C78',
+    700: '#0A2463',
+    800: '#071B4A',
+    900: '#041230',
   },
   secondary: {
     50: '#ECFEFF',
@@ -81,11 +81,11 @@ export const colors = {
     700: '#B91C1C',
   },
   info: {
-    50: '#EFF6FF',
-    100: '#DBEAFE',
-    500: '#3B82F6',
-    600: '#2563EB',
-    700: '#1D4ED8',
+    50: '#F2F5FC',
+    100: '#E4EBF8',
+    500: '#5B78C4',
+    600: '#0F348F',
+    700: '#0A2463',
   },
 };
 
@@ -96,7 +96,7 @@ export const gradients = {
   brandDiagonal: `linear-gradient(135deg, ${colors.primary[500]} 0%, ${colors.primary[600]} 50%, ${colors.primary[800]} 100%)`,
   brandConic: `conic-gradient(from 0deg, ${colors.primary[500]}, ${colors.secondary[500]}, ${colors.primary[600]}, ${colors.primary[500]})`,
   page: `linear-gradient(180deg, ${colors.neutral[50]} 0%, ${colors.neutral[100]} 15%, ${colors.neutral[0]} 30%)`,
-  pageSoft: `linear-gradient(to bottom, rgba(37, 99, 235, 0.03) 0%, rgba(6, 182, 212, 0.02) 10%, #ffffff 20%)`,
+  pageSoft: `linear-gradient(to bottom, rgba(15, 52, 143, 0.03) 0%, rgba(6, 182, 212, 0.02) 10%, #ffffff 20%)`,
   authBlob: `linear-gradient(to bottom right, ${colors.primary[500]}, ${colors.secondary[500]})`,
 };
 
@@ -161,11 +161,11 @@ export const elevation = {
   none: 'none',
   xs: '0 1px 2px 0 rgba(15, 23, 42, 0.05)',
   sm: '0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.06)',
-  md: '0 4px 12px -2px rgba(37, 99, 235, 0.1), 0 2px 6px -1px rgba(37, 99, 235, 0.05)',
+  md: '0 4px 12px -2px rgba(15, 52, 143, 0.1), 0 2px 6px -1px rgba(15, 52, 143, 0.05)',
   lg: '0 10px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.08)',
   xl: '0 20px 40px -12px rgba(15, 23, 42, 0.15)',
-  brand: '0 8px 24px -4px rgba(37, 99, 235, 0.3)',
-  brandSoft: '0 4px 14px -2px rgba(147, 197, 253, 0.35)',
+  brand: '0 8px 24px -4px rgba(15, 52, 143, 0.3)',
+  brandSoft: '0 4px 14px -2px rgba(91, 120, 196, 0.35)',
 };
 
 export const motion = {

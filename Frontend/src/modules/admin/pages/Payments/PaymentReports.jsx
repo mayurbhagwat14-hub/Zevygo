@@ -20,8 +20,8 @@ import api from '../../../../services/api';
 // Color configurations for Modern Quick Export Report Cards
 const reportThemes = {
   blue: {
-    iconBg: 'bg-white border-2 border-blue-500 text-blue-600 shadow-2xs',
-    badge: 'bg-blue-50/70 text-blue-700 border border-blue-200/60'
+    iconBg: 'bg-white border-2 border-primary-400 text-primary-500 shadow-2xs',
+    badge: 'bg-primary-50/70 text-primary-600 border border-primary-200/60'
   },
   green: {
     iconBg: 'bg-white border-2 border-emerald-500 text-emerald-600 shadow-2xs',
@@ -60,7 +60,7 @@ const ReportCard = ({ title, description, icon: Icon, color, status, onGenerate,
         </div>
 
         {/* Title & Description */}
-        <h3 className="font-bold text-slate-900 text-sm mb-1 group-hover:text-blue-600 transition-colors tracking-tight">
+        <h3 className="font-bold text-slate-900 text-sm mb-1 group-hover:text-primary-500 transition-colors tracking-tight">
           {title}
         </h3>
         <p className="text-xs text-slate-500 leading-relaxed mb-5 line-clamp-2 font-normal">
@@ -72,7 +72,7 @@ const ReportCard = ({ title, description, icon: Icon, color, status, onGenerate,
       <button
         onClick={onGenerate}
         disabled={loading}
-        className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-blue-600 text-white shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer"
+        className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-primary-500 text-white shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer"
       >
         {loading ? (
           <FiRefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -88,7 +88,7 @@ const ReportCard = ({ title, description, icon: Icon, color, status, onGenerate,
 // Stats Card Component (Clean White Card with Colored Bordered Icon)
 const StatsCard = ({ title, value, subtitle, icon: Icon, color, trend }) => {
   const borderMap = {
-    blue: 'border-2 border-blue-500 text-blue-600',
+    blue: 'border-2 border-primary-400 text-primary-500',
     green: 'border-2 border-emerald-500 text-emerald-600',
     purple: 'border-2 border-purple-500 text-purple-600',
     orange: 'border-2 border-orange-500 text-orange-600',
@@ -528,7 +528,7 @@ const PaymentReports = () => {
                 key={report.id}
                 onClick={() => setActiveReport(report.id)}
                 className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeReport === report.id
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                  ? 'border-primary-500 text-primary-500 bg-primary-50/50'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                   }`}
               >

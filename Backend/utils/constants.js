@@ -6,6 +6,7 @@
 const USER_ROLES = {
   USER: 'USER',
   VENDOR: 'VENDOR',
+  /** @deprecated ZEVYGO has no Worker role — kept for legacy JWT compatibility */
   WORKER: 'WORKER',
   ADMIN: 'ADMIN'
 };
@@ -105,6 +106,12 @@ const KYC_STATUS = {
   RESUBMISSION_REQUIRED: 'RESUBMISSION_REQUIRED'
 };
 
+// ─── NEW: Service fulfillment (delivery vs on-site visit) ───
+const SERVICE_FULFILLMENT_TYPE = {
+  DELIVERY: 'DELIVERY',
+  ON_SITE: 'ON_SITE'
+};
+
 // ─── NEW: Booking Mode (per service listing) ───
 const BOOKING_MODE = {
   INSTANT: 'INSTANT',
@@ -150,5 +157,6 @@ module.exports = {
   KYC_STATUS,
   BOOKING_MODE,
   PRICING_MODEL,
-  VENDOR_ACCOUNT_STATUS
+  VENDOR_ACCOUNT_STATUS,
+  SERVICE_FULFILLMENT_TYPE
 };

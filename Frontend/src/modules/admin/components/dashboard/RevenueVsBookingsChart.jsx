@@ -86,7 +86,7 @@ const RevenueVsBookingsChart = ({ data, period = 'month' }) => {
             />
             <Tooltip content={<CustomTooltip />} />
             <Bar yAxisId="right" dataKey="orders" fill="#10b981" radius={[8, 8, 0, 0]} />
-            <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#0F348F" strokeWidth={2.5} dot={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

@@ -25,7 +25,7 @@ const DetailedServiceCard = memo(({ image, title, rating, reviews, price, origin
         gsap.to(card, {
           y: -6,
           scale: 1.01,
-          boxShadow: '0 14px 28px rgba(37, 99, 235, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05)',
+          boxShadow: '0 14px 28px rgba(15, 52, 143, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05)',
           duration: 0.3,
           ease: 'power2.out',
         });
@@ -76,7 +76,7 @@ const DetailedServiceCard = memo(({ image, title, rating, reviews, price, origin
       <div className="relative w-full h-26 sm:h-30 overflow-hidden bg-gray-100">
         {discount && (
           <div
-            className="absolute top-2 left-2 bg-[#2563EB] text-white text-[9.5px] font-black px-2 py-0.5 rounded shadow-xs z-10 uppercase tracking-wider"
+            className="absolute top-2 left-2 bg-[#0F348F] text-white text-[9.5px] font-black px-2 py-0.5 rounded shadow-xs z-10 uppercase tracking-wider"
           >
             {discount.toString().toUpperCase().includes('OFF') ? discount : `${discount}% OFF`}
           </div>
@@ -90,8 +90,8 @@ const DetailedServiceCard = memo(({ image, title, rating, reviews, price, origin
             decoding="async"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-blue-50/50">
-            <span className="text-[11px] font-semibold text-blue-600">No Image</span>
+          <div className="w-full h-full flex items-center justify-center bg-primary-50/50">
+            <span className="text-[11px] font-semibold text-primary-500">No Image</span>
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -101,7 +101,7 @@ const DetailedServiceCard = memo(({ image, title, rating, reviews, price, origin
       <div className="p-2.5 flex flex-col flex-1 justify-between">
         <div>
           {/* Title */}
-          <h3 className="text-[11.5px] sm:text-xs font-semibold text-gray-900 leading-snug mb-1 line-clamp-2 min-h-[30px] capitalize group-hover:text-blue-600 transition-colors">
+          <h3 className="text-[11.5px] sm:text-xs font-semibold text-gray-900 leading-snug mb-1 line-clamp-2 min-h-[30px] capitalize group-hover:text-primary-500 transition-colors">
             {title}
           </h3>
 
@@ -133,7 +133,7 @@ const DetailedServiceCard = memo(({ image, title, rating, reviews, price, origin
           </div>
 
           <button
-            className="shrink-0 text-[10.5px] font-bold px-2.5 py-1 rounded-md bg-[#2563EB] hover:bg-blue-700 text-white shadow-xs active:scale-95 transition-all whitespace-nowrap"
+            className="shrink-0 text-[10.5px] font-bold px-2.5 py-1 rounded-md bg-[#0F348F] hover:bg-primary-600 text-white shadow-xs active:scale-95 transition-all whitespace-nowrap"
             onClick={(e) => {
               e.stopPropagation();
               onAddClick?.();

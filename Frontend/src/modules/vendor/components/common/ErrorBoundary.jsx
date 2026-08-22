@@ -34,16 +34,16 @@ class ErrorBoundary extends React.Component {
               }}
               className="px-6 py-3 rounded-xl font-semibold text-white transition-all duration-300"
               style={{
-                background: '#2563EB',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                background: '#0F348F',
+                boxShadow: '0 4px 12px rgba(15, 52, 143, 0.3)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.4)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(15, 52, 143, 0.4)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(15, 52, 143, 0.3)';
               }}
             >
               Refresh Page

@@ -7,9 +7,9 @@ import Header from '../../components/layout/Header';
 import BottomNav from '../../components/layout/BottomNav';
 import { Button, EmptyState, Loader } from '../../../../components/ui';
 import PendingJobCard from '../../components/bookings/PendingJobCard';
-import { getBookings, assignWorker as assignWorkerApi, acceptBooking, rejectBooking } from '../../services/bookingService';
+import { getBookings, acceptBooking, rejectBooking } from '../../services/bookingService';
 import { ConfirmDialog } from '../../components/common';
-import { vendorDashboardService } from '../../services/dashboardService';
+import { getStatusLabel, resolveServiceFulfillmentType } from '../../../../utils/bookingStatusLabels';
 
 const FILTER_TABS = [
   { id: 'requests', label: 'Requests' },
@@ -18,6 +18,8 @@ const FILTER_TABS = [
   { id: 'completed', label: 'Completed' },
   { id: 'all', label: 'All' },
 ];
+
+
 
 const formatSchedule = (job) => {
   const instant =
@@ -49,11 +51,13 @@ const mapJobFromApi = (job) => ({
   advanceAmount: job.advanceAmount,
   balanceAmount: job.balanceAmount,
   paymentPhase: job.paymentPhase,
+  serviceFulfillmentType: job.serviceFulfillmentType,
   createdAt: job.createdAt,
   expiresAt: job.expiresAt,
   user: { name: job.userId?.name || 'Customer' },
   userId: job.userId,
   customerName: job.userId?.name || 'Customer',
+  customerPhoneHidden: job.customerPhoneHidden,
   location: {
     address: job.address?.addressLine1
       ? `${job.address.addressLine1}${job.address.city ? `, ${job.address.city}` : ''}`
@@ -77,7 +81,6 @@ const ActiveJobs = memo(() => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('requests');
   const [searchQuery, setSearchQuery] = useState('');
-  const [maxSearchTime, setMaxSearchTime] = useState(5);
   const [loadingAction, setLoadingAction] = useState({ id: null, type: null });
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -89,8 +92,9 @@ const ActiveJobs = memo(() => {
   const loadJobs = useCallback(async (currentFilter, currentSearch) => {
     try {
       setLoading(true);
+      const statusParam = currentFilter;
       const response = await getBookings({
-        status: currentFilter,
+        status: statusParam,
         q: currentSearch,
         limit: 50
       });
@@ -112,20 +116,17 @@ const ActiveJobs = memo(() => {
   }, [filter, searchQuery, loadJobs]);
 
   useEffect(() => {
-    const onUpdate = () => loadJobs(filter, searchQuery);
+    let timer = null;
+    const onUpdate = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => loadJobs(filter, searchQuery), 800);
+    };
     window.addEventListener('vendorJobsUpdated', onUpdate);
-    return () => window.removeEventListener('vendorJobsUpdated', onUpdate);
+    return () => {
+      window.removeEventListener('vendorJobsUpdated', onUpdate);
+      if (timer) clearTimeout(timer);
+    };
   }, [loadJobs, filter, searchQuery]);
-
-  useEffect(() => {
-    vendorDashboardService.getDashboardStats()
-      .then((res) => {
-        if (res.success && res.data?.config?.maxSearchTime) {
-          setMaxSearchTime(res.data.config.maxSearchTime);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   const handleAccept = async (e, booking) => {
     e?.stopPropagation();
@@ -134,9 +135,11 @@ const ActiveJobs = memo(() => {
     setLoadingAction({ id: bookingId, type: 'accept' });
     try {
       const res = await acceptBooking(bookingId);
-      const advance = res?.data?.advanceAmount || booking.advanceAmount;
+      const data = res?.data || res;
+      const advance = data?.advanceAmount || booking.advanceAmount;
+      const needsAdvance = data?.requireAdvancePayment && Number(advance) > 0;
       toast.success(
-        advance
+        needsAdvance
           ? `Accepted! Waiting for customer to pay advance ₹${Number(advance).toLocaleString('en-IN')}`
           : 'Booking accepted!'
       );
@@ -144,7 +147,7 @@ const ActiveJobs = memo(() => {
         .filter((j) => String(j.id || j._id) !== String(bookingId));
       localStorage.setItem('vendorPendingJobs', JSON.stringify(pending));
       window.dispatchEvent(new Event('vendorJobsUpdated'));
-      setFilter('awaiting_payment');
+      setFilter(needsAdvance ? 'awaiting_payment' : 'in_progress');
     } catch (error) {
       toast.error(error?.response?.data?.message || 'Failed to accept booking');
     } finally {
@@ -172,25 +175,6 @@ const ActiveJobs = memo(() => {
     }
   };
 
-  const handleAssignToSelf = async (jobId) => {
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Assign to Self',
-      message: 'Are you sure you want to do this job yourself?',
-      onConfirm: async () => {
-        try {
-          const response = await assignWorkerApi(jobId, 'SELF');
-          if (response?.success) {
-            toast.success('Assigned to yourself!');
-            loadJobs(filter, searchQuery);
-          }
-        } catch (error) {
-          toast.error('Failed to assign to yourself');
-        }
-      }
-    });
-  };
-
   const hexToRgba = useCallback((hex, alpha) => {
     if (!hex || typeof hex !== 'string') return `rgba(0,0,0,${alpha})`;
     const r = parseInt(hex.slice(1, 3), 16);
@@ -203,9 +187,9 @@ const ActiveJobs = memo(() => {
     const colors = {
       REQUESTED: '#F59E0B',
       SEARCHING: '#F59E0B',
-      AWAITING_PAYMENT: '#3B82F6',
+      AWAITING_PAYMENT: '#0F348F',
       ACCEPTED: '#F59E0B',
-      ASSIGNED: '#3B82F6',
+      ASSIGNED: '#0F348F',
       CONFIRMED: '#10B981',
       JOURNEY_STARTED: '#F59E0B',
       VISITED: '#8B5CF6',
@@ -217,7 +201,7 @@ const ActiveJobs = memo(() => {
   }, []);
 
   const emptyMessages = {
-    requests: { title: 'No new requests', message: 'Customer booking requests will appear here.' },
+    requests: { title: 'No requests', message: 'Booking requests will appear here.' },
     awaiting_payment: { title: 'No pending advance', message: 'After you accept, customer advance payments show here.' },
     in_progress: { title: 'No active jobs', message: 'Confirmed jobs in progress will appear here.' },
     completed: { title: 'No completed jobs', message: 'Finished jobs will appear here.' },
@@ -262,8 +246,8 @@ const ActiveJobs = memo(() => {
           </div>
 
           {filter === 'requests' && !loading && (
-            <p className="text-xs text-neutral-500 mb-4 -mt-2">
-              Review details, accept the request — customer pays advance, then service starts.
+            <p className="text-xs text-neutral-500 mb-4">
+              Review details, accept the request — customer pays advance (if required), then service starts.
             </p>
           )}
 
@@ -281,8 +265,7 @@ const ActiveJobs = memo(() => {
                 <PendingJobCard
                   key={job.id}
                   booking={job}
-                  showTimer
-                  maxSearchTimeMins={job.isDirectRequest ? 60 : maxSearchTime}
+                  showTimer={false}
                   loadingAction={loadingAction.id === job.id ? loadingAction.type : null}
                   onClick={() => navigate(`/vendor/booking/${job.id}`)}
                   onAccept={handleAccept}
@@ -296,23 +279,23 @@ const ActiveJobs = memo(() => {
                 <div
                   key={job.id}
                   onClick={() => navigate(`/vendor/booking/${job.id}`)}
-                  className="bg-white rounded-2xl p-4 border-2 border-blue-100 shadow-md cursor-pointer active:scale-[0.99] transition-all"
+                  className="bg-white rounded-2xl p-4 border-2 border-primary-100 shadow-md cursor-pointer active:scale-[0.99] transition-all"
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
-                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Awaiting Advance</p>
+                      <p className="text-[10px] font-bold text-primary-500 uppercase tracking-wider mb-1">Awaiting Advance</p>
                       <h3 className="font-bold text-gray-900">{job.serviceType}</h3>
                       <p className="text-xs text-gray-500 mt-1">{job.customerName}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-black text-blue-600">
+                      <p className="text-lg font-black text-primary-500">
                         ₹{(job.advanceAmount || 0).toLocaleString('en-IN')}
                       </p>
                       <p className="text-[10px] text-gray-400">advance due</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-600 bg-blue-50 rounded-lg p-2.5">
-                    <FiCreditCard className="w-4 h-4 text-blue-500 shrink-0" />
+                  <div className="flex items-center gap-2 text-xs text-gray-600 bg-primary-50 rounded-lg p-2.5">
+                    <FiCreditCard className="w-4 h-4 text-primary-400 shrink-0" />
                     <span>Customer must pay advance before service can start. Balance ₹{(job.balanceAmount || 0).toLocaleString('en-IN')} after service.</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-gray-500 mt-3">
@@ -346,7 +329,7 @@ const ActiveJobs = memo(() => {
                             <h3 className="font-bold text-gray-800 text-base">{job.serviceType}</h3>
                           </div>
                           <span className="text-xs font-bold px-3 py-1 rounded-full text-white" style={{ background: statusColor }}>
-                            {(job.status || '').replace(/_/g, ' ')}
+                            {getStatusLabel(job.status, resolveServiceFulfillmentType({ booking: job }))}
                           </span>
                         </div>
                       </div>
@@ -364,19 +347,6 @@ const ActiveJobs = memo(() => {
                           <span>{formatSchedule(job)}</span>
                         </div>
                       </div>
-                      {['ACCEPTED', 'CONFIRMED'].includes(job.status?.toUpperCase()) && !job.assignedTo && (
-                        <div className="mt-4 pt-3 border-t border-neutral-100">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            fullWidth
-                            onClick={(e) => { e.stopPropagation(); handleAssignToSelf(job.id); }}
-                            icon={FiUser}
-                          >
-                            Do it myself
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 );

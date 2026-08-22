@@ -13,6 +13,10 @@ import LogoLoader from '../../../../components/common/LogoLoader';
 import PaymentVerificationModal from '../../components/booking/PaymentVerificationModal';
 import { useBranding } from '../../../../context/BrandingContext';
 import { colors } from '../../../../theme/tokens';
+import {
+  getTrackingHeadline,
+  resolveServiceFulfillmentType
+} from '../../../../utils/bookingStatusLabels';
 
 const RAZORPAY_THEME = colors.primary[600];
 
@@ -70,6 +74,15 @@ const BookingTrack = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+  const fulfillmentType = useMemo(
+    () => resolveServiceFulfillmentType({ booking }),
+    [booking?.serviceFulfillmentType]
+  );
+
+  const trackingHeadline = booking
+    ? getTrackingHeadline(booking.status, fulfillmentType)
+    : 'Tracking';
 
   const getChargeAmount = (b) => {
     if (!b) return 0;
@@ -208,6 +221,7 @@ const BookingTrack = () => {
 
   // Track if initial location was set from socket
   const locationFromSocketRef = useRef(false);
+  const hasInitializedLocation = useRef(false);
 
   // Main function to fetch booking data - accessible to all effects
   const refreshBooking = React.useCallback(async (isFirstLoad = false) => {
@@ -218,7 +232,8 @@ const BookingTrack = () => {
 
         // Geocoding and Initial Location Logic
         // Only run this complex logic on first load or if coords/location are missing
-        if (isFirstLoad || !coords) {
+        if (isFirstLoad || !hasInitializedLocation.current) {
+          hasInitializedLocation.current = true;
           const geocoder = new window.google.maps.Geocoder();
           const bAddr = response.data.address || {};
 
@@ -256,7 +271,7 @@ const BookingTrack = () => {
     } finally {
       if (isFirstLoad) setLoading(false);
     }
-  }, [id, coords]);
+  }, [id]);
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -271,7 +286,8 @@ const BookingTrack = () => {
       const intervalId = setInterval(() => refreshBooking(false), 10000); // Poll every 10s
       return () => clearInterval(intervalId);
     }
-  }, [isLoaded, refreshBooking]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded]);
 
   const socket = useAppNotifications('user');
 
@@ -734,7 +750,11 @@ const BookingTrack = () => {
               <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-64 flex flex-col items-center">
                 <div className="bg-white/90 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl border border-primary-100 flex items-center gap-3 animate-bounce-slow">
                   <div className="w-3 h-3 bg-primary-500 rounded-full animate-ping"></div>
-                  <span className="text-xs font-bold text-gray-700">Waiting for rider location...</span>
+                  <span className="text-xs font-bold text-gray-700">
+                    {fulfillmentType === 'DELIVERY'
+                      ? 'Waiting for delivery partner location...'
+                      : 'Waiting for provider location...'}
+                  </span>
                 </div>
               </div>
             </OverlayView>
@@ -783,7 +803,7 @@ const BookingTrack = () => {
               <span className="w-2 h-2 rounded-full bg-primary-600 animate-pulse"></span>
               {duration ? `Arriving in ${duration}` : 'Calculating time...'}
             </p>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">On the way</h2>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">{trackingHeadline}</h2>
           </div>
           {distance && (
             <div className="text-right">
@@ -854,7 +874,7 @@ const BookingTrack = () => {
         {/* Advance Payment — provider accepted, pay to confirm */}
         {booking?.status?.toLowerCase() === 'awaiting_payment'
           && booking?.paymentPhase === 'advance_pending' && (
-          <div className="mb-4 relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-5 shadow-lg">
+          <div className="mb-4 relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-500 via-blue-600 to-indigo-700 p-5 shadow-lg">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16 blur-2xl" />
             <div className="relative z-10">
               <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Advance Payment Required</p>
@@ -867,7 +887,7 @@ const BookingTrack = () => {
               <button
                 onClick={handleOnlinePayment}
                 disabled={paying}
-                className="w-full py-4 bg-white text-blue-600 rounded-xl font-black text-sm shadow-xl hover:bg-blue-50 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                className="w-full py-4 bg-white text-primary-500 rounded-xl font-black text-sm shadow-xl hover:bg-primary-50 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 <FiDollarSign className="w-4 h-4" />
                 {paying ? 'Processing...' : 'Pay Advance Now'}

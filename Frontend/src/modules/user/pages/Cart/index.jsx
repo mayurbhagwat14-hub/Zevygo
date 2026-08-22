@@ -134,78 +134,75 @@ const Cart = () => {
                   <Card key={category} padding="md" className="!rounded-2xl">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-primary-50 border-2 border-primary-100">
+                        <div className="w-16 h-16 rounded-[20px] flex items-center justify-center shrink-0 overflow-hidden bg-[#1a3673]/5 border border-[#1a3673]/10">
                           <img
                             src={categoryIcon}
                             alt=""
-                            className="w-12 h-12 object-contain"
+                            className="w-10 h-10 object-contain drop-shadow-sm"
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-bold text-neutral-900 mb-1 truncate">
+                          <h3 className="text-[17px] font-black text-gray-900 mb-1 tracking-tight truncate">
                             {category}
                           </h3>
-                          <p className="text-sm text-neutral-500">
-                            {serviceCount} {serviceCount === 1 ? 'service' : 'services'} · ₹
-                            {categoryTotal.toLocaleString('en-IN')}
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                            {serviceCount} {serviceCount === 1 ? 'item' : 'items'}
                           </p>
                         </div>
                       </div>
-                      <Button
-                        variant="icon"
-                        icon={FiTrash2}
-                        aria-label={`Remove ${category}`}
-                        onClick={() => handleDeleteCategory(category)}
-                        className="text-error-500 hover:bg-error-50"
-                      />
+                      <div className="text-right flex flex-col justify-center pr-2">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Total</span>
+                        <span className="text-[18px] font-black text-[#1a3673] leading-none">₹{categoryTotal.toLocaleString('en-IN')}</span>
+                      </div>
                     </div>
 
-                    <div className="mb-4 space-y-1">
+                    <div className="mb-5 space-y-3 pt-2">
                       {items.map((item) => (
                         <div
                           key={item._id || item.id}
                           className="flex items-start justify-between py-2.5 border-b border-neutral-100 last:border-0"
                         >
-                          <div className="flex-1 min-w-0 pr-2">
-                            <p className="text-sm text-neutral-800 font-medium">
-                              {item.title} × {item.serviceCount || 1}
+                          <div className="flex-1 min-w-0 pr-3">
+                            <p className="text-[15px] text-gray-900 font-bold mb-0.5">
+                              {item.title} 
                             </p>
                             {item.description && (
-                              <p className="text-xs text-neutral-500 mt-0.5">{item.description}</p>
+                              <p className="text-xs font-medium text-gray-500 line-clamp-1">{item.description}</p>
                             )}
+                            <span className="inline-block mt-1.5 text-[10px] font-black px-2 py-0.5 rounded border border-[#1a3673]/20 text-[#1a3673] bg-[#1a3673]/5">
+                              QTY: {item.serviceCount || 1}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-sm font-semibold text-neutral-900">
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <span className="text-[15px] font-black text-gray-900">
                               ₹{(item.price || 0).toLocaleString('en-IN')}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleDelete(item._id || item.id)}
-                              className="p-1.5 hover:bg-error-50 rounded-lg transition-colors"
+                              className="p-1.5 hover:bg-red-50 rounded-lg transition-colors group"
                               aria-label="Remove item"
                             >
-                              <FiTrash2 className="w-4 h-4 text-error-500" />
+                              <FiTrash2 className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
                             </button>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        className="flex-1"
+                    <div className="flex gap-3 pt-2 border-t border-gray-50">
+                      <button
                         onClick={() => handleAddServices(category)}
+                        className="flex-1 py-3.5 rounded-[16px] font-bold text-[14px] text-[#1a3673] bg-[#1a3673]/5 border border-[#1a3673]/20 active:scale-95 transition-all"
                       >
-                        Add Services
-                      </Button>
-                      <Button
-                        variant="primary"
-                        className="flex-1"
+                        + Add More
+                      </button>
+                      <button
                         onClick={() => handleCategoryCheckout(category)}
+                        className="flex-1 py-3.5 rounded-[16px] font-bold text-[14px] text-white bg-[#1a3673] hover:bg-[#122652] active:scale-95 transition-all shadow-[0_8px_20px_rgba(26,54,115,0.2)]"
                       >
-                        Book
-                      </Button>
+                        Checkout 
+                      </button>
                     </div>
                   </Card>
                 );

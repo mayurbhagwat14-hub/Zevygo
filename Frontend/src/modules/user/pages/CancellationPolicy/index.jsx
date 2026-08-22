@@ -120,8 +120,8 @@ const CancellationPolicy = () => {
         {/* Fee Breakdown */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-blue-50 rounded-xl">
-              <FiInfo className="w-5 h-5 text-blue-600" />
+            <div className="p-2 bg-primary-50 rounded-xl">
+              <FiInfo className="w-5 h-5 text-primary-500" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900">Why do we charge a fee?</h2>

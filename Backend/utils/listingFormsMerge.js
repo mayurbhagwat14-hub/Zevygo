@@ -59,7 +59,40 @@ const mergeListingForms = (commonForms = [], categoryForms = []) => {
   return merged;
 };
 
+/**
+ * Ensure every category can collect packages/blocks (not only Driver).
+ */
+const ensurePackagesForm = (forms = [], category = null) => {
+  const list = Array.isArray(forms) ? [...forms] : [];
+  if (list.some((f) => f?.type === 'menu')) return list;
+
+  const title =
+    category?.listingSectionConfig?.menu?.title &&
+    category.listingSectionConfig.menu.title !== 'Menu'
+      ? category.listingSectionConfig.menu.title
+      : 'Packages & Blocks';
+
+  const insertAt = Math.max(0, list.findIndex((f) => f?.type === 'fields') + 1);
+  list.splice(insertAt, 0, {
+    id: 'auto_packages',
+    key: 'menu',
+    title,
+    type: 'menu',
+    enabled: true,
+    order: insertAt,
+    fields: category?.catalogItemSchema || []
+  });
+  return list;
+};
+
+const resolveListingForms = (commonForms = [], category = null) => {
+  const merged = mergeListingForms(commonForms, category?.listingForms || []);
+  return ensurePackagesForm(merged, category);
+};
+
 module.exports = {
   normalizeListingForm,
-  mergeListingForms
+  mergeListingForms,
+  ensurePackagesForm,
+  resolveListingForms
 };

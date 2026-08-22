@@ -9,6 +9,7 @@ export { default as LogoLoader } from './LogoLoader.jsx';
 export { default as OptimizedImage } from './OptimizedImage.jsx';
 export { default as OptimizedVideo } from './OptimizedVideo.jsx';
 export { default as LazyImage } from './LazyImage.jsx';
+export { default as ScrollToTop } from './ScrollToTop.jsx';
 export * from './SkeletonLoaders.jsx';
 
 // Shared UI (also available from components/ui)

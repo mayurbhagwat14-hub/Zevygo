@@ -347,7 +347,7 @@ const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
                     key={brand.id}
                     onClick={() => setActiveBrandId(brand.id)}
                     className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center gap-3 ${activeBrandId === brand.id
-                      ? 'bg-blue-50 border-blue-500 shadow-sm ring-1 ring-blue-200'
+                      ? 'bg-primary-50 border-primary-400 shadow-sm ring-1 ring-blue-200'
                       : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                       }`}
                   >
@@ -359,7 +359,7 @@ const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className={`font-bold text-sm truncate ${activeBrandId === brand.id ? 'text-blue-700' : 'text-gray-800'}`}>
+                      <div className={`font-bold text-sm truncate ${activeBrandId === brand.id ? 'text-primary-600' : 'text-gray-800'}`}>
                         {brand.title}
                       </div>
                       <div className="text-xs text-gray-400 truncate" title={
@@ -475,7 +475,7 @@ const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
                         </div>
 
                         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 p-1 rounded-lg backdrop-blur-sm shadow-sm">
-                          <button onClick={() => handleEdit(service)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded">
+                          <button onClick={() => handleEdit(service)} className="p-1.5 text-primary-500 hover:bg-primary-50 rounded">
                             <FiEdit2 className="w-3.5 h-3.5" />
                           </button>
                           <button onClick={() => handleDelete(service.id || service._id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded">

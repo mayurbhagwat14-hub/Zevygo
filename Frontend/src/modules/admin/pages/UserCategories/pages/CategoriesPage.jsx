@@ -6,6 +6,7 @@ import Modal from "../components/Modal";
 import ModeSelector from "../components/ModeSelector";
 import VendorFormBuilderModal from "../components/VendorFormBuilderModal";
 import ListingFormSetupModal from "../components/ListingFormSetupModal";
+import CategoryConfigBadges from "../../../components/CategoryConfigBadges";
 import { ensureIds, saveCatalog, slugify, toAssetUrl } from "../utils";
 
 import { categoryService, serviceService } from "../../../../../services/catalogService";
@@ -21,6 +22,21 @@ const categorySchema = z.object({
   showOnHome: z.boolean(),
 });
 
+const mapSavedCategory = (cat, formFallback = {}) => ({
+  id: cat.id,
+  title: cat.title,
+  slug: cat.slug,
+  homeIconUrl: cat.homeIconUrl || "",
+  homeBadge: cat.homeBadge || "",
+  hasSaleBadge: cat.hasSaleBadge || false,
+  showOnHome: cat.showOnHome !== false,
+  homeOrder: cat.homeOrder || 0,
+  pricingLimits: cat.pricingLimits || { minPrice: 0, maxPrice: 999999 },
+  bookingMode: cat.bookingMode || formFallback.bookingMode || 'BOTH',
+  serviceFulfillmentType: cat.serviceFulfillmentType || formFallback.serviceFulfillmentType || 'ON_SITE',
+  paymentConfig: cat.paymentConfig || formFallback.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: 0 },
+});
+
 const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -34,7 +50,9 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
     hasSaleBadge: false,
     showOnHome: true,
     pricingLimits: { minPrice: '', maxPrice: '' },
-    paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' }
+    paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' },
+    bookingMode: 'BOTH',
+    serviceFulfillmentType: 'ON_SITE'
   });
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
@@ -74,6 +92,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
             showOnHome: cat.showOnHome !== false,
             pricingLimits: cat.pricingLimits || { minPrice: '', maxPrice: '' },
             paymentConfig: cat.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: '' },
+            bookingMode: cat.bookingMode || 'BOTH',
+            serviceFulfillmentType: cat.serviceFulfillmentType || 'ON_SITE',
           }));
 
           // Update catalog with fetched categories
@@ -102,7 +122,9 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         hasSaleBadge: false,
         showOnHome: true,
         pricingLimits: { minPrice: '', maxPrice: '' },
-        paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' }
+        paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' },
+        bookingMode: 'BOTH',
+        serviceFulfillmentType: 'ON_SITE'
       });
       return;
     }
@@ -116,6 +138,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       showOnHome: safe.showOnHome !== false,
       pricingLimits: safe.pricingLimits || { minPrice: '', maxPrice: '' },
       paymentConfig: safe.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: '' },
+      bookingMode: safe.bookingMode || 'BOTH',
+      serviceFulfillmentType: safe.serviceFulfillmentType || 'ON_SITE',
     });
   }, [editing]);
 
@@ -131,7 +155,9 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       hasSaleBadge: false,
       showOnHome: true,
       pricingLimits: { minPrice: '', maxPrice: '' },
-      paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' }
+      paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' },
+      bookingMode: 'BOTH',
+      serviceFulfillmentType: 'ON_SITE'
     });
     setIsModalOpen(false);
   };
@@ -195,6 +221,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
             ? Math.min(100, Math.max(0, Number(form.paymentConfig.advancePaymentPercent || 0)))
             : 0
         },
+        bookingMode: form.bookingMode || 'BOTH',
+        serviceFulfillmentType: form.serviceFulfillmentType || 'ON_SITE',
         cityIds: selectedCity ? [selectedCity] : [],
       };
 
@@ -219,17 +247,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         // This is a local ID, create new in backend
         const response = await categoryService.create(categoryData);
         if (response.success) {
-          savedCategory = {
-            id: response.category.id,
-            title: response.category.title,
-            slug: response.category.slug,
-            homeIconUrl: response.category.homeIconUrl || "",
-            homeBadge: response.category.homeBadge || "",
-            hasSaleBadge: response.category.hasSaleBadge || false,
-            showOnHome: response.category.showOnHome !== false,
-            homeOrder: response.category.homeOrder || 0,
-            pricingLimits: response.category.pricingLimits || { minPrice: 0, maxPrice: 999999 },
-          };
+          savedCategory = mapSavedCategory(response.category, form);
         } else {
           throw new Error(response.message || 'Failed to create category');
         }
@@ -237,17 +255,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         // Update existing category in backend
         const response = await categoryService.update(editingId, categoryData);
         if (response.success) {
-          savedCategory = {
-            id: response.category.id,
-            title: response.category.title,
-            slug: response.category.slug,
-            homeIconUrl: response.category.homeIconUrl || "",
-            homeBadge: response.category.homeBadge || "",
-            hasSaleBadge: response.category.hasSaleBadge || false,
-            showOnHome: response.category.showOnHome !== false,
-            homeOrder: response.category.homeOrder || 0,
-            pricingLimits: response.category.pricingLimits || { minPrice: 0, maxPrice: 999999 },
-          };
+          savedCategory = mapSavedCategory(response.category, form);
         } else {
           throw new Error(response.message || 'Failed to update category');
         }
@@ -255,17 +263,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         // Create new category
         const response = await categoryService.create(categoryData);
         if (response.success) {
-          savedCategory = {
-            id: response.category.id,
-            title: response.category.title,
-            slug: response.category.slug,
-            homeIconUrl: response.category.homeIconUrl || "",
-            homeBadge: response.category.homeBadge || "",
-            hasSaleBadge: response.category.hasSaleBadge || false,
-            showOnHome: response.category.showOnHome !== false,
-            homeOrder: response.category.homeOrder || 0,
-            pricingLimits: response.category.pricingLimits || { minPrice: 0, maxPrice: 999999 },
-          };
+          savedCategory = mapSavedCategory(response.category, form);
         } else {
           throw new Error(response.message || 'Failed to create category');
         }
@@ -491,6 +489,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                   <th className="text-left py-3 px-4 text-sm font-bold text-gray-700 w-20">Icon</th>
                   <th className="text-left py-3 px-4 text-sm font-bold text-gray-700">Name</th>
                   <th className="text-left py-3 px-4 text-sm font-bold text-gray-700">Slug</th>
+                  <th className="text-left py-3 px-4 text-sm font-bold text-gray-700">Booking config</th>
                   <th className="text-left py-3 px-4 text-sm font-bold text-gray-700">Badge</th>
                   <th className="text-center py-3 px-4 text-sm font-bold text-gray-700 w-20">
                     Order
@@ -526,8 +525,11 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                       <div className="text-sm text-gray-600">{c.slug || "—"}</div>
                     </td>
                     <td className="py-4 px-4">
+                      <CategoryConfigBadges category={c} />
+                    </td>
+                    <td className="py-4 px-4">
                       {c.homeBadge ? (
-                        <span className="inline-block px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded">{c.homeBadge}</span>
+                        <span className="inline-block px-2 py-1 text-xs font-semibold bg-primary-100 text-primary-600 rounded">{c.homeBadge}</span>
                       ) : (
                         <span className="text-sm text-gray-400">—</span>
                       )}
@@ -537,7 +539,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                         <button
                           onClick={() => moveCategoryUp(c.id, idx)}
                           disabled={idx === 0 || loading}
-                          className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          className="p-1 rounded text-gray-400 hover:text-primary-500 hover:bg-primary-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                           title="Move Up"
                         >
                           <FiChevronUp className="w-4 h-4" />
@@ -546,7 +548,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                         <button
                           onClick={() => moveCategoryDown(c.id, idx)}
                           disabled={idx === categories.length - 1 || loading}
-                          className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          className="p-1 rounded text-gray-400 hover:text-primary-500 hover:bg-primary-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                           title="Move Down"
                         >
                           <FiChevronDown className="w-4 h-4" />
@@ -586,7 +588,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                             setEditingId(c.id);
                             setIsModalOpen(true);
                           }}
-                          className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                          className="p-2 rounded-lg bg-primary-50 text-primary-500 hover:bg-primary-100 transition-colors"
                           title="Edit Category Details"
                         >
                           <FiEdit2 className="w-4 h-4" />
@@ -658,8 +660,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               {uploadingIcon && (
-                <div className="flex items-center gap-2 text-blue-600">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                <div className="flex items-center gap-2 text-primary-500">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-500"></div>
                   <span className="text-sm font-medium">Uploading...</span>
                 </div>
               )}
@@ -731,6 +733,56 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-2">Vendors will not be able to set a base price outside these limits.</p>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100">
+            <h4 className="text-sm font-bold text-gray-900 mb-1">Booking Modes (this category)</h4>
+            <p className="text-xs text-gray-500 mb-3">Vendors can only offer listing modes within what you allow here.</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'INSTANT', label: '⚡ Instant only' },
+                { value: 'SCHEDULED', label: '📅 Scheduled only' },
+                { value: 'BOTH', label: '✅ Instant + Scheduled' },
+                { value: 'REQUEST_QUOTE', label: '💬 Quote only' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, bookingMode: opt.value }))}
+                  className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                    form.bookingMode === opt.value
+                      ? 'bg-primary-600 text-white border-primary-600'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-primary-300'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100">
+            <h4 className="text-sm font-bold text-gray-900 mb-1">Service Fulfillment</h4>
+            <p className="text-xs text-gray-500 mb-3">Controls status labels and live tracking copy (delivery vs on-site visit).</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'ON_SITE', label: '🏠 On-site visit' },
+                { value: 'DELIVERY', label: '🛵 Delivery to customer' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, serviceFulfillmentType: opt.value }))}
+                  className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                    (form.serviceFulfillmentType || 'ON_SITE') === opt.value
+                      ? 'bg-primary-600 text-white border-primary-600'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-primary-300'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="pt-4 border-t border-gray-100">
@@ -813,7 +865,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                 onDragEnd={handleDragEnd}
                 className={`
                   flex items-center gap-3 p-3 border rounded-lg cursor-move transition-all
-                  ${draggedItem === index ? 'opacity-50 bg-blue-50 border-blue-300' : 'bg-white border-gray-200 hover:border-blue-300'}
+                  ${draggedItem === index ? 'opacity-50 bg-primary-50 border-blue-300' : 'bg-white border-gray-200 hover:border-blue-300'}
                   ${draggedItem !== null && draggedItem !== index ? 'hover:bg-gray-50' : ''}
                 `}
               >

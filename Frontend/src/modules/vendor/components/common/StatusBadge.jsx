@@ -10,7 +10,7 @@ const StatusBadge = ({ status, size = 'md' }) => {
     },
     ACCEPTED: {
       label: 'Accepted',
-      color: '#3B82F6',
+      color: '#0F348F',
       bgColor: '#DBEAFE',
     },
     ASSIGNED: {

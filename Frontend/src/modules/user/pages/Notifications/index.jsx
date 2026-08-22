@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiCheck, FiArrowLeft, FiTrash2, FiX, FiBell } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
@@ -150,7 +150,7 @@ const Notifications = () => {
 
   const accentHex = {
     success: '#10b981',
-    primary: '#2563eb',
+    primary: '#0F348F',
     warning: '#f59e0b',
     neutral: '#6b7280',
   };

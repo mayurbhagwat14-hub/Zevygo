@@ -305,6 +305,13 @@ const bookingSchema = new mongoose.Schema({
     required: [true, 'Booking type is required'],
     index: true
   },
+  /** Copied from category at booking time — drives status labels & tracking copy */
+  serviceFulfillmentType: {
+    type: String,
+    enum: ['DELIVERY', 'ON_SITE'],
+    default: 'ON_SITE',
+    index: true
+  },
   status: {
     type: String,
     enum: Object.values(BOOKING_STATUS),

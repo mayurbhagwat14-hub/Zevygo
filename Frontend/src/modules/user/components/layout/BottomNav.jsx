@@ -42,10 +42,10 @@ const BottomNav = React.memo(({ onBookClick }) => {
           type="button"
           onClick={() => navigate('/user')}
           className={`flex flex-col items-center justify-center w-14 h-9.5 transition-all ${
-            activeTab === 'home' ? 'text-blue-500 font-bold' : 'text-slate-400 hover:text-white'
+            activeTab === 'home' ? 'text-primary-400 font-bold' : 'text-slate-400 hover:text-white'
           }`}
         >
-          {activeTab === 'home' ? <HiHome className="w-4.5 h-4.5 text-blue-500" /> : <FiHome className="w-4.5 h-4.5" />}
+          {activeTab === 'home' ? <HiHome className="w-4.5 h-4.5 text-primary-400" /> : <FiHome className="w-4.5 h-4.5" />}
           <span className="text-[8.5px] mt-[1px]">Home</span>
         </button>
 
@@ -54,10 +54,10 @@ const BottomNav = React.memo(({ onBookClick }) => {
           type="button"
           onClick={() => navigate('/user/my-bookings')}
           className={`flex flex-col items-center justify-center w-14 h-9.5 transition-all ${
-            activeTab === 'bookings' ? 'text-blue-500 font-bold' : 'text-slate-400 hover:text-white'
+            activeTab === 'bookings' ? 'text-primary-400 font-bold' : 'text-slate-400 hover:text-white'
           }`}
         >
-          {activeTab === 'bookings' ? <HiCalendar className="w-4.5 h-4.5 text-blue-500" /> : <FiCalendar className="w-4.5 h-4.5" />}
+          {activeTab === 'bookings' ? <HiCalendar className="w-4.5 h-4.5 text-primary-400" /> : <FiCalendar className="w-4.5 h-4.5" />}
           <span className="text-[8.5px] mt-[1px]">Bookings</span>
         </button>
 
@@ -66,10 +66,10 @@ const BottomNav = React.memo(({ onBookClick }) => {
           type="button"
           onClick={() => navigate('/user/cart')}
           className={`flex flex-col items-center justify-center w-14 h-9.5 relative transition-all ${
-            activeTab === 'cart' ? 'text-blue-500 font-bold' : 'text-slate-400 hover:text-white'
+            activeTab === 'cart' ? 'text-primary-400 font-bold' : 'text-slate-400 hover:text-white'
           }`}
         >
-          {activeTab === 'cart' ? <HiShoppingCart className="w-4.5 h-4.5 text-blue-500" /> : <FiShoppingCart className="w-4.5 h-4.5" />}
+          {activeTab === 'cart' ? <HiShoppingCart className="w-4.5 h-4.5 text-primary-400" /> : <FiShoppingCart className="w-4.5 h-4.5" />}
           {cartCount > 0 && (
             <span className="absolute top-0.5 right-2 bg-rose-500 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center ring-2 ring-[#0B1528]">
               {cartCount > 9 ? '9+' : cartCount}
@@ -83,10 +83,10 @@ const BottomNav = React.memo(({ onBookClick }) => {
           type="button"
           onClick={() => navigate('/user/account')}
           className={`flex flex-col items-center justify-center w-14 h-9.5 transition-all ${
-            activeTab === 'account' ? 'text-blue-500 font-bold' : 'text-slate-400 hover:text-white'
+            activeTab === 'account' ? 'text-primary-400 font-bold' : 'text-slate-400 hover:text-white'
           }`}
         >
-          {activeTab === 'account' ? <HiUser className="w-4.5 h-4.5 text-blue-500" /> : <FiUser className="w-4.5 h-4.5" />}
+          {activeTab === 'account' ? <HiUser className="w-4.5 h-4.5 text-primary-400" /> : <FiUser className="w-4.5 h-4.5" />}
           <span className="text-[8.5px] mt-[1px]">Profile</span>
         </button>
       </div>

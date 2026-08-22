@@ -1,5 +1,6 @@
 import React from 'react';
-import { FiMapPin, FiStar, FiClock } from 'react-icons/fi';
+import { FiMapPin, FiStar } from 'react-icons/fi';
+import BookingModeBadge from '../../user/components/common/BookingModeBadge';
 
 const displayPrice = (pricing = {}) =>
   pricing.basePrice ||
@@ -86,7 +87,7 @@ const ListingBlockPreview = ({ listing, vendorFormSchema = [] }) => {
             <span className="inline-flex items-center gap-1"><FiStar className="w-3 h-3" />{listing.experience} yrs</span>
           )}
           {listing.bookingMode && (
-            <span className="inline-flex items-center gap-1"><FiClock className="w-3 h-3" />{listing.bookingMode}</span>
+            <BookingModeBadge mode={listing.bookingMode} size="xs" />
           )}
         </div>
 

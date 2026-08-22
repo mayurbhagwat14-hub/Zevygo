@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
@@ -72,6 +72,15 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const lastJobsUpdatedAt = useRef(0);
+
+  const emitVendorJobsUpdated = (force = false) => {
+    const now = Date.now();
+    // Throttle global list refreshes — was causing GET /bookings/:id storms
+    if (!force && now - lastJobsUpdatedAt.current < 2000) return;
+    lastJobsUpdatedAt.current = now;
+    window.dispatchEvent(new Event('vendorJobsUpdated'));
+  };
 
   // Determine user type based on path
   const getUserType = (path) => {
@@ -220,7 +229,7 @@ export const SocketProvider = ({ children }) => {
       // Dispatch update events to refresh UI components
       if (userType === 'worker') window.dispatchEvent(new Event('workerJobsUpdated'));
       if (userType === 'vendor') {
-        window.dispatchEvent(new Event('vendorJobsUpdated'));
+        emitVendorJobsUpdated();
         window.dispatchEvent(new Event('vendorNotificationsUpdated'));
         window.dispatchEvent(new Event('vendorStatsUpdated'));
       }
@@ -233,20 +242,14 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('booking_updated', (data) => {
       // console.log('Booking Updated:', data);
       if (userType === 'user') window.dispatchEvent(new Event('userBookingsUpdated'));
-      if (userType === 'vendor') window.dispatchEvent(new Event('vendorJobsUpdated'));
+      if (userType === 'vendor') emitVendorJobsUpdated();
       if (userType === 'worker') window.dispatchEvent(new Event('workerJobsUpdated'));
     });
 
     // Listen for special Vendor Booking Requests
     if (userType === 'vendor') {
       newSocket.on('new_booking_request', (data) => {
-        // console.log('🚨 New Booking Request Alert:', data);
-
-        // Play urgent alert ring
-        playAlertRing();
-
-        // Save to localStorage for the Alert screen and Dashboard to read
-        // Note: Even though we are moving to backend, keeping this for immediate UI responsiveness before potential refresh lag
+        // Quiet queue: request appears under Jobs → Requests (no fullscreen popup / ring)
         const newJob = {
           id: data.bookingId,
           _id: data.bookingId,
@@ -288,20 +291,19 @@ export const SocketProvider = ({ children }) => {
           pendingJobs.unshift(newJob);
           localStorage.setItem('vendorPendingJobs', JSON.stringify(pendingJobs));
 
-          // Update stats
           const stats = JSON.parse(localStorage.getItem('vendorStats') || '{}');
           stats.pendingAlerts = (stats.pendingAlerts || 0) + 1;
           localStorage.setItem('vendorStats', JSON.stringify(stats));
         }
 
-        // Notify app components to refresh
-        window.dispatchEvent(new Event('vendorJobsUpdated'));
+        emitVendorJobsUpdated(true);
         window.dispatchEvent(new Event('vendorStatsUpdated'));
         window.dispatchEvent(new Event('vendorNotificationsUpdated'));
 
-        // Always show the global alert instead of navigating
-        const event = new CustomEvent('showDashboardBookingAlert', { detail: newJob });
-        window.dispatchEvent(event);
+        toast.success(
+          `${data.serviceName || 'New request'} — open Jobs to accept`,
+          { duration: 5000, icon: '📋' }
+        );
       });
 
       // Listen for booking_taken - when another vendor accepts a job
@@ -331,7 +333,7 @@ export const SocketProvider = ({ children }) => {
         window.dispatchEvent(new CustomEvent('removeVendorBooking', { detail: { id: takenBookingId } }));
 
         // Notify app components to refresh
-        window.dispatchEvent(new Event('vendorJobsUpdated'));
+        emitVendorJobsUpdated(true);
         window.dispatchEvent(new Event('vendorStatsUpdated'));
       });
 
@@ -353,7 +355,7 @@ export const SocketProvider = ({ children }) => {
 
         // Dispatch specific remove event for instant UI update
         window.dispatchEvent(new CustomEvent('removeVendorBooking', { detail: { id: bookingId } }));
-        window.dispatchEvent(new Event('vendorJobsUpdated'));
+        emitVendorJobsUpdated(true);
         window.dispatchEvent(new Event('vendorStatsUpdated'));
       });
     }

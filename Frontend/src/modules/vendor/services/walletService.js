@@ -14,7 +14,7 @@ import api from '../../../services/api';
  */
 export const getWalletBalance = async () => {
   try {
-    const response = await api.get('/vendors/wallet');
+    const response = await api.get('/vendors/wallet', { cacheTtl: 30 });
     return response.data.data;
   } catch (error) {
     console.error('Error fetching wallet balance:', error);

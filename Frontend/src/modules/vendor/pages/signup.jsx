@@ -826,7 +826,7 @@ const VendorSignup = () => {
                     <select
                       value={val}
                       onChange={(e) => updateServiceDetailField(catTitle, field.key, e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-primary-400 outline-none"
                     >
                       <option value="">Select Option...</option>
                       {(field.options || []).map((opt) => (
@@ -862,7 +862,7 @@ const VendorSignup = () => {
                             }}
                             className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                               isSel
-                                ? 'bg-blue-600 text-white border-blue-600'
+                                ? 'bg-primary-500 text-white border-primary-500'
                                 : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
                             }`}
                           >
@@ -886,7 +886,7 @@ const VendorSignup = () => {
                     <button
                       type="button"
                       onClick={() => updateServiceDetailField(catTitle, field.key, !isChecked)}
-                      className={`w-10 h-5 rounded-full transition-colors relative ${isChecked ? 'bg-blue-600' : 'bg-slate-300'}`}
+                      className={`w-10 h-5 rounded-full transition-colors relative ${isChecked ? 'bg-primary-500' : 'bg-slate-300'}`}
                     >
                       <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${isChecked ? 'left-5' : 'left-0.5'}`} />
                     </button>
@@ -905,7 +905,7 @@ const VendorSignup = () => {
                       value={val}
                       onChange={(e) => updateServiceDetailField(catTitle, field.key, e.target.value)}
                       placeholder={field.helpText || `Enter ${field.label.toLowerCase()}`}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-primary-400 outline-none resize-none"
                     />
                   </div>
                 );
@@ -969,7 +969,7 @@ const VendorSignup = () => {
       footer={
         <p className="text-sm text-neutral-500">
           Already a partner?{' '}
-          <Link to="/vendor/login" className="text-blue-600 font-semibold hover:underline">
+          <Link to="/vendor/login" className="text-primary-500 font-semibold hover:underline">
             Login here
           </Link>
         </p>
@@ -1003,7 +1003,7 @@ const VendorSignup = () => {
                   onClick={() => setFormData((p) => ({ ...p, gender: g }))}
                   className={`py-2 rounded-xl text-xs font-bold border transition-colors ${
                     formData.gender === g
-                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      ? 'border-primary-500 bg-primary-50 text-primary-600'
                       : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -1090,8 +1090,8 @@ const VendorSignup = () => {
       {/* STEP 1 — Identity & KYC Verification Documents */}
       {stepIndex === 1 && (
         <div className="space-y-4 max-w-lg mx-auto">
-          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-800">
-            <FiShield className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-primary-50 border border-primary-100 text-xs text-blue-800">
+            <FiShield className="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
             <p>
               Your KYC details are encrypted and stored securely. {appName} never exposes unmasked Aadhaar/PAN to customers.
             </p>
@@ -1183,8 +1183,8 @@ const VendorSignup = () => {
       {/* STEP 2 — Bank Account & Payout Setup */}
       {stepIndex === 2 && (
         <div className="space-y-4 max-w-lg mx-auto">
-          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-800">
-            <FiCreditCard className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-primary-50 border border-primary-100 text-xs text-blue-800">
+            <FiCreditCard className="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
             <p>
               Payouts from completed customer bookings will be transferred safely to this bank account.
             </p>
@@ -1293,7 +1293,7 @@ const VendorSignup = () => {
                   toast.error('Resend failed');
                 }
               }}
-              className="font-medium text-blue-600 disabled:opacity-50"
+              className="font-medium text-primary-500 disabled:opacity-50"
             >
               {resendTimer > 0
                 ? `Resend in ${Math.floor(resendTimer / 60)}:${String(resendTimer % 60).padStart(2, '0')}`
@@ -1344,8 +1344,8 @@ const VendorSignup = () => {
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-100 text-xs text-blue-800 flex items-start gap-2.5 text-left">
-            <FiShield className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-xl bg-primary-50/70 border border-primary-100 text-xs text-blue-800 flex items-start gap-2.5 text-left">
+            <FiShield className="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
             <p className="leading-snug">
               Our team usually verifies documents within <strong>24 hours</strong>. Once approved, you will receive confirmation and can log in to your vendor panel.
             </p>

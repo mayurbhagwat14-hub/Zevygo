@@ -313,7 +313,7 @@ const UpdateProfile = () => {
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = themeColors.button;
-                  e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(15, 52, 143, 0.1)';
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = '#d1d5db';
@@ -345,7 +345,7 @@ const UpdateProfile = () => {
                 className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
                 onFocus={(e) => {
                   e.target.style.borderColor = themeColors.button;
-                  e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(15, 52, 143, 0.1)';
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = '#d1d5db';
@@ -442,7 +442,7 @@ const UpdateProfile = () => {
                       document.getElementById('user-photo-upload')?.click();
                     }
                   }}
-                  className="flex flex-col items-center gap-3 p-6 rounded-2xl border border-blue-100 active:scale-95 transition-all"
+                  className="flex flex-col items-center gap-3 p-6 rounded-2xl border border-primary-100 active:scale-95 transition-all"
                   style={{ backgroundColor: `${themeColors.button}10` }}
                 >
                   <div className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg"
@@ -460,9 +460,9 @@ const UpdateProfile = () => {
                     setShowSourceSheet(false);
                     document.getElementById('user-photo-upload')?.click();
                   }}
-                  className="flex flex-col items-center gap-3 p-6 bg-blue-50 rounded-2xl border border-blue-100 active:scale-95 transition-all"
+                  className="flex flex-col items-center gap-3 p-6 bg-primary-50 rounded-2xl border border-primary-100 active:scale-95 transition-all"
                 >
-                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                  <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-primary-200">
                     <FiImage className="w-6 h-6" />
                   </div>
                   <span className="font-bold text-blue-800 text-sm">Gallery</span>

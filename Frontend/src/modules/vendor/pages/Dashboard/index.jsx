@@ -6,9 +6,7 @@ import { vendorTheme as themeColors, gradients } from '../../../../theme';
 import { Button } from '../../../../components/ui';
 import Header from '../../components/layout/Header';
 import { vendorDashboardService } from '../../services/dashboardService';
-import { acceptBooking, rejectBooking, assignWorker } from '../../services/bookingService';
-// Booking alert handled globally
-import { toast } from 'react-hot-toast';
+// Booking requests appear under Jobs — no popup alerts
 import { io } from 'socket.io-client';
 import api from '../../../../services/api';
 
@@ -212,7 +210,7 @@ const Dashboard = memo(() => {
   }, [loadDashboardData]);
 
   useEffect(() => {
-    api.get('/vendors/services', { params: { limit: 50 } })
+    api.get('/vendors/services', { params: { limit: 50 }, cacheTtl: 30 })
       .then((res) => {
         const items = res.data?.data || [];
         setListingStats({
@@ -224,36 +222,27 @@ const Dashboard = memo(() => {
       .catch(() => {});
   }, []);
 
-  // Check for redirected state (to open a specific alert modal)
+  // If navigated with a specific request id, open Jobs queue (no popup)
   useEffect(() => {
-    if (location.state?.openBookingId && pendingBookings.length > 0) {
-      const bId = String(location.state.openBookingId);
-      const booking = pendingBookings.find(b => String(b.id || b._id) === bId);
-      if (booking) {
-        setActiveAlertBookings(prev => {
-          if (prev.find(p => String(p.id || p._id) === bId)) return prev;
-          return [...prev, booking];
-        });
-        // Clear state to avoid reopening on refresh
-        navigate(location.pathname, { replace: true, state: {} });
-      }
+    if (location.state?.openBookingId) {
+      navigate('/vendor/jobs', { replace: true });
     }
-  }, [location.state, pendingBookings, navigate]);
+  }, [location.state, navigate]);
 
   // Listen for real-time updates via window events (dispatched by useAppNotifications)
   useEffect(() => {
+    let refreshTimer = null;
     const handleUpdate = () => {
-      loadDashboardData(false); // false = don't show spinner for background refresh
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => loadDashboardData(false), 1000);
     };
 
     // Ask for notification permission and register FCM
     registerFCMToken('vendor', true).catch(err => console.error('FCM registration failed:', err));
 
-    // Listen for custom dashboard events from SocketContext
+    // Quiet queue: new requests refresh pending list only (no fullscreen alert)
     const handleShowAlert = (e) => {
-      // e.detail contains the new booking job
       if (e.detail) {
-        // Also add to pending if not present
         setPendingBookings(prev => {
           if (prev.find(b => b.id === e.detail.id)) return prev;
           return [e.detail, ...prev];
@@ -291,72 +280,17 @@ const Dashboard = memo(() => {
       window.removeEventListener('vendorStatsUpdated', handleUpdate);
       window.removeEventListener('showDashboardBookingAlert', handleShowAlert);
       window.removeEventListener('removeVendorBooking', handleRemoveBooking);
+      if (refreshTimer) clearTimeout(refreshTimer);
     };
   }, [loadDashboardData]);
 
-
-  // Alert Action Handlers
-  const handleAcceptAlert = async (bookingId) => {
-    try {
-      const response = await acceptBooking(bookingId);
-      if (response.success) {
-        toast.success('Booking accepted successfully!');
-        setPendingBookings(prev => prev.filter(b => String(b.id || b._id) !== String(bookingId)));
-
-        // Sync localStorage
-        const pendingJobs = JSON.parse(localStorage.getItem('vendorPendingJobs') || '[]');
-        const updated = pendingJobs.filter(b => String(b.id || b._id) !== String(bookingId));
-        localStorage.setItem('vendorPendingJobs', JSON.stringify(updated));
-
-        window.dispatchEvent(new CustomEvent('removeVendorBooking', { detail: { id: bookingId } }));
-        window.dispatchEvent(new Event('vendorStatsUpdated'));
-      }
-    } catch (error) {
-      console.error('Error accepting:', error);
-      toast.error('Failed to accept booking');
-    }
-  };
-
-  const handleRejectAlert = async (bookingId) => {
-    try {
-      const response = await rejectBooking(bookingId);
-      if (response.success) {
-        toast.success('Booking rejected');
-        setPendingBookings(prev => prev.filter(b => String(b.id || b._id) !== String(bookingId)));
-
-        // Sync localStorage
-        const pendingJobs = JSON.parse(localStorage.getItem('vendorPendingJobs') || '[]');
-        const updated = pendingJobs.filter(b => String(b.id || b._id) !== String(bookingId));
-        localStorage.setItem('vendorPendingJobs', JSON.stringify(updated));
-
-        window.dispatchEvent(new CustomEvent('removeVendorBooking', { detail: { id: bookingId } }));
-      }
-    } catch (error) {
-      console.error('Error rejecting:', error);
-      toast.error('Failed to reject booking');
-    }
-  };
-
-  const handleAssignAlert = async (bookingId) => {
-    try {
-      const response = await assignWorker(bookingId, 'SELF');
-      if (response?.success !== false) {
-        toast.success('Job assigned to you');
-        navigate(`/vendor/booking/${bookingId}`);
-      }
-    } catch (err) {
-      console.error('Error assigning job:', err);
-      toast.error('Failed to assign job');
-      navigate(`/vendor/booking/${bookingId}`);
-    }
-  };
 
   // Memoize quickActions to prevent recreation on every render
   const quickActions = useMemo(() => [
     {
       title: 'Active Jobs',
       icon: FiBriefcase,
-      color: themeColors?.brand?.blue || '#2563EB',
+      color: themeColors?.brand?.blue || '#0F348F',
       path: '/vendor/jobs',
       count: stats.activeJobs,
       subtitle: `${stats.activeJobs} running`,
@@ -381,7 +315,7 @@ const Dashboard = memo(() => {
   const getStatusColor = (status) => {
     const s = String(status).toLowerCase();
     const statusColors = {
-      'accepted': '#3B82F6',
+      'accepted': '#0F348F',
       'confirmed': '#10B981',
       'assigned': '#8B5CF6',
       'journey_started': '#F59E0B',
@@ -445,104 +379,63 @@ const Dashboard = memo(() => {
       <div className="fixed top-0 right-0 w-[80vw] h-[400px] bg-gradient-to-b from-[var(--color-primary-50)] to-transparent rounded-bl-full opacity-60 pointer-events-none z-0" aria-hidden />
       
       <div className="relative z-10">
-        <Header title="" showBack={false} notificationCount={stats.pendingAlerts} />
+        <Header 
+          title="" 
+          showBack={false} 
+          notificationCount={stats.pendingAlerts} 
+          customHeaderContent={
+            <div className="flex items-center gap-3 ml-4 border-l border-white/10 pl-4 py-1 cursor-pointer transition-transform active:scale-95" onClick={() => navigate('/vendor/profile')}>
+              <div className="w-12 h-12 rounded-full overflow-hidden border-[1.5px] border-[#0F348F] bg-transparent shrink-0 shadow-lg relative flex items-center justify-center p-0.5">
+                <div className="w-full h-full rounded-full overflow-hidden bg-gray-100">
+                  {vendorProfile.photo ? (
+                    <img src={vendorProfile.photo} alt={vendorProfile.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <FiUser className="w-full h-full p-2.5 text-gray-400" />
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-[17px] font-bold leading-none text-white truncate max-w-[140px] tracking-tight">{vendorProfile.name}</span>
+                  <FiCheckCircle className="w-4 h-4 text-[#10B981] shrink-0" />
+                </div>
+                <span className="text-[12px] text-gray-400 font-medium truncate max-w-[140px] leading-tight flex flex-col gap-0.5">
+                  <span>Professional Driver</span>
+                  <span className="flex items-center gap-1"><FiMapPin className="w-3 h-3" /> Burhanpur, MP</span>
+                </span>
+              </div>
+            </div>
+          }
+        />
       </div>
 
       <main className="pt-0 relative z-10">
         {/* Profile Card Section */}
-        {/* Profile Card Section */}
-        <div className="px-4 pt-4 pb-2 relative z-10">
-          <div
-            className="group rounded-[32px] p-6 cursor-pointer active:scale-[0.98] transition-all duration-300 relative overflow-hidden bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
-            onClick={() => navigate('/vendor/profile')}
-          >
-            {/* Top Right Curved Gradient */}
-            <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-bl from-[var(--color-primary-50)] to-transparent rounded-full opacity-60 pointer-events-none" aria-hidden />
 
-            <div className="flex items-center justify-between relative z-10">
-              {/* Profile Info (Left) */}
-              <div className="flex-1 min-w-0 pr-4">
-                <p className="text-[14px] text-gray-500 font-medium mb-1 tracking-tight">Good Morning,</p>
-                <h2 className="text-[22px] font-bold text-gray-900 truncate mb-1.5 leading-tight tracking-tight">
-                  {vendorProfile.name}
-                </h2>
-                <div className="flex items-center gap-1.5 mt-3">
-                  <FiBriefcase className="w-4 h-4 text-gray-400" />
-                  <p className="text-[13px] text-gray-600 truncate font-medium">
-                    {vendorProfile.businessName}
-                  </p>
-                </div>
-              </div>
 
-              {/* Profile Image & Badge (Right) */}
-              <div className="flex flex-col items-center flex-shrink-0 relative">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden border-[3px] border-[var(--color-primary-600)] p-0.5 mb-2 shadow-sm relative z-10 bg-white">
-                  <div className="w-full h-full rounded-full overflow-hidden bg-gray-100">
-                    {vendorProfile.photo ? (
-                      <img
-                        src={vendorProfile.photo}
-                        alt={vendorProfile.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <FiUser className="w-8 h-8 text-gray-400 mt-2 mx-auto" />
-                    )}
-                  </div>
-                </div>
-                {/* Verified Badge positioned slightly overlapping */}
-                <div className="absolute -bottom-1 flex items-center justify-center gap-1 px-2.5 py-1 bg-[var(--color-primary-50)] rounded-full border border-white shadow-sm z-20 whitespace-nowrap">
-                  <FiCheckCircle className="w-3 h-3 text-[var(--color-primary-600)]" />
-                  <span className="text-[9px] font-bold text-[var(--color-primary-600)] uppercase tracking-wider">Verified Partner</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Incomplete Profile Prompt */}
-        {(!vendorProfile.service || vendorProfile.service.length === 0) && (
-          <div className="px-4 pt-2 -mb-2">
-            <div
-              onClick={() => navigate('/vendor/profile')}
-              className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r shadow-sm cursor-pointer hover:bg-orange-100 transition-colors"
-            >
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <FiClock className="h-5 w-5 text-orange-500" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-bold text-orange-700">Profile Incomplete</p>
-                  <p className="text-sm text-orange-600">
-                    Add services to your profile to start receiving bookings.
-                  </p>
-                </div>
-                <div className="ml-auto">
-                  <FiArrowRight className="h-4 w-4 text-orange-500" />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
-        <div className="px-4 pt-3">
+        <div className="px-4 pt-4">
           <button
             type="button"
             onClick={() => navigate('/vendor/my-services')}
-            className="w-full bg-white rounded-[24px] p-4 border border-neutral-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center gap-3 text-left active:scale-[0.98] transition-all"
+            className="w-full bg-white rounded-2xl p-4 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.05)] border border-gray-100 flex items-center justify-between active:scale-[0.98] transition-all"
           >
-            <div className="w-11 h-11 rounded-2xl bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
-              <FiLayers className="w-5 h-5" />
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-[14px] bg-[#EEF2FF] flex items-center justify-center shrink-0">
+                <FiLayers className="w-6 h-6 text-[#0F348F]" />
+              </div>
+              <div className="text-left">
+                <p className="text-[16px] font-bold text-gray-900 mb-0.5">My Services</p>
+                <p className="text-[13px] text-gray-500 font-medium">
+                  {listingStats.total === 0
+                    ? 'Add a service + packages for customers to book'
+                    : `${listingStats.live} live • ${listingStats.pending} in review`}
+                </p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-black text-neutral-900">Listing Blocks</p>
-              <p className="text-[11px] text-neutral-500 font-medium mt-0.5">
-                {listingStats.total === 0
-                  ? 'Create a listing so customers can book you'
-                  : `${listingStats.live} live · ${listingStats.pending} in review`}
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-primary-600 shrink-0">
-              {listingStats.total === 0 ? <><FiPlus className="w-3.5 h-3.5" /> Create</> : <>Manage <FiChevronRight className="w-4 h-4" /></>}
+            <span className="flex items-center gap-1.5 text-[14px] font-bold text-[#0F348F]">
+              {listingStats.total === 0 ? 'Create' : 'Manage'} <FiChevronRight className="w-4 h-4" strokeWidth={3} />
             </span>
           </button>
         </div>
@@ -555,89 +448,82 @@ const Dashboard = memo(() => {
           {/* Pending Booking Alerts - Optimized Component */}
           <PendingBookings
             bookings={pendingBookings}
-            maxSearchTimeMins={globalConfig.maxSearchTime}
             setPendingBookings={setPendingBookings}
-            setActiveAlertBooking={(booking) => {
-              // Dispatch to global alert via CustomEvent
-              window.dispatchEvent(new CustomEvent('showDashboardBookingAlert', { detail: booking }));
-            }}
           />
 
           {/* Performance Overview */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[16px] font-black text-gray-900 tracking-tight">Performance Overview</h2>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors">
-                This Month <FiChevronRight className="w-3 h-3 rotate-90" />
+              <h2 className="text-[17px] font-bold text-gray-900 tracking-tight">Performance Overview</h2>
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors shadow-sm">
+                This Month <FiChevronRight className="w-3.5 h-3.5 rotate-90" />
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Completed Jobs Card */}
-              <div className="bg-white rounded-[24px] p-4 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.06)] transition-shadow">
+              <div className="bg-white rounded-3xl p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-gray-100 flex flex-col justify-between hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] transition-shadow min-h-[160px]">
                 <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary-600)] shadow-sm"></span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#0F348F] shadow-sm"></span>
                     <p className="text-[12px] font-bold text-gray-700">Completed Jobs</p>
                   </div>
-                  <p className="text-[28px] font-black text-gray-900 leading-none">{stats.completedJobs}</p>
+                  <p className="text-[32px] font-black text-gray-900 leading-none">{stats.completedJobs}</p>
                 </div>
-                <div className="mt-8 h-16 w-full relative">
-                  {/* Simple SVG Line Chart Placeholder matching design */}
+                <div className="mt-4 h-[60px] w-full relative">
                   <svg viewBox="0 0 100 40" className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                    <path d="M0,30 L15,25 L30,28 L45,15 L60,20 L75,10 L90,12 L100,2" fill="none" stroke="var(--color-primary-600)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                    <path d="M0,30 L15,25 L30,28 L45,15 L60,20 L75,10 L90,12 L100,2 L100,40 L0,40 Z" fill="url(#grad1)" opacity="0.3" />
+                    <path d="M0,30 L15,25 L30,28 L45,15 L60,20 L75,10 L90,12 L100,2" fill="none" stroke="#0F348F" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M0,30 L15,25 L30,28 L45,15 L60,20 L75,10 L90,12 L100,2 L100,40 L0,40 Z" fill="url(#chart-grad-1)" opacity="0.4" />
                     <defs>
-                      <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style={{ stopColor: 'var(--color-primary-600)', stopOpacity: 1 }} />
-                        <stop offset="100%" style={{ stopColor: 'var(--color-primary-600)', stopOpacity: 0 }} />
+                      <linearGradient id="chart-grad-1" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#0F348F" stopOpacity="1" />
+                        <stop offset="100%" stopColor="#0F348F" stopOpacity="0" />
                       </linearGradient>
                     </defs>
-                    <circle cx="0" cy="30" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="15" cy="25" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="30" cy="28" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="45" cy="15" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="60" cy="20" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="75" cy="10" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="90" cy="12" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="100" cy="2" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="0" cy="30" r="2.5" fill="#0F348F" stroke="white" strokeWidth="1" />
+                    <circle cx="15" cy="25" r="2.5" fill="#0F348F" stroke="white" strokeWidth="1" />
+                    <circle cx="30" cy="28" r="2.5" fill="#0F348F" stroke="white" strokeWidth="1" />
+                    <circle cx="45" cy="15" r="2.5" fill="#0F348F" stroke="white" strokeWidth="1" />
+                    <circle cx="60" cy="20" r="2.5" fill="#0F348F" stroke="white" strokeWidth="1" />
+                    <circle cx="75" cy="10" r="2.5" fill="#0F348F" stroke="white" strokeWidth="1" />
+                    <circle cx="90" cy="12" r="2.5" fill="#0F348F" stroke="white" strokeWidth="1" />
+                    <circle cx="100" cy="2" r="2.5" fill="#0F348F" stroke="white" strokeWidth="1" />
                   </svg>
-                  <div className="flex justify-between w-full text-[8px] font-bold text-gray-400 mt-2 px-1">
+                  <div className="flex justify-between w-full text-[8px] font-bold text-gray-400 mt-2.5 px-0.5">
                     <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span>
                   </div>
                 </div>
               </div>
 
               {/* Rating Card */}
-              <div className="bg-white rounded-[24px] p-4 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.06)] transition-shadow">
+              <div className="bg-white rounded-3xl p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-gray-100 flex flex-col justify-between hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] transition-shadow min-h-[160px]">
                 <div>
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <FiStar className="w-3.5 h-3.5 text-[var(--color-primary-600)]" fill="var(--color-primary-600)" />
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <FiStar className="w-3.5 h-3.5 text-[#8B5CF6]" fill="#8B5CF6" />
                     <p className="text-[12px] font-bold text-gray-700">Average Rating</p>
                   </div>
-                  <p className="text-[28px] font-black text-gray-900 leading-none">{stats.rating > 0 ? stats.rating.toFixed(1) : '4.3'}</p>
+                  <p className="text-[32px] font-black text-gray-900 leading-none">{stats.rating > 0 ? stats.rating.toFixed(1) : '3.0'}</p>
                 </div>
-                <div className="mt-8 h-16 w-full relative">
-                  {/* Simple SVG Line Chart Placeholder matching design */}
+                <div className="mt-4 h-[60px] w-full relative">
                   <svg viewBox="0 0 100 40" className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                    <path d="M0,35 L15,25 L30,20 L45,15 L60,12 L75,14 L90,5 L100,2" fill="none" stroke="var(--color-primary-600)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                    <path d="M0,35 L15,25 L30,20 L45,15 L60,12 L75,14 L90,5 L100,2 L100,40 L0,40 Z" fill="url(#grad2)" opacity="0.3" />
+                    <path d="M0,35 L15,25 L30,20 L45,15 L60,12 L75,14 L90,5 L100,2" fill="none" stroke="#8B5CF6" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M0,35 L15,25 L30,20 L45,15 L60,12 L75,14 L90,5 L100,2 L100,40 L0,40 Z" fill="url(#chart-grad-2)" opacity="0.4" />
                     <defs>
-                      <linearGradient id="grad2" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style={{ stopColor: 'var(--color-primary-600)', stopOpacity: 1 }} />
-                        <stop offset="100%" style={{ stopColor: 'var(--color-primary-600)', stopOpacity: 0 }} />
+                      <linearGradient id="chart-grad-2" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#8B5CF6" stopOpacity="1" />
+                        <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0" />
                       </linearGradient>
                     </defs>
-                    <circle cx="0" cy="35" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="15" cy="25" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="30" cy="20" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="45" cy="15" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="60" cy="12" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="75" cy="14" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="90" cy="5" r="2.5" fill="var(--color-primary-600)" />
-                    <circle cx="100" cy="2" r="2.5" fill="var(--color-primary-600)" />
+                    <circle cx="0" cy="35" r="2.5" fill="#8B5CF6" stroke="white" strokeWidth="1" />
+                    <circle cx="15" cy="25" r="2.5" fill="#8B5CF6" stroke="white" strokeWidth="1" />
+                    <circle cx="30" cy="20" r="2.5" fill="#8B5CF6" stroke="white" strokeWidth="1" />
+                    <circle cx="45" cy="15" r="2.5" fill="#8B5CF6" stroke="white" strokeWidth="1" />
+                    <circle cx="60" cy="12" r="2.5" fill="#8B5CF6" stroke="white" strokeWidth="1" />
+                    <circle cx="75" cy="14" r="2.5" fill="#8B5CF6" stroke="white" strokeWidth="1" />
+                    <circle cx="90" cy="5" r="2.5" fill="#8B5CF6" stroke="white" strokeWidth="1" />
+                    <circle cx="100" cy="2" r="2.5" fill="#8B5CF6" stroke="white" strokeWidth="1" />
                   </svg>
-                  <div className="flex justify-between w-full text-[8px] font-bold text-gray-400 mt-2 px-1">
+                  <div className="flex justify-between w-full text-[8px] font-bold text-gray-400 mt-2.5 px-0.5">
                     <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span>
                   </div>
                 </div>
@@ -648,11 +534,11 @@ const Dashboard = memo(() => {
           {/* Recent Jobs - List View */}
           <div className="mt-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[16px] font-black text-gray-900 tracking-tight">Active Jobs</h2>
+              <h2 className="text-[17px] font-bold text-gray-900 tracking-tight">Active Jobs</h2>
               {recentJobs.length > 0 && (
                 <button
                   onClick={() => navigate('/vendor/jobs')}
-                  className="font-bold text-[13px] text-[var(--color-primary-600)] hover:text-[var(--color-primary-700)] transition-colors"
+                  className="font-bold text-[13px] text-[#0F348F] hover:text-primary-600 transition-colors"
                 >
                   View All
                 </button>
@@ -664,48 +550,44 @@ const Dashboard = memo(() => {
                   const statusColors = {
                     'Completed': '#10b981',
                     'Canceled': '#ef4444',
-                    'Ongoing': '#3b82f6',
+                    'Ongoing': '#0F348F',
                   };
                   
                   const label = getStatusLabel(job.status);
-                  // Match border color based on status or index
-                  const dummyBorderColors = ['var(--color-primary-600)', '#ef4444', '#f59e0b', '#0ea5e9'];
+                  const dummyBorderColors = ['#0F348F', '#ef4444', '#f59e0b', '#0ea5e9'];
                   const accentColor = statusColors[label] || dummyBorderColors[index % dummyBorderColors.length];
 
                   return (
                     <div
                       key={job.id}
                       onClick={() => navigate(`/vendor/booking/${job.id}`)}
-                      className="bg-white rounded-[16px] shadow-[0_4px_16px_-4px_rgba(0,0,0,0.03)] cursor-pointer active:scale-[0.98] transition-all duration-300 relative overflow-hidden border border-gray-100 hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.08)]"
+                      className="bg-white rounded-[20px] shadow-[0_4px_16px_-4px_rgba(0,0,0,0.03)] cursor-pointer active:scale-[0.98] transition-all duration-300 relative overflow-hidden border border-gray-100 hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.08)]"
                     >
-                      {/* Left accent border matching design */}
                       <div
-                        className="absolute left-0 top-0 bottom-0 w-1.5"
+                        className="absolute left-0 top-0 bottom-0 w-[5px]"
                         style={{ background: accentColor }}
                       />
 
                       <div className="px-4 py-4 pl-5">
                         <div className="flex items-center gap-4">
-                          {/* Profile Image Circle (Left) */}
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 border border-[var(--color-primary-200)] bg-transparent">
-                            <FiUser className="w-5 h-5 text-[var(--color-primary-600)]" strokeWidth={1.5} />
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 border border-primary-100 bg-primary-50/50">
+                            <FiUser className="w-5 h-5 text-primary-400" strokeWidth={2} />
                           </div>
 
-                          {/* Main Content (Middle) */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <p className="text-[14px] font-bold text-gray-900 truncate tracking-tight">{job.customerName}</p>
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[var(--color-primary-50)] text-[var(--color-primary-600)] tracking-wide border border-[var(--color-primary-600)]/20">
+                              <p className="text-[15px] font-bold text-gray-900 truncate tracking-tight">{job.customerName}</p>
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary-500 tracking-wide border border-primary-200">
                                 {job.serviceType || 'Service'}
                               </span>
                             </div>
 
                             <div className="flex items-center gap-1 mb-2">
-                              <FiMapPin className="w-3 h-3 text-gray-400" />
-                              <span className="text-[12px] text-gray-500 font-medium truncate">{job.location}</span>
+                              <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
+                              <span className="text-[13px] text-gray-500 font-medium truncate">{job.location}</span>
                             </div>
 
-                            <div className="flex items-center gap-3 mt-1">
+                            <div className="flex items-center gap-3 mt-1.5">
                               <span
                                 className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                                 style={{ background: `${accentColor}15`, color: accentColor }}
@@ -720,9 +602,8 @@ const Dashboard = memo(() => {
                             </div>
                           </div>
 
-                          {/* Navigate Button (Right) */}
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-[var(--color-primary-200)] bg-transparent transition-colors hover:bg-[var(--color-primary-50)]">
-                            <FiChevronRight className="w-5 h-5 text-[var(--color-primary-600)]" />
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-gray-200 bg-white shadow-sm transition-colors hover:bg-gray-50">
+                            <FiChevronRight className="w-4 h-4 text-gray-600" strokeWidth={3} />
                           </div>
                         </div>
                       </div>
@@ -732,15 +613,13 @@ const Dashboard = memo(() => {
               </div>
             ) : (
               <div
-                className="bg-white rounded-xl p-6 shadow-md text-center"
-                style={{
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                  border: '1px solid rgba(0, 0, 0, 0.08)',
-                }}
+                className="bg-white rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] text-center border border-gray-100"
               >
-                <FiBriefcase className="w-12 h-12 mx-auto mb-3" style={{ color: '#D1D5DB' }} />
-                <p className="text-sm text-gray-600 mb-1">No active jobs</p>
-                <p className="text-xs text-gray-500">New bookings will appear here</p>
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <FiBriefcase className="w-7 h-7 text-gray-400" />
+                </div>
+                <p className="text-[15px] font-bold text-gray-800 mb-1">No active jobs</p>
+                <p className="text-[13px] text-gray-500 font-medium">New bookings will appear here</p>
               </div>
             )}
           </div>

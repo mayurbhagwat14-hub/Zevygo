@@ -462,8 +462,8 @@ const AdminSettings = () => {
       {/* Profile Settings Card */}
       <div onClick={() => setActiveView('profile')}
         className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
-        <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
-          <FiUser className="w-6 h-6 text-blue-600" />
+        <div className="w-12 h-12 bg-primary-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-primary-100 transition-colors">
+          <FiUser className="w-6 h-6 text-primary-500" />
         </div>
         <h3 className="text-lg font-bold text-gray-800 mb-2">Profile Settings</h3>
         <p className="text-sm text-gray-500">Manage your personal account details and password</p>
@@ -551,7 +551,7 @@ const AdminSettings = () => {
           <motion.div key="profile" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
             <div className="max-w-2xl mx-auto bg-white rounded-xl p-8 shadow-sm border border-gray-100">
               <div className="flex items-center gap-4 mb-8">
-                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-2xl">
+                <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center text-primary-500 font-bold text-2xl">
                   {profile.name ? profile.name.charAt(0).toUpperCase() : <FiUser />}
                 </div>
                 <div>
@@ -579,7 +579,7 @@ const AdminSettings = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
                   <input type="email" name="email" value={profile.email} onChange={handleProfileChange} required
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-400 outline-none transition-all" />
                 </div>
 
                 <div className="pt-6 border-t border-gray-100 space-y-4">
@@ -587,21 +587,21 @@ const AdminSettings = () => {
                   <div className="space-y-4">
                     <input type="password" name="currentPassword" value={profile.currentPassword} onChange={handleProfileChange}
                       placeholder="Current Password"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-500 transition-all" />
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-primary-400 transition-all" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <input type="password" name="newPassword" value={profile.newPassword} onChange={handleProfileChange}
                         placeholder="New Password"
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-500 transition-all" />
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-primary-400 transition-all" />
                       <input type="password" name="confirmPassword" value={profile.confirmPassword} onChange={handleProfileChange}
                         placeholder="Confirm New Password"
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-500 transition-all" />
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-primary-400 transition-all" />
                     </div>
                   </div>
                 </div>
 
                 <div className="flex justify-end pt-6">
                   <button type="submit" disabled={profileLoading}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 flex items-center gap-2 disabled:opacity-70 shadow-lg shadow-blue-200 transition-all">
+                    className="px-8 py-3 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 flex items-center gap-2 disabled:opacity-70 shadow-lg shadow-primary-200 transition-all">
                     {profileLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <FiSave className="w-5 h-5" />}
                     Update Profile
                   </button>
@@ -698,25 +698,13 @@ const AdminSettings = () => {
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
                     </div>
                     <div className="pt-4 border-t border-gray-100 md:col-span-2">
-                      <h4 className="text-xs font-bold text-gray-700 uppercase mb-3">Booking Timing & Waves</h4>
+                      <h4 className="text-xs font-bold text-gray-700 uppercase mb-3">Direct Listing Request Window</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Max Global Search Time (Mins)</label>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Vendor Response Time (Mins)</label>
                           <input type="number" name="maxSearchTime" value={financialSettings.maxSearchTime} onChange={handleFinancialChange}
                             className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
-                          <p className="text-[10px] text-gray-400 mt-1">Total time to find a vendor before search is auto-cancelled</p>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Wave Alert Threshold (Secs)</label>
-                          <input type="number" name="waveDuration" value={financialSettings.waveDuration} onChange={handleFinancialChange}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
-                          <p className="text-[10px] text-gray-400 mt-1">Time waited before alerting the next batch of vendors</p>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Global Search Radius (Km)</label>
-                          <input type="number" name="searchRadius" value={financialSettings.searchRadius} onChange={handleFinancialChange}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
-                          <p className="text-[10px] text-gray-400 mt-1">Default distance to hunt for vendors around booking location</p>
+                          <p className="text-[10px] text-gray-400 mt-1">How long a provider has to accept a direct listing request (broadcast search is disabled)</p>
                         </div>
                       </div>
                     </div>
@@ -937,7 +925,7 @@ const AdminSettings = () => {
                       <p className="text-xs text-gray-500 mt-1">Automatically find new worker if booking is rejected</p>
                     </div>
                     <button onClick={() => handleToggle('workerAutoAssignment')}
-                      className={`relative w-12 h-7 rounded-full transition-all duration-300 ${settings.workerAutoAssignment ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                      className={`relative w-12 h-7 rounded-full transition-all duration-300 ${settings.workerAutoAssignment ? 'bg-primary-500' : 'bg-gray-200'}`}>
                       <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${settings.workerAutoAssignment ? 'translate-x-5' : 'translate-x-0'}`} />
                     </button>
                   </div>
@@ -963,8 +951,8 @@ const AdminSettings = () => {
               {/* Support Settings */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-fit">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <FiHeadphones className="w-5 h-5 text-blue-600" />
+                  <div className="p-2 bg-primary-100 rounded-lg">
+                    <FiHeadphones className="w-5 h-5 text-primary-500" />
                   </div>
                   <h2 className="text-lg font-bold text-gray-800">Contact & Support</h2>
                 </div>
@@ -975,7 +963,7 @@ const AdminSettings = () => {
                     <div className="relative">
                       <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <input type="email" name="supportEmail" value={supportSettings.supportEmail} onChange={handleSupportChange}
-                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-500 transition-all" />
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-primary-400 transition-all" />
                     </div>
                   </div>
                   <div>
@@ -983,7 +971,7 @@ const AdminSettings = () => {
                     <div className="relative">
                       <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <input type="tel" name="supportPhone" value={supportSettings.supportPhone} onChange={handleSupportChange}
-                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-500 transition-all" />
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-primary-400 transition-all" />
                     </div>
                   </div>
                   <div>
@@ -991,12 +979,12 @@ const AdminSettings = () => {
                     <div className="relative">
                       <FiMessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <input type="tel" name="supportWhatsapp" value={supportSettings.supportWhatsapp} onChange={handleSupportChange}
-                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-500 transition-all" />
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-primary-400 transition-all" />
                     </div>
                   </div>
                   <div className="flex justify-end pt-2">
                     <button type="submit" disabled={supportLoading}
-                      className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 flex items-center gap-2 disabled:opacity-60 shadow-lg shadow-blue-200">
+                      className="px-6 py-2.5 bg-primary-500 text-white rounded-lg text-sm hover:bg-primary-600 flex items-center gap-2 disabled:opacity-60 shadow-lg shadow-primary-200">
                       {supportLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <FiSave className="w-4 h-4" />}
                       Save Details
                     </button>
@@ -1111,7 +1099,7 @@ const AdminSettings = () => {
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1 text-xs font-bold rounded-full border ${admin.role === 'super_admin'
                               ? 'bg-amber-50 text-amber-700 border-amber-100'
-                              : 'bg-blue-50 text-blue-700 border-blue-100'
+                              : 'bg-primary-50 text-primary-600 border-primary-100'
                               }`}>
                               {admin.role === 'super_admin' ? 'Super Admin' : 'Admin'}
                             </span>
@@ -1135,7 +1123,7 @@ const AdminSettings = () => {
                             {admin._id !== profile.id && admin.email !== 'admin@admin.com' && (
                               <div className="flex justify-end gap-2">
                                 <button onClick={() => handleEditClick(admin)}
-                                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                  className="p-2 text-gray-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-all"
                                   title="Edit Admin">
                                   <FiEdit className="w-4 h-4" />
                                 </button>

@@ -45,7 +45,7 @@ const getResponseWindowSecs = (booking, maxSearchTimeMins) => {
   return (Number(maxSearchTimeMins) || 5) * 60;
 };
 
-const BookingAlertCard = ({ booking, onAccept, onReject, onAssign, maxSearchTimeMins = 1 }) => {
+const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }) => {
   // Calculate initial time synchronously instead of relying solely on useEffect
   const calculateInitialRemaining = () => {
     try {
@@ -220,7 +220,7 @@ const BookingAlertCard = ({ booking, onAccept, onReject, onAssign, maxSearchTime
           </div>
         </div>
 
-        <div className={`flex items-center justify-center mb-4 py-2 rounded-xl border ${direct ? 'bg-blue-50 border-blue-100' : 'bg-emerald-50 border-emerald-100'}`}>
+        <div className={`flex items-center justify-center mb-4 py-2 rounded-xl border ${direct ? 'bg-primary-50 border-primary-100' : 'bg-emerald-50 border-emerald-100'}`}>
           <div className="text-center">
             {direct ? (
               <>
@@ -229,7 +229,7 @@ const BookingAlertCard = ({ booking, onAccept, onReject, onAssign, maxSearchTime
                   {booking.customerName || 'Customer'}
                 </div>
                 {booking.customerPhone && (
-                  <div className="text-[10px] font-bold text-blue-600/70 mt-0.5">{booking.customerPhone}</div>
+                  <div className="text-[10px] font-bold text-primary-500/70 mt-0.5">{booking.customerPhone}</div>
                 )}
               </>
             ) : (
@@ -309,6 +309,19 @@ const BookingAlertCard = ({ booking, onAccept, onReject, onAssign, maxSearchTime
               {formatScheduleDisplay(booking)}
             </span>
           </div>
+          {(booking.finalAmount > 0 || booking.price > 0) && (
+            <div className="flex items-start gap-2 pt-2 border-t border-gray-200">
+              <FiDollarSign className="text-gray-400 w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span className="font-bold text-gray-800 leading-snug">
+                ₹{Number(booking.finalAmount || booking.price || 0).toLocaleString('en-IN')}
+                {booking.requireAdvancePayment && Number(booking.advanceAmount) > 0 && (
+                  <span className="text-[10px] font-medium text-primary-500 block mt-0.5">
+                    Advance ₹{Number(booking.advanceAmount).toLocaleString('en-IN')} after you accept
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -316,19 +329,12 @@ const BookingAlertCard = ({ booking, onAccept, onReject, onAssign, maxSearchTime
             disabled={!!loadingAction}
             onClick={() => handleAction(onAccept, 'accept')}
             className="w-full py-3 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-black text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 col-span-2 disabled:opacity-50">
-            {loadingAction === 'accept' ? 'Accepting...' : 'Accept (Myself)'}
-          </button>
-          <button
-            disabled={!!loadingAction}
-            onClick={() => handleAction(onAssign, 'assign')}
-            className="w-full py-2.5 rounded-xl text-white font-black text-[11px] shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-            style={{ background: themeColors.button }}>
-            <FiUsers className="w-3.5 h-3.5" /> {loadingAction === 'assign' ? '...' : 'Forward'}
+            {loadingAction === 'accept' ? 'Accepting...' : 'Accept Job'}
           </button>
           <button
             disabled={!!loadingAction}
             onClick={() => handleAction(onReject, 'reject')}
-            className="w-full py-2.5 rounded-xl bg-red-50 border border-red-100 text-red-500 font-bold text-[11px] active:scale-95 transition-all uppercase flex items-center justify-center gap-1.5 disabled:opacity-50">
+            className="w-full py-2.5 rounded-xl bg-red-50 border border-red-100 text-red-500 font-bold text-[11px] active:scale-95 transition-all uppercase flex items-center justify-center gap-1.5 disabled:opacity-50 col-span-2">
             {loadingAction === 'reject' ? '...' : <><FiX className="w-3.5 h-3.5" /> Decline</>}
           </button>
         </div>
@@ -337,7 +343,7 @@ const BookingAlertCard = ({ booking, onAccept, onReject, onAssign, maxSearchTime
   );
 };
 
-const BookingAlertModal = ({ isOpen, booking, bookings, onAccept, onReject, onAssign, onMinimize, maxSearchTimeMins = 1 }) => {
+const BookingAlertModal = ({ isOpen, booking, bookings, onAccept, onReject, onMinimize, maxSearchTimeMins = 1 }) => {
   const alertsArray = bookings || (booking ? [booking] : []);
 
   return (
@@ -367,7 +373,6 @@ const BookingAlertModal = ({ isOpen, booking, bookings, onAccept, onReject, onAs
                   booking={b}
                   onAccept={onAccept}
                   onReject={onReject}
-                  onAssign={onAssign}
                   maxSearchTimeMins={maxSearchTimeMins}
                 />
               ))}

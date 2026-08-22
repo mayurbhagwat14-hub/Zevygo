@@ -72,8 +72,6 @@ const getChildRoute = (parentRoute, childName) => {
     "/admin/user-categories": {
       "Home": "/admin/user-categories/home",
       "Manage Categories": "/admin/user-categories/categories",
-      "Manage Brands": "/admin/user-categories/brands",
-      "Manage Services": "/admin/user-categories/sections",
     },
     "/admin/payments": {
       "Payment Overview": "/admin/payments/overview",
@@ -279,8 +277,8 @@ const AdminSidebar = ({ isOpen, onClose }) => {
           className={`
             flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 cursor-pointer
             ${active
-              ? "bg-slate-800 text-white font-bold shadow-md border border-slate-700/80"
-              : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
+              ? "bg-neutral-900 text-white font-bold shadow-md border border-neutral-800"
+              : "text-neutral-400 hover:bg-neutral-900 hover:text-white"
             }
           `}
           onClick={() => {
@@ -291,7 +289,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
             }
           }}>
           <Icon
-            className={`text-xl flex-shrink-0 ${active ? "text-white" : "text-slate-400"
+            className={`text-xl flex-shrink-0 ${active ? "text-white" : "text-neutral-400"
               }`}
           />
           <span className="font-semibold flex-1 text-base">{item.title}</span>
@@ -322,7 +320,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
             <motion.div
               animate={{ rotate: isExpanded ? 180 : 0 }}
               transition={{ duration: 0.2 }}>
-              <FiChevronDown className="text-slate-400 text-sm" />
+              <FiChevronDown className="text-neutral-400 text-sm" />
             </motion.div>
           )}
         </div>
@@ -336,7 +334,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="overflow-hidden">
-              <div className="ml-4 mt-1.5 pl-3 border-l-2 border-slate-800 space-y-1">
+              <div className="ml-4 mt-1.5 pl-3 border-l-2 border-neutral-800 space-y-1">
                 {item.children.map((child, index) => {
                   const childRoute = getChildRoute(item.route, child);
                   const isChildActive =
@@ -353,8 +351,8 @@ const AdminSidebar = ({ isOpen, onClose }) => {
                       className={`
                         px-3 py-2 text-sm rounded-lg transition-colors cursor-pointer flex justify-between items-center
                         ${isChildActive
-                          ? "bg-slate-800 text-white font-bold border-l-2 border-sky-400 pl-3.5 shadow-xs"
-                          : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
+                          ? "bg-neutral-900 text-white font-bold border-l-2 border-white pl-3.5 shadow-xs"
+                          : "text-neutral-400 hover:bg-neutral-900 hover:text-white"
                         }
                       `}>
                       <span>{child}</span>
@@ -381,13 +379,13 @@ const AdminSidebar = ({ isOpen, onClose }) => {
 
   // Sidebar content
   const sidebarContent = (
-    <div className="h-full w-full flex flex-col bg-[#0B1528]">
+    <div className="h-full w-full flex flex-col bg-black">
       {/* Header Section: Reference Logo Badge & Admin Panel Title */}
-      <div className="px-4 py-5 border-b border-slate-800/80 bg-[#0B1528]">
+      <div className="px-4 py-5 border-b border-neutral-900 bg-black">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3.5 flex-1 min-w-0">
             {/* White-bordered Glossy Logo Container */}
-            <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-[16px] bg-[#0B1528] border-2 border-white shadow-xl overflow-hidden flex items-center justify-center shrink-0 p-1">
+            <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-[16px] bg-black border-2 border-white shadow-xl overflow-hidden flex items-center justify-center shrink-0 p-1">
               <img
                 src={branding?.appLogo || '/Homster-logo.png'}
                 alt="Zevygo"
@@ -404,7 +402,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-snug drop-shadow-sm">
                 {(branding?.appName && branding.appName.toLowerCase() === 'zevgo') ? 'Zevygo' : (branding?.appName || 'Zevygo')}
               </h2>
-              <span className="text-[11px] font-black text-sky-400 tracking-[0.25em] uppercase leading-normal mt-0.5 block">
+              <span className="text-[11px] font-black text-white tracking-[0.25em] uppercase leading-normal mt-0.5 block">
                 ADMIN PANEL
               </span>
             </div>
@@ -415,7 +413,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
             onClick={onClose}
             className="p-1.5 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 lg:hidden"
             aria-label="Close sidebar">
-            <FiX className="text-xl text-slate-300" />
+            <FiX className="text-xl text-neutral-300" />
           </button>
         </div>
       </div>

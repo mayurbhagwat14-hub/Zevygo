@@ -142,7 +142,7 @@ const WorkerPaymentModal = ({ isOpen, onClose, workerName, amountDue = 0, onConf
                     type="button"
                     onClick={() => setPaymentMethod('online')}
                     className={`py-3 rounded-xl text-xs font-bold border-2 transition-all ${paymentMethod === 'online'
-                      ? 'bg-blue-50 border-blue-500 text-blue-700'
+                      ? 'bg-primary-50 border-primary-400 text-primary-600'
                       : 'bg-white border-gray-100 text-gray-500 hover:border-gray-200'
                       }`}
                   >

@@ -10,6 +10,11 @@ import api from '../../../services/api';
 
 const API_BASE_URL = '/api/vendors';
 
+/** In-flight + short TTL cache — stops duplicate GET /bookings/:id spam */
+const bookingByIdInflight = new Map();
+const bookingByIdCache = new Map();
+const BOOKING_CACHE_TTL_MS = 1500;
+
 /**
  * Get all bookings
  * @param {Object} filters - Filter options (status, date range, etc.)
@@ -31,13 +36,43 @@ export const getBookings = async (filters = {}) => {
  * @returns {Promise<Object>} Booking details
  */
 export const getBookingById = async (bookingId) => {
-  try {
-    const response = await api.get(`/vendors/bookings/${bookingId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching booking:', error);
-    throw error;
+  if (!bookingId) throw new Error('bookingId required');
+  const key = String(bookingId);
+
+  const cached = bookingByIdCache.get(key);
+  if (cached && Date.now() - cached.at < BOOKING_CACHE_TTL_MS) {
+    return cached.data;
   }
+
+  if (bookingByIdInflight.has(key)) {
+    return bookingByIdInflight.get(key);
+  }
+
+  const request = api
+    .get(`/vendors/bookings/${bookingId}`)
+    .then((response) => {
+      bookingByIdCache.set(key, { at: Date.now(), data: response.data });
+      return response.data;
+    })
+    .catch((error) => {
+      console.error('Error fetching booking:', error);
+      throw error;
+    })
+    .finally(() => {
+      bookingByIdInflight.delete(key);
+    });
+
+  bookingByIdInflight.set(key, request);
+  return request;
+};
+
+/** Bust cache after mutations so UI can refetch fresh data */
+export const invalidateBookingCache = (bookingId) => {
+  if (!bookingId) {
+    bookingByIdCache.clear();
+    return;
+  }
+  bookingByIdCache.delete(String(bookingId));
 };
 
 /**
@@ -47,6 +82,7 @@ export const getBookingById = async (bookingId) => {
  */
 export const acceptBooking = async (bookingId) => {
   try {
+    invalidateBookingCache(bookingId);
     const response = await api.post(`/vendors/bookings/${bookingId}/accept`);
     return response.data;
   } catch (error) {
@@ -63,6 +99,7 @@ export const acceptBooking = async (bookingId) => {
  */
 export const rejectBooking = async (bookingId, reason = '') => {
   try {
+    invalidateBookingCache(bookingId);
     const response = await api.post(`/vendors/bookings/${bookingId}/reject`, { reason });
     return response.data;
   } catch (error) {
@@ -79,6 +116,7 @@ export const rejectBooking = async (bookingId, reason = '') => {
  */
 export const assignWorker = async (bookingId, workerId) => {
   try {
+    invalidateBookingCache(bookingId);
     const response = await api.post(`/vendors/bookings/${bookingId}/assign-worker`, { workerId });
     return response.data;
   } catch (error) {
@@ -96,6 +134,7 @@ export const assignWorker = async (bookingId, workerId) => {
  */
 export const updateBookingStatus = async (bookingId, status, data = {}) => {
   try {
+    invalidateBookingCache(bookingId);
     const response = await api.put(`/vendors/bookings/${bookingId}/status`, { status, ...data });
     return response.data;
   } catch (error) {
@@ -108,6 +147,7 @@ export const updateBookingStatus = async (bookingId, status, data = {}) => {
  * Start Self Job (Vendor)
  */
 export const startSelfJob = async (bookingId) => {
+  invalidateBookingCache(bookingId);
   const response = await api.post(`/vendors/bookings/${bookingId}/self/start`);
   return response.data;
 };
@@ -116,6 +156,7 @@ export const startSelfJob = async (bookingId) => {
  * Notify Reached (Vendor)
  */
 export const vendorReached = async (bookingId) => {
+  invalidateBookingCache(bookingId);
   const response = await api.post(`/vendors/bookings/${bookingId}/self/reached`);
   return response.data;
 };
@@ -124,6 +165,7 @@ export const vendorReached = async (bookingId) => {
  * Verify Self Visit (Vendor)
  */
 export const verifySelfVisit = async (bookingId, otp, location) => {
+  invalidateBookingCache(bookingId);
   const response = await api.post(`/vendors/bookings/${bookingId}/self/visit/verify`, { otp, location });
   return response.data;
 };
@@ -132,6 +174,7 @@ export const verifySelfVisit = async (bookingId, otp, location) => {
  * Complete Self Job (Vendor)
  */
 export const completeSelfJob = async (bookingId, data) => {
+  invalidateBookingCache(bookingId);
   const response = await api.post(`/vendors/bookings/${bookingId}/self/complete`, data);
   return response.data;
 };
@@ -140,6 +183,7 @@ export const completeSelfJob = async (bookingId, data) => {
  * Collect Self Cash (Vendor)
  */
 export const collectSelfCash = async (bookingId, otp, amount) => {
+  invalidateBookingCache(bookingId);
   const response = await api.post(`/vendors/bookings/${bookingId}/self/payment/collect`, { otp, amount });
   return response.data;
 };
@@ -148,6 +192,7 @@ export const collectSelfCash = async (bookingId, otp, amount) => {
  * Pay Worker (Worker Payment Settlement)
  */
 export const payWorker = async (bookingId) => {
+  invalidateBookingCache(bookingId);
   const response = await api.post(`/vendors/bookings/${bookingId}/pay-worker`);
   return response.data;
 };

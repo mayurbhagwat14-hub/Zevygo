@@ -7,10 +7,10 @@ import api from './api';
 
 export const walletService = {
   // Get wallet balance
-  getBalance: async () => {
-    const response = await api.get('/user/wallet/balance');
-    return response.data;
-  },
+    getBalance: async () => {
+      const response = await api.get('/user/wallet/balance', { cacheTtl: 30 });
+      return response.data;
+    },
 
   // Add money to wallet (create Razorpay order)
   addMoney: async (amount) => {

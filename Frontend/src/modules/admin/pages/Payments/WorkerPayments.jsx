@@ -111,8 +111,8 @@ const WorkerPayments = () => {
           className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
         >
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-blue-50 rounded-xl">
-              <FiUser className="w-6 h-6 text-blue-600" />
+            <div className="p-3 bg-primary-50 rounded-xl">
+              <FiUser className="w-6 h-6 text-primary-500" />
             </div>
           </div>
           <p className="text-gray-500 text-sm font-medium">Total Workers</p>

@@ -547,7 +547,7 @@ const Home = () => {
                   <ServiceCategories
                     categories={categories}
                     onCategoryClick={handleCategoryClick}
-                    onSeeAllClick={() => setIsSearchOpen(true)}
+                    onSeeAllClick={() => navigate('/user/all-services')}
                   />
                 </motion.section>
               )}

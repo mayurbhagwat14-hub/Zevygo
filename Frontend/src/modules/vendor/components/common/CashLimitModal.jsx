@@ -1,49 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiAlertTriangle, FiX } from 'react-icons/fi';
 import { getWalletBalance } from '../../services/walletService';
+
+const POLL_MS = 90_000;
 
 const CashLimitModal = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [show, setShow] = useState(false);
   const [walletData, setWalletData] = useState(null);
+  const fetchingRef = useRef(false);
 
   const checkLimit = async () => {
+    if (fetchingRef.current) return;
     try {
-      // Check if user is logged in before making the call
       const token = sessionStorage.getItem('vendorAccessToken') || localStorage.getItem('vendorAccessToken');
       if (!token) return;
 
+      fetchingRef.current = true;
       const wallet = await getWalletBalance();
-      if (wallet) {
-        setWalletData(wallet);
-      }
+      if (wallet) setWalletData(wallet);
     } catch (error) {
-      // Silent fail
       console.warn('CashLimitModal: Failed to fetch wallet balance', error.message);
+    } finally {
+      fetchingRef.current = false;
     }
   };
 
-  // Initial Check & Interval
   useEffect(() => {
     checkLimit();
-    const interval = setInterval(checkLimit, 30000);
+    const interval = setInterval(checkLimit, POLL_MS);
     return () => clearInterval(interval);
   }, []);
 
-  // Show modal based on data & Re-show on navigation
   useEffect(() => {
-    if (walletData) {
-      const dues = walletData.dues || 0;
-      const limit = walletData.cashLimit || 10000;
-
-      if (dues > limit) {
-        setShow(true);
-      } else {
-        setShow(false);
-      }
-    }
+    if (!walletData) return;
+    const dues = walletData.dues || 0;
+    const limit = walletData.cashLimit || 10000;
+    setShow(dues > limit);
   }, [location.pathname, walletData]);
 
   if (!show) return null;

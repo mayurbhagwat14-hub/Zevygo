@@ -209,7 +209,7 @@ const BrandServicesModal = ({ isOpen, onClose, brand }) => {
                   <td className="px-4 py-3 text-right flex justify-end gap-2">
                     <button
                       onClick={() => handleEdit(service)}
-                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                      className="p-1.5 text-primary-500 hover:bg-primary-50 rounded"
                       title="Edit"
                     >
                       <FiEdit2 className="w-4 h-4" />

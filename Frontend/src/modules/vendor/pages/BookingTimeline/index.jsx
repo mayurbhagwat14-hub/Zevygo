@@ -31,9 +31,12 @@ const BookingTimeline = () => {
   const [isWorkApproved, setIsWorkApproved] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadBooking = async () => {
       try {
         const response = await getBookingById(id);
+        if (cancelled) return;
         const apiData = response.data || response;
 
         const isSelfJob = apiData.assignedAt && !apiData.workerId;
@@ -48,19 +51,16 @@ const BookingTimeline = () => {
             lng: apiData.address?.lng || apiData.location?.lng
           },
           status: apiData.status,
-          // Timeline mapping if backend supports it, otherwise derived from status/timestamps
           timeline: [
             { stage: 1, timestamp: apiData.createdAt },
             { stage: 2, timestamp: apiData.acceptedAt },
             { stage: 3, timestamp: apiData.assignedAt },
-            { stage: 4, timestamp: apiData.startedAt }, // Assuming started means visited for now? Or keep null
-            { stage: 5, timestamp: apiData.completedAt }, // Simplified mapping
+            { stage: 4, timestamp: apiData.startedAt },
+            { stage: 5, timestamp: apiData.completedAt },
           ]
         };
         setBooking(mappedBooking);
 
-        // Determine current stage based on status
-        // Determine current stage based on status
         const statusMap = {
           'requested': 1,
           'searching': 1,
@@ -76,11 +76,10 @@ const BookingTimeline = () => {
         const isActuallyPaid = apiData.isWorkerPaid || apiData.workerPaymentStatus === 'PAID' || apiData.workerPaymentStatus === 'SUCCESS';
         const isSettled = apiData.finalSettlementStatus === 'DONE';
 
-        // Custom logic for later stages
         let stage = statusMap[apiData.status] || 2;
         if (apiData.status === 'completed') {
-          if (isSettled) stage = 8; // Booking Complete
-          else if (isActuallyPaid || isSelfJob) stage = 7; // Final Settlement
+          if (isSettled) stage = 8;
+          else if (isActuallyPaid || isSelfJob) stage = 7;
           else stage = 7;
         }
 
@@ -92,13 +91,10 @@ const BookingTimeline = () => {
 
     loadBooking();
 
-    const handleUpdate = () => {
-      loadBooking();
+    return () => {
+      cancelled = true;
     };
-
-    window.addEventListener('vendorJobsUpdated', handleUpdate);
-    return () => window.removeEventListener('vendorJobsUpdated', handleUpdate);
-  }, [id, isWorkApproved]);
+  }, [id]);
 
   // Handle modal closing if payment is detected
   useEffect(() => {
@@ -481,7 +477,7 @@ const BookingTimeline = () => {
                 <input key={i} id={`otp-${i}`} type="number" value={otpInput[i]} onChange={(e) => handleOtpChange(i, e.target.value)} className="w-10 h-10 border rounded text-center" maxLength={1} />
               ))}
             </div>
-            <button onClick={handleVerifyVisit} disabled={actionLoading} className="w-full bg-blue-600 text-white py-2 rounded-lg">{actionLoading ? 'Verifying...' : 'Verify'}</button>
+            <button onClick={handleVerifyVisit} disabled={actionLoading} className="w-full bg-primary-500 text-white py-2 rounded-lg">{actionLoading ? 'Verifying...' : 'Verify'}</button>
           </div>
         </div>
       )}

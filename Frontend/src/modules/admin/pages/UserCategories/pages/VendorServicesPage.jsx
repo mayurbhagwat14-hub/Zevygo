@@ -146,7 +146,7 @@ const VendorServicesPage = () => {
           </button>
           <button
             onClick={() => { resetCategoryForm(); setIsCategoryModalOpen(true); }}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+            className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
           >
             <FiPlus /> Create New Category
           </button>
@@ -162,7 +162,7 @@ const VendorServicesPage = () => {
               placeholder="Search category title..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full pl-9 pr-4 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-400 outline-none"
             />
           </div>
         </div>
@@ -181,7 +181,7 @@ const VendorServicesPage = () => {
                 <div key={c.id || c._id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-3">
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase">
+                      <span className="text-[10px] font-black text-primary-500 bg-primary-50 px-2 py-0.5 rounded border border-primary-100 uppercase">
                         {c.slug || "category"}
                       </span>
                       {c.homeBadge && (
@@ -232,7 +232,7 @@ const VendorServicesPage = () => {
               type="text"
               value={categoryForm.title}
               onChange={(e) => setCategoryForm(p => ({ ...p, title: e.target.value }))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-400 outline-none"
               placeholder="e.g. Cook / Maharaj, Driver Booking, Tiffin"
             />
           </div>
@@ -243,7 +243,7 @@ const VendorServicesPage = () => {
               type="text"
               value={categoryForm.homeBadge}
               onChange={(e) => setCategoryForm(p => ({ ...p, homeBadge: e.target.value }))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-400 outline-none"
               placeholder="e.g. Popular, Subscription"
             />
           </div>
@@ -253,7 +253,7 @@ const VendorServicesPage = () => {
             <textarea
               value={categoryForm.description}
               onChange={(e) => setCategoryForm(p => ({ ...p, description: e.target.value }))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-400 outline-none resize-none"
               rows={3}
               placeholder="Brief summary of services included"
             />
@@ -262,7 +262,7 @@ const VendorServicesPage = () => {
           <button
             onClick={handleSaveCategory}
             disabled={loading}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md disabled:opacity-50"
+            className="w-full py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-bold shadow-md disabled:opacity-50"
           >
             {loading ? "Saving..." : "Save Category"}
           </button>

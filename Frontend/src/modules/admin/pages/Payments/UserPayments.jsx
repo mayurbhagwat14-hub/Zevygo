@@ -103,7 +103,7 @@ const UserPayments = () => {
       case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'failed': return 'bg-red-100 text-red-700 border-red-200';
       case 'cancelled': return 'bg-gray-100 text-gray-700 border-gray-200';
-      default: return 'bg-blue-100 text-blue-700 border-blue-200';
+      default: return 'bg-primary-100 text-primary-600 border-primary-200';
     }
   };
 
@@ -112,7 +112,7 @@ const UserPayments = () => {
       case 'credit': return 'text-green-600';
       case 'debit': return 'text-red-600';
       case 'refund': return 'text-orange-600';
-      default: return 'text-blue-600';
+      default: return 'text-primary-500';
     }
   };
 
@@ -300,7 +300,7 @@ const UserPayments = () => {
                           <span className="text-sm font-medium text-gray-900">
                             {tx.userId?.name || tx.bookingId?.userId?.name || tx.vendorId?.businessName || tx.vendorId?.name || tx.workerId?.name || 'Guest'}
                           </span>
-                          {(tx.userId || tx.bookingId?.userId) && <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-medium">User</span>}
+                          {(tx.userId || tx.bookingId?.userId) && <span className="text-[10px] bg-primary-100 text-blue-800 px-1.5 py-0.5 rounded font-medium">User</span>}
                           {tx.vendorId && <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-medium">Vendor</span>}
                           {tx.workerId && <span className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-medium">Worker</span>}
                         </div>
@@ -316,7 +316,7 @@ const UserPayments = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-primary-50 text-primary-500 border border-primary-100">
                         {tx.type}
                       </span>
                     </td>

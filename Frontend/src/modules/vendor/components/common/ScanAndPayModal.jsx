@@ -18,7 +18,7 @@ const ScanAndPayModal = ({
       <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
           <div className="p-8 pb-4 text-center">
-            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+            <div className="w-12 h-12 bg-primary-50 text-primary-500 rounded-full flex items-center justify-center mx-auto mb-3">
               <MdQrCode className="w-6 h-6" />
             </div>
             <h2 className="text-xl font-black text-gray-900 mb-1">Scan & Pay</h2>

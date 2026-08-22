@@ -213,12 +213,12 @@ const CashCollectionModal = ({
                   <p className="text-[11px] font-medium text-emerald-700">Covered by customer's membership plan</p>
                 </div>
               ) : (
-                <div className="bg-blue-50/50 rounded-2xl p-5 mb-6 border border-blue-100/50">
+                <div className="bg-primary-50/50 rounded-2xl p-5 mb-6 border border-primary-100/50">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-sm font-medium text-blue-800">Booking Amount</span>
                     <span className="text-lg font-bold text-blue-900">₹{baseAmount.toLocaleString()}</span>
                   </div>
-                  <p className="text-[11px] text-blue-600/80">Original service booking amount</p>
+                  <p className="text-[11px] text-primary-500/80">Original service booking amount</p>
                 </div>
               )}
 
@@ -228,7 +228,7 @@ const CashCollectionModal = ({
                   <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Extra Services / Items</h4>
                   <button
                     onClick={handleAddItem}
-                    className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                    className="flex items-center gap-1.5 text-xs font-bold text-primary-500 bg-primary-50 px-3 py-1.5 rounded-lg hover:bg-primary-100 transition-colors"
                   >
                     <FiPlus className="w-3.5 h-3.5" />
                     Add Extra
@@ -247,7 +247,7 @@ const CashCollectionModal = ({
                           <input
                             type="text"
                             placeholder="Service name"
-                            className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-all"
+                            className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400 transition-all"
                             value={item.title}
                             onChange={(e) => handleUpdateItem(index, 'title', e.target.value)}
                           />
@@ -257,7 +257,7 @@ const CashCollectionModal = ({
                               <input
                                 type="number"
                                 placeholder="Price"
-                                className="w-full pl-7 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+                                className="w-full pl-7 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400"
                                 value={item.price}
                                 onChange={(e) => handleUpdateItem(index, 'price', e.target.value)}
                               />
@@ -266,7 +266,7 @@ const CashCollectionModal = ({
                               <input
                                 type="number"
                                 placeholder="Qty"
-                                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+                                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400"
                                 value={item.qty}
                                 onChange={(e) => handleUpdateItem(index, 'qty', e.target.value)}
                               />
@@ -287,7 +287,7 @@ const CashCollectionModal = ({
             </>
           ) : (
             <div className="py-4 text-center">
-              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
+              <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4 text-primary-500">
                 <FiClock className="w-8 h-8 animate-pulse" />
               </div>
               <h4 className="font-bold text-gray-900 mb-2">Enter Confirmation Code</h4>
@@ -305,7 +305,7 @@ const CashCollectionModal = ({
                     value={otp[i]}
                     onChange={(e) => handleOtpChange(i, e.target.value)}
                     onFocus={handleInputFocus}
-                    className="w-12 h-14 border-2 border-gray-100 rounded-xl text-center text-2xl font-bold focus:border-blue-500 focus:outline-none bg-gray-50 transition-all"
+                    className="w-12 h-14 border-2 border-gray-100 rounded-xl text-center text-2xl font-bold focus:border-primary-400 focus:outline-none bg-gray-50 transition-all"
                     maxLength={1}
                   />
                 ))}
@@ -313,7 +313,7 @@ const CashCollectionModal = ({
 
               <button
                 onClick={() => setStep('summary')}
-                className="text-xs font-bold text-blue-600 hover:underline"
+                className="text-xs font-bold text-primary-500 hover:underline"
               >
                 Back to Edit Bill
               </button>
@@ -335,7 +335,7 @@ const CashCollectionModal = ({
                   <p className="text-3xl font-black tracking-tight">₹{finalTotal.toLocaleString()}</p>
                 </div>
                 <div className="text-right">
-                  <div className="px-2 py-1 bg-blue-500/20 text-blue-400 text-[10px] font-bold rounded-lg border border-blue-500/30">
+                  <div className="px-2 py-1 bg-primary-500/20 text-blue-400 text-[10px] font-bold rounded-lg border border-primary-400/30">
                     CASH COLLECTION
                   </div>
                 </div>
@@ -354,7 +354,7 @@ const CashCollectionModal = ({
               style={{
                 background: booking?.paymentMethod === 'plan_benefit' && extraItems.length === 0
                   ? 'linear-gradient(135deg, #10B981, #059669)'
-                  : 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                  : 'linear-gradient(135deg, #0F348F, #0F348F)',
                 boxShadow: booking?.paymentMethod === 'plan_benefit' && extraItems.length === 0
                   ? '0 8px 16px -4px rgba(16, 185, 129, 0.4)'
                   : '0 8px 16px -4px rgba(59, 130, 246, 0.4)',

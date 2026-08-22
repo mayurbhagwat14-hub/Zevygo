@@ -164,7 +164,7 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
                   className="hidden"
                 />
 
-                {isUploading && <p className="text-blue-500 text-[10px] font-bold mt-2 ml-1 animate-pulse">Uploading photos...</p>}
+                {isUploading && <p className="text-primary-400 text-[10px] font-bold mt-2 ml-1 animate-pulse">Uploading photos...</p>}
               </div>
 
               {/* Quality Checklist (Restored from Vendor Design) */}

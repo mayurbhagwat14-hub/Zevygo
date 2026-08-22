@@ -43,7 +43,7 @@ const VendorBookings = () => {
   const getStatusStyle = (status) => {
     const styles = {
       pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-blue-100 text-blue-800',
+      confirmed: 'bg-primary-100 text-blue-800',
       ongoing: 'bg-purple-100 text-purple-800',
       completed: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800'
@@ -67,13 +67,13 @@ const VendorBookings = () => {
               placeholder="Search by business name, owner or phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -104,8 +104,8 @@ const VendorBookings = () => {
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <FiBriefcase className="text-blue-600 w-6 h-6" />
+                      <div className="bg-primary-50 p-3 rounded-lg">
+                        <FiBriefcase className="text-primary-500 w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -120,7 +120,7 @@ const VendorBookings = () => {
                             <span>Vendor: <span className="font-medium text-gray-800">{booking.vendorId?.businessName || booking.vendorId?.name || 'Unassigned'}</span></span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <FiUser className="w-4 h-4 text-blue-500" />
+                            <FiUser className="w-4 h-4 text-primary-400" />
                             <span>Customer: <span className="font-medium text-gray-800">{booking.userId?.name}</span></span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -159,7 +159,7 @@ const VendorBookings = () => {
                 key={i}
                 onClick={() => loadBookings(i + 1)}
                 className={`w-10 h-10 rounded-lg font-semibold transition-all ${pagination.page === i + 1
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-primary-500 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
               >

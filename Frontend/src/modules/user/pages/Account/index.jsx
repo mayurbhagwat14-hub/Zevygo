@@ -163,7 +163,7 @@ const Account = () => {
             {badge}
           </span>
         )}
-        <FiChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-500 transition-colors" />
+        <FiChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary-400 transition-colors" />
       </div>
     </motion.button>
   );
@@ -214,7 +214,7 @@ const Account = () => {
           {/* Elevated Profile Card */}
           <motion.div
             variants={itemVariants}
-            className="bg-white rounded-[28px] p-5 shadow-[0_32px_64px_-16px_rgba(37,99,235,0.1)] mb-8 relative overflow-hidden border border-white"
+            className="bg-white rounded-[28px] p-5 shadow-[0_32px_64px_-16px_rgba(15,52,143,0.1)] mb-8 relative overflow-hidden border border-white"
           >
             {/* Vivid Brand Accents */}
             <div className="absolute top-0 right-0 w-48 h-48 rounded-full -mr-20 -mt-20 blur-3xl opacity-[0.15]"
@@ -343,16 +343,7 @@ const Account = () => {
 
           {/* Menu Groups */}
 
-          {/* Shopping */}
-          <motion.div variants={itemVariants} className="mb-6">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-2">Shopping</h3>
 
-            <MenuItem
-              icon={FiFileText}
-              label="My Plans"
-              onClick={() => navigate('/user/my-plan')}
-            />
-          </motion.div>
 
           {/* Activity */}
           <motion.div variants={itemVariants} className="mb-6">
@@ -405,7 +396,7 @@ const Account = () => {
                 </div>
                 <span className="font-semibold text-gray-900">About {branding.appName}</span>
               </div>
-              <FiChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-500 transition-colors" />
+              <FiChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary-400 transition-colors" />
             </motion.button>
             <div className="h-4"></div>
             <motion.button

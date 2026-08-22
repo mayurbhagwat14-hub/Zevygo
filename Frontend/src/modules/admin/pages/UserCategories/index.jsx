@@ -4,8 +4,6 @@ import { motion } from "framer-motion";
 import { ensureIds, loadCatalog } from "./utils";
 import HomePage from "./pages/HomePage";
 import CategoriesPage from "./pages/CategoriesPage";
-import ServicesPage from "./pages/ServicesPage";
-import BrandsPage from "./pages/BrandsPage";
 import VendorServicesPage from "./pages/VendorServicesPage";
 import VendorPartsPage from "./pages/VendorPartsPage";
 
@@ -92,8 +90,9 @@ const UserCategories = () => {
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<HomePage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
           <Route path="categories" element={<CategoriesPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
-          <Route path="sections" element={<ServicesPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
-          <Route path="brands" element={<BrandsPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
+          {/* Legacy Brands/Services catalog removed — bookings use category listing blocks */}
+          <Route path="sections" element={<Navigate to="../categories" replace />} />
+          <Route path="brands" element={<Navigate to="../categories" replace />} />
           <Route path="vendor-services" element={<VendorServicesPage />} />
           <Route path="vendor-parts" element={<VendorPartsPage />} />
           <Route path="*" element={<Navigate to="home" replace />} />

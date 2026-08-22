@@ -140,7 +140,7 @@ const VendorPayments = () => {
       case 'withdrawal': return 'text-red-600 bg-red-50 border-red-100';
       case 'cash_collected': return 'text-amber-600 bg-amber-50 border-amber-100';
       case 'tds_deduction': return 'text-pink-600 bg-pink-50 border-pink-100';
-      case 'settlement': return 'text-blue-600 bg-blue-50 border-blue-100';
+      case 'settlement': return 'text-primary-500 bg-primary-50 border-primary-100';
       case 'platform_fee': return 'text-rose-600 bg-rose-50 border-rose-100';
       default: return 'text-gray-600 bg-gray-50 border-gray-100';
     }
@@ -303,7 +303,7 @@ const VendorPayments = () => {
                 <tr>
                   <td colSpan="6" className="py-8 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                      <div className="w-6 h-6 border-2 border-primary-400 border-t-transparent rounded-full animate-spin mb-2"></div>
                       <p className="text-sm">Loading transactions...</p>
                     </div>
                   </td>

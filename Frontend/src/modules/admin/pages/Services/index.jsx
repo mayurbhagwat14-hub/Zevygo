@@ -271,7 +271,7 @@ const Services = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleEditCategory(category)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-2 text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
                     >
                       <FiEdit2 className="w-4 h-4" />
                     </button>

@@ -56,14 +56,14 @@ const UserAnalytics = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <FiLoader className="w-8 h-8 text-blue-600 animate-spin" />
+        <FiLoader className="w-8 h-8 text-primary-500 animate-spin" />
       </div>
     );
   }
 
   if (!data) return null;
 
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+  const COLORS = ['#0F348F', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
   return (
     <div className="space-y-4">
@@ -71,7 +71,7 @@ const UserAnalytics = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+            <div className="p-2 bg-primary-50 rounded-lg text-primary-500">
               <FiUsers className="w-4 h-4" />
             </div>
             <div>
@@ -150,7 +150,7 @@ const UserAnalytics = () => {
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" width={70} tick={{ fontSize: 9, fill: '#64748B' }} axisLine={false} tickLine={false} />
                 <Tooltip />
-                <Bar dataKey="bookingCount" fill="#3B82F6" radius={[0, 4, 4, 0]} barSize={16} />
+                <Bar dataKey="bookingCount" fill="#0F348F" radius={[0, 4, 4, 0]} barSize={16} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -164,8 +164,8 @@ const UserAnalytics = () => {
             <AreaChart data={data.monthlyTrend}>
               <defs>
                 <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#0F348F" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#0F348F" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -175,7 +175,7 @@ const UserAnalytics = () => {
               <Area
                 type="monotone"
                 dataKey="count"
-                stroke="#3B82F6"
+                stroke="#0F348F"
                 fillOpacity={1}
                 fill="url(#colorTrend)"
                 strokeWidth={2}

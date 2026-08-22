@@ -50,7 +50,7 @@ const RevenueLineChart = ({ data, period = 'month' }) => {
           <p className="text-xs sm:text-sm text-gray-500 mt-1">Track revenue over time</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500" />
+          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-primary-500 to-purple-500" />
           <span className="text-xs text-gray-600">Revenue</span>
         </div>
       </div>
@@ -60,8 +60,8 @@ const RevenueLineChart = ({ data, period = 'month' }) => {
           <AreaChart data={filteredData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <defs>
               <linearGradient id="colorRevenueAdmin" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                <stop offset="5%" stopColor="#0F348F" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#0F348F" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -87,7 +87,7 @@ const RevenueLineChart = ({ data, period = 'month' }) => {
             <Area
               type="monotone"
               dataKey="revenue"
-              stroke="#3b82f6"
+              stroke="#0F348F"
               strokeWidth={2}
               fill="url(#colorRevenueAdmin)"
               name="Revenue"

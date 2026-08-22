@@ -12,6 +12,8 @@ const Header = memo(({
   showSearch = false,
   showNotifications = true,
   notificationCount = 0,
+  customHeaderContent,
+  rightAction,
 }) => {
   const navigate = useNavigate();
   const [count, setCount] = useState(notificationCount);
@@ -23,10 +25,11 @@ const Header = memo(({
   }, [notificationCount]);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchUnreadCount = async () => {
       try {
-        const res = await api.get('/notifications/vendor');
-        if (res.data.success && typeof res.data.unreadCount === 'number') {
+        const res = await api.get('/notifications/vendor', { cacheTtl: 30 });
+        if (!cancelled && res.data.success && typeof res.data.unreadCount === 'number') {
           setCount(res.data.unreadCount);
         }
       } catch {
@@ -37,8 +40,12 @@ const Header = memo(({
     if (showNotifications) {
       fetchUnreadCount();
       const interval = setInterval(fetchUnreadCount, 60000);
-      return () => clearInterval(interval);
+      return () => {
+        cancelled = true;
+        clearInterval(interval);
+      };
     }
+    return undefined;
   }, [showNotifications]);
 
   const handleBack = () => {
@@ -47,14 +54,15 @@ const Header = memo(({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-neutral-100 shadow-sm rounded-b-2xl">
-      <div className="px-4 py-3 flex items-center justify-between">
+    <header className="relative w-full bg-[#0B1528] text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] rounded-b-[2rem] overflow-hidden z-40">
+      <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-[400px] h-32 bg-primary-500/20 blur-[60px] pointer-events-none rounded-full" />
+      <div className="px-5 pt-5 pb-4 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-3">
           {showBack ? (
             <motion.button
               type="button"
               onClick={handleBack}
-              className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors"
+              className="p-2 rounded-full text-white hover:bg-white/10 transition-colors"
               whileTap={{ scale: 0.95 }}
             >
               <FiArrowLeft className="w-5 h-5" />
@@ -69,17 +77,18 @@ const Header = memo(({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Logo className="h-10 w-auto" />
+              <Logo className="h-10 w-auto filter drop-shadow-[0_2px_8px_rgba(15,52,143,0.4)]" />
             </motion.button>
           )}
-          {showBack && <h1 className="text-lg font-bold text-neutral-900">{title || 'Vendor'}</h1>}
+          {showBack && <h1 className="text-lg font-bold text-white">{title || 'Vendor'}</h1>}
+          {!showBack && customHeaderContent}
         </div>
 
         <div className="flex items-center gap-2">
           {showSearch && (
             <button
               type="button"
-              className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors active:scale-95"
+              className="p-2 rounded-full text-white hover:bg-white/10 transition-colors active:scale-95"
               onClick={() => navigate('/vendor/jobs')}
             >
               <FiSearch className="w-5 h-5" />
@@ -89,18 +98,19 @@ const Header = memo(({
             <motion.button
               type="button"
               onClick={() => navigate('/vendor/notifications')}
-              className="relative p-2.5 rounded-full text-primary-600 hover:bg-primary-50 transition-colors"
+              className="relative p-2.5 rounded-full text-white hover:bg-white/10 transition-colors"
               whileTap={{ scale: 0.95 }}
               aria-label="Notifications"
             >
-              <FiBell className={`w-5 h-5 ${count > 0 ? 'text-error-500' : ''}`} />
+              <FiBell className="w-5 h-5 text-white/90" />
               {count > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-error-500 rounded-full flex items-center justify-center border-2 border-white">
+                <span className="absolute -top-1 -right-0.5 min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-[#EF4444] rounded-full flex items-center justify-center border-[2.5px] border-[#0B1528] shadow-sm">
                   {count > 9 ? '9+' : count}
                 </span>
               )}
             </motion.button>
           )}
+          {rightAction}
         </div>
       </div>
     </header>

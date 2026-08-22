@@ -46,9 +46,9 @@ const PromoCard = memo(({ title, subtitle, buttonText, image, onClick, className
               </p>
             )}
           </div>
-          <button className="bg-white text-blue-700 text-xs font-black py-2.5 px-5 rounded-full w-max flex items-center gap-2 shadow-lg">
+          <button className="bg-white text-primary-600 text-xs font-black py-2.5 px-5 rounded-full w-max flex items-center gap-2 shadow-lg">
             <span>{buttonText || 'Book Service Now'}</span>
-            <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">
+            <span className="w-4 h-4 rounded-full bg-primary-500 text-white flex items-center justify-center text-[10px]">
               ➔
             </span>
           </button>

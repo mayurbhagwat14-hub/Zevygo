@@ -607,7 +607,7 @@ const BillingPage = () => {
             <button onClick={() => setViewMode('timeline')}><FiArrowLeft className="w-6 h-6 text-gray-600" /></button>
             <div className="flex-1 relative">
               <input autoFocus placeholder="Search for a service..." value={serviceSearch} onChange={e => setServiceSearch(e.target.value)}
-                className="w-full bg-gray-100 pl-10 pr-4 py-2.5 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-gray-800 placeholder:text-gray-400" />
+                className="w-full bg-gray-100 pl-10 pr-4 py-2.5 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-primary-400/20 transition-all text-gray-800 placeholder:text-gray-400" />
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               </div>
@@ -616,7 +616,7 @@ const BillingPage = () => {
           <div className="px-4 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
             {serviceCategories.map(cat => (
               <button key={cat} onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${selectedCategory === cat ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{cat}</button>
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${selectedCategory === cat ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600'}`}>{cat}</button>
             ))}
           </div>
         </div>
@@ -626,17 +626,17 @@ const BillingPage = () => {
             return (
               <div key={item._id}
                 onClick={() => !selected && toggleService(item)}
-                className={`p-4 rounded-xl border shadow-sm flex justify-between items-center cursor-pointer transition-all active:scale-[0.98] ${selected ? 'bg-blue-50/50 border-blue-200 ring-1 ring-blue-100' : 'bg-white border-gray-100 hover:border-gray-200'}`}>
+                className={`p-4 rounded-xl border shadow-sm flex justify-between items-center cursor-pointer transition-all active:scale-[0.98] ${selected ? 'bg-primary-50/50 border-primary-200 ring-1 ring-blue-100' : 'bg-white border-gray-100 hover:border-gray-200'}`}>
                 <div className="flex-1">
                   <h4 className={`font-bold text-base mb-1 ${selected ? 'text-blue-900' : 'text-gray-900'}`}>{item.name}</h4>
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm font-bold ${selected ? 'text-blue-700' : 'text-gray-900'}`}>₹{item.price}</span>
+                    <span className={`text-sm font-bold ${selected ? 'text-primary-600' : 'text-gray-900'}`}>₹{item.price}</span>
                     {item.categoryId?.title && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">{item.categoryId.title}</span>}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   {selected ? (
-                    <div className="flex items-center gap-2 bg-blue-50 rounded-lg p-1 border border-blue-100">
+                    <div className="flex items-center gap-2 bg-primary-50 rounded-lg p-1 border border-primary-100">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -648,7 +648,7 @@ const BillingPage = () => {
                             toggleService(item);
                           }
                         }}
-                        className="w-8 h-8 flex items-center justify-center bg-white rounded-md text-blue-600 shadow-sm border border-blue-100 hover:bg-blue-50 active:scale-95 transition-all">
+                        className="w-8 h-8 flex items-center justify-center bg-white rounded-md text-primary-500 shadow-sm border border-primary-100 hover:bg-primary-50 active:scale-95 transition-all">
                         <span className="font-bold text-lg leading-none mb-0.5">-</span>
                       </button>
                       <span className="font-bold text-sm min-w-[20px] text-center text-blue-900">
@@ -660,14 +660,14 @@ const BillingPage = () => {
                           const idx = selectedServices.findIndex(s => s.catalogId === item._id);
                           updateServiceQty(idx, 1);
                         }}
-                        className="w-8 h-8 flex items-center justify-center bg-blue-600 rounded-md text-white shadow-md hover:bg-blue-700 active:scale-95 transition-all">
+                        className="w-8 h-8 flex items-center justify-center bg-primary-500 rounded-md text-white shadow-md hover:bg-primary-600 active:scale-95 transition-all">
                         <FiPlus className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleService(item); }}
-                      className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-90">
+                      className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 hover:bg-primary-500 hover:text-white transition-all shadow-sm active:scale-90">
                       <FiPlus className="w-5 h-5" />
                     </button>
                   )}
@@ -780,7 +780,7 @@ const BillingPage = () => {
             return (
               <button key={step.id} onClick={() => isReached && setCurrentStep(step.id)}
                 className={`flex flex-col items-center gap-1 z-10 relative transition-all ${isActive ? 'opacity-100 scale-105' : isReached ? 'opacity-80' : 'opacity-40'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${(isActive || isCompleted) ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-gray-100 text-gray-400'} ${isActive ? 'ring-4 ring-blue-50' : ''}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${(isActive || isCompleted) ? 'bg-primary-500 text-white shadow-lg shadow-primary-200' : 'bg-gray-100 text-gray-400'} ${isActive ? 'ring-4 ring-blue-50' : ''}`}>
                   {isCompleted ? <FiCheck className="w-4 h-4" /> : <step.icon />}
                 </div>
                 <span className={`text-[10px] font-bold ${isReached ? 'text-gray-800' : 'text-gray-400'}`}>{step.label}</span>
@@ -788,7 +788,7 @@ const BillingPage = () => {
             );
           })}
           <div className="absolute top-8 left-0 right-0 h-0.5 bg-gray-200 -z-0 mx-8">
-            <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${((maxStep - 1) / 4) * 100}%` }}></div>
+            <div className="h-full bg-primary-500 transition-all duration-300" style={{ width: `${((maxStep - 1) / 4) * 100}%` }}></div>
           </div>
         </div>
       </div>
@@ -799,18 +799,18 @@ const BillingPage = () => {
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-4">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-gray-800">Added Services</h3>
-                <button onClick={() => setViewMode('select-services')} className="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1.5 rounded-lg">+ Add Services</button>
+                <button onClick={() => setViewMode('select-services')} className="text-primary-500 font-bold text-xs bg-primary-50 px-3 py-1.5 rounded-lg">+ Add Services</button>
               </div>
               {selectedServices.length === 0 ? <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-400 text-sm">No extra services added</div> : (
                 <div className="space-y-3">
                   {selectedServices.map((s, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-3 bg-blue-50/30 rounded-xl border border-blue-100">
+                    <div key={idx} className="flex justify-between items-center p-3 bg-primary-50/30 rounded-xl border border-primary-100">
                       <div>
                         <p className="font-bold text-sm text-gray-800">{s.name}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <button onClick={() => updateServiceQty(idx, -1)} className="w-6 h-6 flex items-center justify-center bg-white border border-blue-200 rounded text-blue-600 font-bold">-</button>
+                          <button onClick={() => updateServiceQty(idx, -1)} className="w-6 h-6 flex items-center justify-center bg-white border border-primary-200 rounded text-primary-500 font-bold">-</button>
                           <span className="text-xs font-bold w-4 text-center">{s.quantity}</span>
-                          <button onClick={() => updateServiceQty(idx, 1)} className="w-6 h-6 flex items-center justify-center bg-white border border-blue-200 rounded text-blue-600 font-bold">+</button>
+                          <button onClick={() => updateServiceQty(idx, 1)} className="w-6 h-6 flex items-center justify-center bg-white border border-primary-200 rounded text-primary-500 font-bold">+</button>
                         </div>
                       </div>
                       <p className="font-bold text-gray-800">₹{s.total.toFixed(2)}</p>
@@ -860,7 +860,7 @@ const BillingPage = () => {
                 <h3 className="font-bold text-lg text-gray-800">Add Extra Items</h3>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Parts & Materials</p>
               </div>
-              <button onClick={addCustomItem} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-sm flex items-center gap-1.5 hover:bg-blue-700 active:scale-95 transition-all">
+              <button onClick={addCustomItem} className="bg-primary-500 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-sm flex items-center gap-1.5 hover:bg-primary-600 active:scale-95 transition-all">
                 <FiPlus className="w-4 h-4" /> Add Row
               </button>
             </div>
@@ -883,7 +883,7 @@ const BillingPage = () => {
                           placeholder="e.g. Copper Pipe"
                           value={item.name}
                           onChange={e => updateCustomItem(idx, 'name', e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500 text-gray-800"
+                          className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-primary-400 text-gray-800"
                         />
                       </div>
 
@@ -893,7 +893,7 @@ const BillingPage = () => {
                           placeholder="Optional code"
                           value={item.hsnCode || ''}
                           onChange={e => updateCustomItem(idx, 'hsnCode', e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500 uppercase text-gray-800"
+                          className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-primary-400 uppercase text-gray-800"
                         />
                       </div>
 
@@ -905,7 +905,7 @@ const BillingPage = () => {
                             placeholder="0"
                             value={item.price || ''}
                             onChange={e => updateCustomItem(idx, 'price', Number(e.target.value))}
-                            className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500 text-gray-800"
+                            className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-primary-400 text-gray-800"
                           />
                         </div>
 
@@ -915,7 +915,7 @@ const BillingPage = () => {
                             type="number"
                             value={item.quantity}
                             onChange={e => updateCustomItem(idx, 'quantity', Number(e.target.value))}
-                            className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500 text-gray-800"
+                            className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-primary-400 text-gray-800"
                           />
                         </div>
                       </div>
@@ -927,7 +927,7 @@ const BillingPage = () => {
                             id={`gst-${idx}`}
                             checked={item.gstApplicable}
                             onChange={e => updateCustomItem(idx, 'gstApplicable', e.target.checked)}
-                            className="w-4 h-4 rounded text-blue-600 border-gray-300"
+                            className="w-4 h-4 rounded text-primary-500 border-gray-300"
                           />
                           <label htmlFor={`gst-${idx}`} className="text-xs font-bold text-gray-600">Apply 18% GST</label>
                         </div>
@@ -945,7 +945,7 @@ const BillingPage = () => {
                 <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-100">
                   <FiPackage className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                   <p className="text-gray-400 font-bold text-sm">No extra items added</p>
-                  <button onClick={addCustomItem} className="text-blue-600 font-bold text-xs mt-1 hover:underline underline-offset-4">+ Add Item Row</button>
+                  <button onClick={addCustomItem} className="text-primary-500 font-bold text-xs mt-1 hover:underline underline-offset-4">+ Add Item Row</button>
                 </div>
               )}
             </div>
@@ -955,7 +955,7 @@ const BillingPage = () => {
         {currentStep === 4 && (
           <div className="animate-in fade-in slide-in-from-right-4">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4">
+              <div className="w-16 h-16 bg-primary-50 text-primary-500 rounded-full flex items-center justify-center mb-4">
                 <FiPackage className="w-8 h-8" />
               </div>
               <h3 className="text-xl font-bold text-gray-800 mb-2">Transport Charges</h3>
@@ -970,7 +970,7 @@ const BillingPage = () => {
                     placeholder="0"
                     value={transportCharges || ''}
                     onChange={e => setTransportCharges(Number(e.target.value))}
-                    className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-8 pr-4 py-4 text-xl font-black outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-900"
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-8 pr-4 py-4 text-xl font-black outline-none focus:ring-2 focus:ring-primary-400/20 text-gray-900"
                   />
                 </div>
               </div>
@@ -988,7 +988,7 @@ const BillingPage = () => {
               <div className="p-6 space-y-6">
                 <div>
                   <h4 className="font-bold text-gray-900 flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
-                    <span className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs"><FiTool /></span>
+                    <span className="w-6 h-6 rounded-full bg-primary-50 text-primary-500 flex items-center justify-center text-xs"><FiTool /></span>
                     Services
                   </h4>
                   <div className="space-y-2 text-sm pl-2">
@@ -1082,7 +1082,7 @@ const BillingPage = () => {
                 {transportCharges > 0 && (
                   <div>
                     <h4 className="font-bold text-gray-900 flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
-                      <span className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs"><FiPackage /></span>
+                      <span className="w-6 h-6 rounded-full bg-primary-50 text-primary-500 flex items-center justify-center text-xs"><FiPackage /></span>
                       Transport Charges
                     </h4>
                     <div className="flex justify-between text-sm pl-2 font-bold text-gray-800">
@@ -1095,14 +1095,14 @@ const BillingPage = () => {
                 {(paymentMode && booking.status === 'completed') && (
                   <div>
                     <h4 className="font-bold text-gray-900 flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${paymentMode === 'cash' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${paymentMode === 'cash' ? 'bg-emerald-50 text-emerald-600' : 'bg-primary-50 text-primary-500'}`}>
                         {paymentMode === 'cash' ? <FiDollarSign /> : <MdQrCode />}
                       </span>
                       Payment Method
                     </h4>
                     <div className="flex justify-between text-sm pl-2 font-black text-gray-900 uppercase tracking-tight">
                       <span>Status</span>
-                      <span className={paymentMode === 'cash' ? 'text-emerald-600' : 'text-blue-600'}>
+                      <span className={paymentMode === 'cash' ? 'text-emerald-600' : 'text-primary-500'}>
                         {paymentMode === 'cash' ? 'Cash Collected' : 'Qr Online'}
                       </span>
                     </div>
@@ -1227,7 +1227,7 @@ const BillingPage = () => {
               <button
                 onClick={handleOnlinePayment}
                 disabled={otpLoading || qrLoading}
-                className="py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 active:scale-95 transition-all disabled:opacity-50 text-[10px]"
+                className="py-3 bg-primary-500 text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 active:scale-95 transition-all disabled:opacity-50 text-[10px]"
               >
                 <MdQrCode className="w-4 h-4" />
                 <span>{qrLoading ? '...' : 'Online (QR)'}</span>
