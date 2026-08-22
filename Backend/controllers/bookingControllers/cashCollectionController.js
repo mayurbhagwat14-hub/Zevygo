@@ -454,16 +454,12 @@ exports.confirmCashCollection = async (req, res) => {
       });
     }
 
-    // Push Notification
-    const { createNotification } = require('../notificationControllers/notificationController');
-    await createNotification({
-      userId: booking.userId,
-      type: 'payment_received',
-      title: 'Payment Received (Cash)',
-      message: `Payment of ₹${grandTotal} received in cash. Job Completed. Thanks!`,
-      relatedId: booking._id,
-      relatedType: 'booking',
-      priority: 'high'
+    const { sendBookingPaymentNotifications } = require('../../utils/sendBookingPaymentNotifications');
+    await sendBookingPaymentNotifications(booking, {
+      amount: grandTotal,
+      paymentMethod: 'cash',
+      eventType: 'payment_received',
+      isFinalPayment: true,
     });
 
     res.status(200).json({
