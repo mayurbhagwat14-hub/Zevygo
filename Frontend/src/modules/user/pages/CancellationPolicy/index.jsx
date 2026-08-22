@@ -135,14 +135,14 @@ const CancellationPolicy = () => {
         </div>
 
         {/* Reschedule Option */}
-        <div className="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-3xl p-6 border border-teal-100">
-          <h3 className="font-bold text-teal-900 mb-2">Need to change plans?</h3>
-          <p className="text-sm text-teal-700 mb-4 opacity-90">
+        <div className="bg-gradient-to-r from-primary-50 to-emerald-50 rounded-3xl p-6 border border-primary-100">
+          <h3 className="font-bold text-primary-900 mb-2">Need to change plans?</h3>
+          <p className="text-sm text-primary-700 mb-4 opacity-90">
             Instead of cancelling, you can reschedule your booking for free up to 2 hours before the service time.
           </p>
           <button
             onClick={() => navigate(-1)}
-            className="w-full py-3 bg-white text-teal-700 font-bold rounded-xl shadow-sm border border-teal-200 active:scale-95 transition-all"
+            className="w-full py-3 bg-white text-primary-700 font-bold rounded-xl shadow-sm border border-primary-200 active:scale-95 transition-all"
           >
             Go Back to Booking
           </button>

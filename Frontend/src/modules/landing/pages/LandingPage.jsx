@@ -71,7 +71,7 @@ const LandingPage = () => {
   };
 
   const categoryColors = [
-    'text-primary-400', 'text-purple-500', 'text-cyan-500', 'text-pink-500', 
+    'text-primary-400', 'text-purple-500', 'text-primary-500', 'text-pink-500', 
     'text-orange-500', 'text-indigo-500', 'text-yellow-500', 'text-brand'
   ];
 
@@ -375,13 +375,13 @@ const LandingPage = () => {
                className="flex flex-col items-center text-center group"
              >
                 <div className="relative w-full max-w-[260px] sm:max-w-[280px] mb-10">
-                   <div className="absolute inset-0 bg-cyan-500/20 blur-[80px] rounded-full scale-50 group-hover:scale-100 transition-transform duration-700"></div>
+                   <div className="absolute inset-0 bg-primary-500/20 blur-[80px] rounded-full scale-50 group-hover:scale-100 transition-transform duration-700"></div>
                    <div className="relative z-10 p-2.5 sm:p-4 bg-gray-900 rounded-[2.5rem] sm:rounded-[3rem] border-[4px] sm:border-[8px] border-white shadow-2xl aspect-[9/18.5] overflow-hidden transform group-hover:-rotate-1 transition-transform duration-500">
                       <img src="/homster vendor.png" alt={`${branding.appName} Vendor App`} className="w-full h-full object-contain bg-gray-50 rounded-2xl brightness-95 group-hover:brightness-100 transition-all duration-500" />
                       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-12 h-1 bg-white/20 rounded-full"></div>
                    </div>
                 </div>
-                <div className="w-14 h-14 bg-white shadow-xl rounded-2xl flex items-center justify-center mb-6 text-cyan-600">
+                <div className="w-14 h-14 bg-white shadow-xl rounded-2xl flex items-center justify-center mb-6 text-primary-600">
                    <FaChartLine size={24} />
                 </div>
                 <h4 className="text-2xl font-normal mb-3 text-nowrap">Vendor OS</h4>

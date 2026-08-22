@@ -33,7 +33,7 @@ const lazyLoad = (importFunc) => {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => window.location.reload()}
-                  className="px-6 py-3 rounded-xl text-white font-bold transition-all duration-300 hover:opacity-90 active:scale-95 shadow-lg shadow-teal-500/20"
+                  className="px-6 py-3 rounded-xl text-white font-bold transition-all duration-300 hover:opacity-90 active:scale-95 shadow-lg shadow-primary-500/20"
                   style={{ backgroundColor: '#00a6a6' }}
                 >
                   Refresh Page

@@ -110,7 +110,7 @@ const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline }) => 
             </button>
 
             <div className="flex flex-col items-center text-center mt-2">
-              <div className="w-14 h-14 bg-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30 mb-3 text-white overflow-hidden border-2 border-slate-800">
+              <div className="w-14 h-14 bg-primary-500 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/30 mb-3 text-white overflow-hidden border-2 border-slate-800">
                 {CategoryIcon}
               </div>
               <h3 className="text-white font-bold text-lg">Payment Verification</h3>
@@ -157,7 +157,7 @@ const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline }) => 
               {/* 1. Services */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <FiCheckCircle className="w-3.5 h-3.5 text-teal-500" />
+                  <FiCheckCircle className="w-3.5 h-3.5 text-primary-500" />
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Services</span>
                 </div>
                 <div className="space-y-2 pl-1">

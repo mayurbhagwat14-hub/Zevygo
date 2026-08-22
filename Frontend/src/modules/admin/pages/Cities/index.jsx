@@ -111,7 +111,7 @@ const CityManagement = () => {
         <h1 className="text-2xl font-bold text-gray-800">City Management</h1>
         <button
           onClick={openCreateModal}
-          className="flex items-center gap-2 bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition-colors"
+          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
         >
           <HiPlus /> Add City
         </button>
@@ -148,7 +148,7 @@ const CityManagement = () => {
                 </td>
                 <td className="p-4">
                   {city.isDefault ? (
-                    <span className="flex items-center gap-1 text-teal-600 text-sm font-medium">
+                    <span className="flex items-center gap-1 text-primary-600 text-sm font-medium">
                       <HiCheck /> Default
                     </span>
                   ) : (
@@ -209,7 +209,7 @@ const CityManagement = () => {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g. Mumbai"
                 />
               </div>
@@ -220,7 +220,7 @@ const CityManagement = () => {
                   type="text"
                   value={formData.state}
                   onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g. Maharashtra"
                 />
               </div>
@@ -231,7 +231,7 @@ const CityManagement = () => {
                   type="text"
                   value={formData.country}
                   onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -241,7 +241,7 @@ const CityManagement = () => {
                     type="checkbox"
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+                    className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
                   />
                   <span className="text-sm text-gray-700">Active</span>
                 </label>
@@ -251,7 +251,7 @@ const CityManagement = () => {
                     type="checkbox"
                     checked={formData.isDefault}
                     onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-                    className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+                    className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
                     disabled={editingCity?.isDefault} // Cannot unset default directly, must set another
                   />
                   <span className="text-sm text-gray-700">Default City</span>
@@ -268,7 +268,7 @@ const CityManagement = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium"
+                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
                 >
                   {editingCity ? 'Update' : 'Create'}
                 </button>

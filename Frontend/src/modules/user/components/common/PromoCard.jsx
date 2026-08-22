@@ -33,7 +33,7 @@ const PromoCard = memo(({ title, subtitle, buttonText, image, onClick, className
         )
       ) : (
         /* Fallback text banner if no image is uploaded */
-        <div className="relative z-20 flex flex-col justify-between h-full p-5 sm:p-6 w-[80%] text-left bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-600">
+        <div className="relative z-20 flex flex-col justify-between h-full p-5 sm:p-6 w-[80%] text-left bg-gradient-to-r from-primary-700 via-primary-800 to-primary-600">
           <div>
             {title && (
               <h3 className="text-lg sm:text-2xl font-black text-white leading-tight mb-1.5 tracking-tight line-clamp-2">

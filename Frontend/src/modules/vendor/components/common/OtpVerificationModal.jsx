@@ -46,7 +46,7 @@ const OtpVerificationModal = ({ isOpen, onClose, onVerify, loading }) => {
           className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] relative"
         >
           {/* Header */}
-          <div className="relative h-28 bg-gradient-to-br from-blue-600 to-indigo-700 flex flex-col items-center justify-center">
+          <div className="relative h-28 bg-gradient-to-br from-primary-600 to-primary-800 flex flex-col items-center justify-center">
             <div className="absolute inset-0 opacity-20 pointer-events-none">
               <motion.div
                 animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}

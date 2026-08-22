@@ -197,7 +197,7 @@ const MyServices = () => {
                     {(item.portfolioPhotos?.[0] || item.categoryId?.homeIconUrl) && (
                       <div className="w-[68px] h-[68px] shrink-0 rounded-xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50">
                         <img
-                          src={item.portfolioPhotos?.[0] ? item.portfolioPhotos[0].replace('/api/upload', 'http://localhost:5000/upload') : item.categoryId.homeIconUrl}
+                          src={item.portfolioPhotos?.[0] ? item.portfolioPhotos[0].replace('/api/upload', `${(import.meta.env.VITE_API_BASE_URL?.replace(/\/api$/, '') || 'http://localhost:5000')}/upload`) : item.categoryId.homeIconUrl}
                           alt={item.title}
                           className="w-full h-full object-cover"
                         />

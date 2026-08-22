@@ -497,8 +497,8 @@ const AdminSettings = () => {
       {isSuperAdmin && (
         <div onClick={() => setActiveView('cities')}
           className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
-          <div className="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-teal-100 transition-colors">
-            <FiMapPin className="w-6 h-6 text-teal-600" />
+          <div className="w-12 h-12 bg-primary-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-primary-100 transition-colors">
+            <FiMapPin className="w-6 h-6 text-primary-600" />
           </div>
           <h3 className="text-lg font-bold text-gray-800 mb-2">City Management</h3>
           <p className="text-sm text-gray-500">Manage operational cities and default location</p>
@@ -562,7 +562,7 @@ const AdminSettings = () => {
                       {isSuperAdmin ? 'Super Admin' : 'Admin'} • {profile.email}
                     </p>
                     {profile.role !== 'super_admin' ? (
-                      <span className="px-2 py-0.5 bg-teal-50 text-teal-700 text-[10px] font-bold rounded-lg border border-teal-100 flex items-center gap-1">
+                      <span className="px-2 py-0.5 bg-primary-50 text-primary-700 text-[10px] font-bold rounded-lg border border-primary-100 flex items-center gap-1">
                         <FiMapPin className="w-2.5 h-2.5" />
                         {profile.assignedCity || 'Restricted Access'}
                       </span>
@@ -1106,7 +1106,7 @@ const AdminSettings = () => {
                           </td>
                           <td className="px-6 py-4">
                             {admin.cityId ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
                                 {admin.cityId.name || 'Unknown City'}
                               </span>
                             ) : (

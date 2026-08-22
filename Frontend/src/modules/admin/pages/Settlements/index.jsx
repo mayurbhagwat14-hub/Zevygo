@@ -411,9 +411,9 @@ const SettlementManagement = () => {
           title: 'Approved Requests',
           value: approvedCount,
           icon: FiCheck,
-          color: 'text-teal-600',
-          bg: 'bg-teal-50',
-          border: 'border-teal-100'
+          color: 'text-primary-600',
+          bg: 'bg-primary-50',
+          border: 'border-primary-100'
         },
         {
           title: 'Rejected Requests',

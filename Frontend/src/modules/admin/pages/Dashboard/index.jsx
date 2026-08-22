@@ -175,7 +175,7 @@ const AdminDashboard = () => {
       value: (stats.totalVendors || 0).toLocaleString(),
       change: 0,
       icon: FiBriefcase,
-      iconBox: 'bg-white border-2 border-teal-500 text-teal-600',
+      iconBox: 'bg-white border-2 border-primary-500 text-primary-600',
       link: '/admin/vendors/analytics'
     },
   ];

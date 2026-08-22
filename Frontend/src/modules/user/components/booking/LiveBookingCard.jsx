@@ -40,7 +40,7 @@ const LiveBookingCard = ({ hasBottomNav }) => {
         return { label: 'Completed', icon: FiCheckCircle, color: 'bg-green-600', sub: 'Review payment details' };
       case 'REQUESTED':
       case 'SEARCHING':
-        return { label: 'Waiting for Vendor', icon: FiClock, color: 'bg-teal-500', sub: 'Vendor will accept soon...', pulse: true };
+        return { label: 'Waiting for Vendor', icon: FiClock, color: 'bg-primary-500', sub: 'Vendor will accept soon...', pulse: true };
       default:
         return null;
     }
@@ -198,7 +198,7 @@ const LiveBookingCard = ({ hasBottomNav }) => {
                 e.stopPropagation();
                 navigate(`/user/booking/${activeBooking._id || activeBooking.id}`);
               }}
-              className="px-4 py-2 bg-teal-600 text-white text-xs font-black rounded-xl shadow-lg shadow-teal-100 active:scale-95 transition-all"
+              className="px-4 py-2 bg-primary-600 text-white text-xs font-black rounded-xl shadow-lg shadow-primary-100 active:scale-95 transition-all"
             >
               PAY NOW
             </button>

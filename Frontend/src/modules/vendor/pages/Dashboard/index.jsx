@@ -323,7 +323,7 @@ const Dashboard = memo(() => {
       'in_progress': '#F59E0B',
       'work_done': '#10B981',
       'completed': '#10B981',
-      'worker_paid': '#06B6D4',
+      'worker_paid': '#0F348F',
       'settlement_pending': '#F97316',
     };
     return statusColors[s] || '#6B7280';

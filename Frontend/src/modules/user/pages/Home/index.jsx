@@ -483,7 +483,7 @@ const Home = () => {
                       title: promo.title || 'Find Expert Service. Book Instantly.',
                       subtitle: promo.subtitle || promo.description || 'Verified Professionals • Transparent Pricing • Guaranteed Satisfaction',
                       buttonText: promo.buttonText || 'Book Service Now',
-                      className: promo.gradientClass || 'from-blue-700 via-indigo-700 to-sky-600',
+                      className: promo.gradientClass || 'from-primary-700 via-primary-800 to-primary-600',
                       image: toAssetUrl(promo.imageUrl),
                       targetCategoryId: promo.targetCategoryId,
                       slug: promo.slug,
@@ -495,7 +495,7 @@ const Home = () => {
                         title: 'Need a Driver? Book On-Demand Personal Driver',
                         subtitle: 'City Drive • Outstation Trips • Verified & Experienced Drivers',
                         buttonText: 'Book Driver Now',
-                        className: 'from-blue-700 via-indigo-700 to-sky-600',
+                        className: 'from-primary-700 via-primary-800 to-primary-600',
                         image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&auto=format&fit=crop&q=80',
                         route: '/'
                       },
@@ -522,7 +522,7 @@ const Home = () => {
                         title: 'Fresh & Healthy Tiffin Service Delivery',
                         subtitle: 'Home Style Food • Daily Subscriptions • Clean Packaging',
                         buttonText: 'Order Tiffin Service',
-                        className: 'from-emerald-700 via-teal-700 to-green-600',
+                        className: 'from-emerald-700 via-primary-700 to-green-600',
                         image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop&q=80',
                         route: '/'
                       },
@@ -531,7 +531,7 @@ const Home = () => {
                         title: 'Full Home Deep Cleaning & Housekeeping',
                         subtitle: 'Sanitized Equipment • Trained Experts • Complete Care',
                         buttonText: 'Book Cleaning',
-                        className: 'from-teal-700 via-cyan-700 to-blue-600',
+                        className: 'from-primary-700 via-primary-800 to-primary-600',
                         image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&auto=format&fit=crop&q=80',
                         route: '/'
                       }

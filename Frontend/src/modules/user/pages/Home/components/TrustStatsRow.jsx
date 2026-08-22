@@ -8,9 +8,9 @@ const TrustStatsRow = memo(() => {
       icon: FiUsers,
       value: '10,000+',
       label: 'Happy Users',
-      bgColor: 'bg-cyan-50',
-      iconColor: 'text-cyan-600',
-      borderColor: 'border-cyan-100'
+      bgColor: 'bg-primary-50',
+      iconColor: 'text-primary-600',
+      borderColor: 'border-primary-100'
     },
     {
       id: 2,
@@ -26,9 +26,9 @@ const TrustStatsRow = memo(() => {
       icon: FiClock,
       value: '24/7',
       label: 'Support',
-      bgColor: 'bg-sky-50',
-      iconColor: 'text-sky-600',
-      borderColor: 'border-sky-100'
+      bgColor: 'bg-primary-50',
+      iconColor: 'text-primary-600',
+      borderColor: 'border-primary-100'
     }
   ];
 

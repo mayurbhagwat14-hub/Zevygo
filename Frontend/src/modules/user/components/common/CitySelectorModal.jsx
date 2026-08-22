@@ -83,7 +83,7 @@ const CitySelectorModal = ({ isOpen, onClose }) => {
                         className={`
                         w-full text-left p-4 rounded-xl flex items-center justify-between group transition-all duration-200
                         ${isSelected
-                            ? 'bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-100 shadow-sm'
+                            ? 'bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-100 shadow-sm'
                             : 'hover:bg-gray-50 border border-transparent hover:border-gray-100'
                           }
                       `}
@@ -95,11 +95,11 @@ const CitySelectorModal = ({ isOpen, onClose }) => {
                         `}>
                             <HiLocationMarker className={`
                             w-5 h-5 
-                            ${isSelected ? 'text-teal-600' : 'text-gray-400 group-hover:text-teal-500'}
+                            ${isSelected ? 'text-primary-600' : 'text-gray-400 group-hover:text-primary-500'}
                           `} />
                           </div>
                           <div>
-                            <div className={`font-semibold ${isSelected ? 'text-teal-900' : 'text-gray-700'}`}>
+                            <div className={`font-semibold ${isSelected ? 'text-primary-900' : 'text-gray-700'}`}>
                               {city.name}
                             </div>
                             {city.state && (
@@ -111,7 +111,7 @@ const CitySelectorModal = ({ isOpen, onClose }) => {
                         </div>
 
                         {isSelected && (
-                          <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center text-white shadow-sm">
+                          <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-white shadow-sm">
                             <HiCheck className="w-3.5 h-3.5" />
                           </div>
                         )}

@@ -1041,13 +1041,13 @@ export default function BookingDetails() {
               {booking.workPhotos.map((photo, index) => (
                 <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 border relative group">
                   <img
-                    src={photo.replace('/api/upload', 'http://localhost:5000/upload')}
+                    src={photo.replace('/api/upload', `${(import.meta.env.VITE_API_BASE_URL?.replace(/\/api$/, '') || 'http://localhost:5000')}/upload`)}
                     alt={`Work evidence ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <button
-                      onClick={() => window.open(photo.replace('/api/upload', 'http://localhost:5000/upload'), '_blank')}
+                      onClick={() => window.open(photo.replace('/api/upload', `${(import.meta.env.VITE_API_BASE_URL?.replace(/\/api$/, '') || 'http://localhost:5000')}/upload`), '_blank')}
                       className="bg-white text-gray-900 px-3 py-1 rounded-full text-xs font-bold"
                     >
                       View
@@ -1099,7 +1099,7 @@ export default function BookingDetails() {
             }}
           >
             {/* Top Accent Gradient */}
-            <div className={`h-2 bg-gradient-to-r ${booking.paymentMethod === 'plan_benefit' ? 'from-emerald-400 to-teal-600' : 'from-orange-400 to-orange-600'}`} />
+            <div className={`h-2 bg-gradient-to-r ${booking.paymentMethod === 'plan_benefit' ? 'from-emerald-400 to-primary-600' : 'from-orange-400 to-orange-600'}`} />
 
             <div className="p-6">
               <div className="flex items-center gap-4 mb-4">

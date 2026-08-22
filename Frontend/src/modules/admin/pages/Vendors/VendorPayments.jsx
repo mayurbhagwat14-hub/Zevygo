@@ -31,7 +31,7 @@ const VendorPayments = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 rounded-2xl text-white shadow-lg shadow-primary-200">
+        <div className="bg-gradient-to-br from-primary-600 to-primary-800 p-6 rounded-2xl text-white shadow-lg shadow-primary-200">
           <div className="flex justify-between items-start mb-4">
             <div className="p-2 bg-white/20 rounded-lg">
               <FiDollarSign className="w-6 h-6" />

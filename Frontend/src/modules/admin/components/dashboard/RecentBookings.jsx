@@ -8,7 +8,7 @@ const statusBadge = (status) => {
   const map = {
     ACCEPTED: 'bg-primary-100 text-primary-600',
     ASSIGNED: 'bg-yellow-100 text-yellow-700',
-    VISITED: 'bg-cyan-100 text-cyan-700',
+    VISITED: 'bg-primary-100 text-primary-700',
     WORK_DONE: 'bg-emerald-100 text-emerald-700',
     FINAL_SETTLEMENT: 'bg-purple-100 text-purple-700',
     COMPLETED: 'bg-green-100 text-green-700',

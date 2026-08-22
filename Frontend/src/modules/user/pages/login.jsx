@@ -123,7 +123,7 @@ const Login = () => {
       title={
         step === 'phone' ? (
           <>
-            Welcome <span className="text-accent-400">back</span>
+            Welcome <span className="text-primary-500">back</span>
           </>
         ) : (
           'Verify Phone'

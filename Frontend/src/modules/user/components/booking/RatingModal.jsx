@@ -105,7 +105,7 @@ const RatingModal = ({ isOpen, onClose, onSubmit, bookingName, workerName }) => 
               {/* Review Textarea */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-gray-700 font-bold">
-                  <FiMessageSquare className="w-5 h-5 text-teal-600" />
+                  <FiMessageSquare className="w-5 h-5 text-primary-600" />
                   <span>Share your feedback</span>
                 </div>
                 <div className="relative group">
@@ -113,7 +113,7 @@ const RatingModal = ({ isOpen, onClose, onSubmit, bookingName, workerName }) => 
                     value={review}
                     onChange={(e) => setReview(e.target.value)}
                     placeholder="Tell us what you liked or what could be better..."
-                    className="w-full bg-white border-2 border-gray-100 focus:border-teal-500 rounded-2xl p-4 text-sm min-h-[120px] transition-all outline-none resize-none placeholder:text-gray-400"
+                    className="w-full bg-white border-2 border-gray-100 focus:border-primary-500 rounded-2xl p-4 text-sm min-h-[120px] transition-all outline-none resize-none placeholder:text-gray-400"
                     disabled={isSubmitting}
                   />
                   <div className="absolute bottom-3 right-3 text-[10px] font-bold text-gray-300 uppercase letter-spacing-1">
@@ -145,7 +145,7 @@ const RatingModal = ({ isOpen, onClose, onSubmit, bookingName, workerName }) => 
           </div>
 
           {/* Decorative Background */}
-          <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-teal-50 rounded-full blur-2xl opacity-50 pointer-events-none" />
+          <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-primary-50 rounded-full blur-2xl opacity-50 pointer-events-none" />
           <div className="absolute -top-12 -left-12 w-32 h-32 bg-yellow-50 rounded-full blur-2xl opacity-50 pointer-events-none" />
         </motion.div>
       </div>

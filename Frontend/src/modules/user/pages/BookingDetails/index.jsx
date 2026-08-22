@@ -226,7 +226,7 @@ const BookingDetails = () => {
       case 'journey_started':
         return <FiLoader className="w-5 h-5 text-primary-400 animate-spin" />;
       case 'visited':
-        return <FiMapPin className="w-5 h-5 text-teal-600" />;
+        return <FiMapPin className="w-5 h-5 text-primary-600" />;
       case 'completed':
         return <FiCheckCircle className="w-5 h-5 text-green-600" />;
       case 'cancelled':
@@ -772,7 +772,7 @@ const BookingDetails = () => {
           {/* Professional Arrived Notification - Only after OTP verified */}
           {booking?.status?.toLowerCase() === 'visited' && (
             <div className="relative overflow-hidden rounded-3xl shadow-lg mb-6 active:scale-[0.98] transition-all">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary-500 via-blue-600 to-indigo-700 opacity-95"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-primary-500 via-primary-600 to-primary-800 opacity-95"></div>
               <div className="relative z-10 p-6 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 shrink-0">
                   <FiCheckCircle className="w-6 h-6 text-white" />
@@ -804,7 +804,7 @@ const BookingDetails = () => {
             ['visited', 'in_progress', 'work_done', 'completed'].includes(booking.status?.toLowerCase()) &&
             !booking.customerConfirmationOTP && (
               <div className="relative overflow-hidden rounded-3xl shadow-lg border border-emerald-100 mb-6">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 via-teal-600 to-green-700 opacity-95"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 via-primary-600 to-green-700 opacity-95"></div>
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(255,255,255,0.15)_0%,transparent_50%)]"></div>
 
                 <div className="relative z-10 p-6">

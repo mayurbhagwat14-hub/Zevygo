@@ -181,7 +181,7 @@ const VisitVerificationModal = ({ isOpen, onClose, bookingId, onSuccess }) => {
                 <h3 className="text-2xl font-bold text-gray-900 leading-tight">
                   Verify Arrival
                 </h3>
-                <p className="text-xs text-teal-600 font-bold uppercase tracking-wider mt-1">
+                <p className="text-xs text-primary-600 font-bold uppercase tracking-wider mt-1">
                   Check-in Verification
                 </p>
               </div>
@@ -215,8 +215,8 @@ const VisitVerificationModal = ({ isOpen, onClose, bookingId, onSuccess }) => {
                   disabled={loading}
                   className={`w-14 h-16 text-center text-2xl font-bold rounded-2xl transition-all outline-none border-2 disabled:opacity-50
                     ${digit
-                      ? 'border-teal-500 bg-teal-50 text-teal-900'
-                      : 'border-gray-200 bg-gray-50 text-gray-800 focus:border-teal-400 focus:bg-white focus:shadow-lg focus:shadow-teal-100'
+                      ? 'border-primary-500 bg-primary-50 text-primary-900'
+                      : 'border-gray-200 bg-gray-50 text-gray-800 focus:border-primary-400 focus:bg-white focus:shadow-lg focus:shadow-primary-100'
                     }`}
                   onChange={(e) => handleOtpChange(idx, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(idx, e)}
@@ -228,7 +228,7 @@ const VisitVerificationModal = ({ isOpen, onClose, bookingId, onSuccess }) => {
             <button
               onClick={handleVerify}
               disabled={loading}
-              className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-teal-600/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:shadow-none flex items-center justify-center gap-2"
+              className="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-primary-600/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:shadow-none flex items-center justify-center gap-2"
             >
               {loading ? (
                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />

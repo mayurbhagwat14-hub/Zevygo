@@ -63,12 +63,12 @@ const DebugConsole = () => {
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
-            className="fixed inset-x-0 bottom-0 z-[10000] h-[60vh] bg-gray-900 text-gray-100 shadow-2xl rounded-t-[32px] flex flex-col overflow-hidden border-t-4 border-teal-500"
+            className="fixed inset-x-0 bottom-0 z-[10000] h-[60vh] bg-gray-900 text-gray-100 shadow-2xl rounded-t-[32px] flex flex-col overflow-hidden border-t-4 border-primary-500"
           >
             <div className="flex items-center justify-between p-6 border-b border-gray-800 bg-gray-900/50 backdrop-blur-xl">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-teal-500/20 rounded-lg">
-                  <FiTerminal className="text-teal-400" />
+                <div className="p-2 bg-primary-500/20 rounded-lg">
+                  <FiTerminal className="text-primary-400" />
                 </div>
                 <h3 className="font-bold text-lg">Homster Debug Console</h3>
               </div>

@@ -1,6 +1,6 @@
 /**
  * ZEVYGO Design System Tokens (2026)
- * Aligned to the auth-screen reference: confident blue/cyan, soft depth, rounded geometry.
+ * Aligned to brand: deep royal blue (#0F348F), soft depth, rounded geometry.
  *
  * Prefer CSS variables (index.css @theme) or these tokens — never hardcode hex in components.
  */
@@ -20,25 +20,25 @@ export const colors = {
     900: '#041230',
   },
   secondary: {
-    50: '#ECFEFF',
-    100: '#CFFAFE',
-    200: '#A5F3FC',
-    300: '#67E8F9',
-    400: '#22D3EE',
-    500: '#06B6D4',
-    600: '#0891B2',
-    700: '#0E7490',
-    800: '#155E75',
-    900: '#164E63',
+    50: '#F2F5FC',
+    100: '#E4EBF8',
+    200: '#C5D2EF',
+    300: '#9BB0E0',
+    400: '#5B78C4',
+    500: '#0F348F',
+    600: '#0C2C78',
+    700: '#0A2463',
+    800: '#071B4A',
+    900: '#041230',
   },
   accent: {
-    50: '#F0F9FF',
-    100: '#E0F2FE',
-    200: '#BAE6FD',
-    300: '#7DD3FC',
-    400: '#38BDF8',
-    500: '#0EA5E9',
-    600: '#0284C7',
+    50: '#F2F5FC',
+    100: '#E4EBF8',
+    200: '#C5D2EF',
+    300: '#9BB0E0',
+    400: '#5B78C4',
+    500: '#0F348F',
+    600: '#0C2C78',
   },
 
   // Neutrals
@@ -91,13 +91,13 @@ export const colors = {
 
 /** Gradients used by auth CTAs and headers */
 export const gradients = {
-  brand: `linear-gradient(to right, ${colors.primary[500]} 0%, ${colors.secondary[500]} 100%)`,
-  brandSoft: `linear-gradient(to right, ${colors.primary[300]} 0%, ${colors.secondary[300]} 100%)`,
+  brand: `linear-gradient(to right, ${colors.primary[500]} 0%, ${colors.primary[700]} 100%)`,
+  brandSoft: `linear-gradient(to right, ${colors.primary[300]} 0%, ${colors.primary[500]} 100%)`,
   brandDiagonal: `linear-gradient(135deg, ${colors.primary[500]} 0%, ${colors.primary[600]} 50%, ${colors.primary[800]} 100%)`,
-  brandConic: `conic-gradient(from 0deg, ${colors.primary[500]}, ${colors.secondary[500]}, ${colors.primary[600]}, ${colors.primary[500]})`,
+  brandConic: `conic-gradient(from 0deg, ${colors.primary[500]}, ${colors.primary[600]}, ${colors.primary[700]}, ${colors.primary[500]})`,
   page: `linear-gradient(180deg, ${colors.neutral[50]} 0%, ${colors.neutral[100]} 15%, ${colors.neutral[0]} 30%)`,
-  pageSoft: `linear-gradient(to bottom, rgba(15, 52, 143, 0.03) 0%, rgba(6, 182, 212, 0.02) 10%, #ffffff 20%)`,
-  authBlob: `linear-gradient(to bottom right, ${colors.primary[500]}, ${colors.secondary[500]})`,
+  pageSoft: `linear-gradient(to bottom, rgba(15, 52, 143, 0.03) 0%, rgba(15, 52, 143, 0.02) 10%, #ffffff 20%)`,
+  authBlob: `linear-gradient(to bottom right, ${colors.primary[500]}, ${colors.primary[700]})`,
 };
 
 export const typography = {
@@ -165,7 +165,7 @@ export const elevation = {
   lg: '0 10px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.08)',
   xl: '0 20px 40px -12px rgba(15, 23, 42, 0.15)',
   brand: '0 8px 24px -4px rgba(15, 52, 143, 0.3)',
-  brandSoft: '0 4px 14px -2px rgba(91, 120, 196, 0.35)',
+  brandSoft: '0 4px 14px -2px rgba(15, 52, 143, 0.25)',
 };
 
 export const motion = {
@@ -190,9 +190,9 @@ export const bookingStatusColors = {
   confirmed: { bg: colors.info[50], text: colors.info[700], border: colors.info[100] },
   accepted: { bg: colors.primary[50], text: colors.primary[600], border: colors.primary[100] },
   assigned: { bg: colors.primary[100], text: colors.primary[700], border: colors.primary[200] },
-  journey_started: { bg: colors.secondary[50], text: colors.secondary[700], border: colors.secondary[100] },
+  journey_started: { bg: colors.primary[50], text: colors.primary[700], border: colors.primary[100] },
   visited: { bg: colors.success[50], text: colors.success[600], border: colors.success[100] },
-  in_progress: { bg: colors.secondary[50], text: colors.secondary[600], border: colors.secondary[100] },
+  in_progress: { bg: colors.primary[50], text: colors.primary[600], border: colors.primary[100] },
   work_done: { bg: colors.success[50], text: colors.success[700], border: colors.success[100] },
   completed: { bg: colors.success[50], text: colors.success[700], border: colors.success[100] },
   cancelled: { bg: colors.error[50], text: colors.error[600], border: colors.error[100] },

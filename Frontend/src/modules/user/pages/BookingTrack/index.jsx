@@ -835,7 +835,7 @@ const BookingTrack = () => {
 
         {/* Arrival OTP - New Premium Display */}
         {(booking?.visitOtp || booking?.arrivalOTP) && ['confirmed', 'assigned', 'journey_started'].includes(booking?.status?.toLowerCase()) && (
-          <div className="mb-3 relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 p-3 shadow-lg">
+          <div className="mb-3 relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-600 to-primary-800 p-3 shadow-lg">
             <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-10 translate-x-10 blur-xl"></div>
             <div className="relative z-10 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -874,7 +874,7 @@ const BookingTrack = () => {
         {/* Advance Payment — provider accepted, pay to confirm */}
         {booking?.status?.toLowerCase() === 'awaiting_payment'
           && booking?.paymentPhase === 'advance_pending' && (
-          <div className="mb-4 relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-500 via-blue-600 to-indigo-700 p-5 shadow-lg">
+          <div className="mb-4 relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-500 via-primary-600 to-primary-800 p-5 shadow-lg">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16 blur-2xl" />
             <div className="relative z-10">
               <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Advance Payment Required</p>

@@ -59,7 +59,7 @@ const categoryConfigMap = {
   // Tiffin Service
   'tiffin': {
     Icon: FaUtensils,
-    bgGradient: 'from-emerald-500 via-teal-500 to-green-600',
+    bgGradient: 'from-emerald-500 via-primary-600 to-green-600',
     glow: 'rgba(16, 185, 129, 0.4)',
   },
 
@@ -87,20 +87,20 @@ const categoryConfigMap = {
   // Healthcare & Nursing
   'healthcare-nurse-attendant': {
     Icon: FaHospital,
-    bgGradient: 'from-emerald-500 via-teal-600 to-cyan-600',
+    bgGradient: 'from-emerald-500 via-primary-600 to-primary-700',
     glow: 'rgba(16, 185, 129, 0.4)',
   },
   'healthcare': {
     Icon: FaHospital,
-    bgGradient: 'from-emerald-500 via-teal-600 to-cyan-600',
+    bgGradient: 'from-emerald-500 via-primary-600 to-primary-700',
     glow: 'rgba(16, 185, 129, 0.4)',
   },
 
   // Room Rental
   'room-rental': {
     Icon: FaHouse,
-    bgGradient: 'from-sky-500 via-blue-600 to-indigo-600',
-    glow: 'rgba(14, 165, 233, 0.4)',
+    bgGradient: 'from-primary-500 via-primary-600 to-indigo-600',
+    glow: 'rgba(15, 52, 143, 0.4)',
   },
 
   // Marriage Hall
@@ -120,8 +120,8 @@ const categoryConfigMap = {
   // Housekeeping
   'housekeeping': {
     Icon: FaBroom,
-    bgGradient: 'from-teal-500 via-cyan-600 to-blue-600',
-    glow: 'rgba(20, 184, 166, 0.4)',
+    bgGradient: 'from-primary-500 via-primary-600 to-primary-700',
+    glow: 'rgba(15, 52, 143, 0.4)',
   },
 
   // Electrician
@@ -134,30 +134,30 @@ const categoryConfigMap = {
   // Plumber
   'plumber': {
     Icon: FaFaucetDrip,
-    bgGradient: 'from-primary-500 via-cyan-500 to-teal-600',
+    bgGradient: 'from-primary-500 via-primary-500 to-primary-700',
     glow: 'rgba(59, 130, 246, 0.4)',
   },
 
   // AC & Appliances
   'appliance-service': {
     Icon: FaSnowflake,
-    bgGradient: 'from-cyan-400 via-sky-500 to-blue-600',
-    glow: 'rgba(6, 182, 212, 0.4)',
+    bgGradient: 'from-primary-400 via-primary-500 to-primary-700',
+    glow: 'rgba(15, 52, 143, 0.4)',
   },
   'ac': {
     Icon: FaSnowflake,
-    bgGradient: 'from-cyan-400 via-sky-500 to-blue-600',
-    glow: 'rgba(6, 182, 212, 0.4)',
+    bgGradient: 'from-primary-400 via-primary-500 to-primary-700',
+    glow: 'rgba(15, 52, 143, 0.4)',
   },
   'fridge': {
     Icon: FaSnowflake,
-    bgGradient: 'from-primary-500 via-indigo-600 to-cyan-500',
+    bgGradient: 'from-primary-500 via-indigo-600 to-primary-600',
     glow: 'rgba(15, 52, 143, 0.4)',
   },
   'washing-machine': {
     Icon: GiWashingMachine,
-    bgGradient: 'from-sky-500 via-blue-600 to-indigo-600',
-    glow: 'rgba(14, 165, 233, 0.4)',
+    bgGradient: 'from-primary-500 via-primary-600 to-indigo-600',
+    glow: 'rgba(15, 52, 143, 0.4)',
   },
 
   // Pest Control

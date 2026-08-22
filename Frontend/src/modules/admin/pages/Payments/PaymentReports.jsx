@@ -93,7 +93,7 @@ const StatsCard = ({ title, value, subtitle, icon: Icon, color, trend }) => {
     purple: 'border-2 border-purple-500 text-purple-600',
     orange: 'border-2 border-orange-500 text-orange-600',
     red: 'border-2 border-red-500 text-red-600',
-    teal: 'border-2 border-teal-500 text-teal-600',
+    teal: 'border-2 border-primary-500 text-primary-600',
     indigo: 'border-2 border-indigo-500 text-indigo-600',
     emerald: 'border-2 border-emerald-500 text-emerald-600'
   };

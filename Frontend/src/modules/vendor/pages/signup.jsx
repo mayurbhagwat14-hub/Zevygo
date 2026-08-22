@@ -1364,7 +1364,7 @@ const VendorSignup = () => {
               localStorage.removeItem(SIGNUP_STORAGE_KEY);
               navigate('/vendor/login');
             }}
-            className="py-3.5 font-black tracking-wide text-sm bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25"
+            className="py-3.5 font-black tracking-wide text-sm bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-lg shadow-primary-500/25"
           >
             Go to Vendor Login
           </Button>

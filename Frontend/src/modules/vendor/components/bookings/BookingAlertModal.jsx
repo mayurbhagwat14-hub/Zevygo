@@ -163,8 +163,8 @@ const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }
   const direct = isDirectRequest(booking);
   const instant = isInstantBooking(booking);
   const headerGradient = direct
-    ? (instant ? 'from-blue-600 to-indigo-700' : 'from-violet-600 to-purple-700')
-    : 'from-teal-600 to-emerald-700';
+    ? (instant ? 'from-primary-600 to-primary-800' : 'from-violet-600 to-purple-700')
+    : 'from-primary-600 to-emerald-700';
 
   return (
     <div className="bg-white w-full sm:w-[320px] flex-none rounded-[2rem] overflow-y-auto max-h-[85vh] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] relative scrollbar-hide snap-center">
@@ -283,7 +283,7 @@ const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }
 
           {/* Service Details Card */}
           <div className="bg-white rounded-[1rem] p-3 border border-gray-100 shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-teal-500" />
+            <div className="absolute top-0 left-0 w-1 h-full bg-primary-500" />
             <div className="pl-2">
               <h4 className="text-[14px] font-black text-gray-900 leading-tight">
                 {booking.serviceName || booking.serviceType || booking.serviceId?.title || 'Service Request'}

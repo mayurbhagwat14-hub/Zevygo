@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 const COLORS = {
   ACCEPTED: '#0F348F',
   ASSIGNED: '#F59E0B',
-  VISITED: '#06B6D4',
+  VISITED: '#0F348F',
   WORK_DONE: '#10B981',
   FINAL_SETTLEMENT: '#8B5CF6',
   COMPLETED: '#22C55E',
