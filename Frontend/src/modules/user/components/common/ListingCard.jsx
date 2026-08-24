@@ -6,6 +6,7 @@ import { MdVerified } from 'react-icons/md';
 import { GiSteeringWheel } from 'react-icons/gi';
 
 const ListingCard = ({ listing, onClick }) => {
+  const [imageError, setImageError] = React.useState(false);
   const cover = listing.provider?.photo || listing.portfolioPhotos?.[0];
   const provider = listing.provider || {};
   const itemCount = listing.itemCount || listing.catalogItems?.length || 0;
@@ -29,8 +30,13 @@ const ListingCard = ({ listing, onClick }) => {
         
         {/* Left: Image Container */}
         <div className="relative w-[130px] sm:w-[220px] h-[180px] sm:h-auto shrink-0 rounded-[16px] sm:rounded-[20px] overflow-hidden bg-neutral-100 flex flex-col justify-between">
-          {cover ? (
-            <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          {cover && !imageError ? (
+            <img 
+              src={cover} 
+              alt="" 
+              className="absolute inset-0 w-full h-full object-cover" 
+              onError={() => setImageError(true)}
+            />
           ) : (
             <div className="absolute inset-0 w-full h-full flex items-center justify-center text-4xl font-black text-neutral-300 bg-neutral-50">
               {providerName.charAt(0)}

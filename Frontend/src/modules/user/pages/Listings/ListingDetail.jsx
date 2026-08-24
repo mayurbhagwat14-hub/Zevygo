@@ -19,13 +19,14 @@ const Section = ({ title, subtitle, children }) => (
 
 const PackageBlock = ({ item, index, onBook }) => {
   const chips = (item.highlights || []).slice(0, 3);
+  const [imageError, setImageError] = React.useState(false);
 
   return (
     <article className="rounded-[20px] border border-gray-100 bg-white shadow-[0_4px_20px_rgb(0,0,0,0.04)] p-2.5 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
       {/* Top Image / Banner */}
       <div className="relative h-[130px] w-full rounded-[16px] overflow-hidden bg-gray-900 border border-gray-100/50">
-        {item.photoUrl ? (
-          <img src={item.photoUrl} alt="" className="w-full h-full object-cover opacity-95" />
+        {item.photoUrl && !imageError ? (
+          <img src={item.photoUrl} alt="" className="w-full h-full object-cover opacity-95" onError={() => setImageError(true)} />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
             <span className="text-3xl font-black text-slate-700">

@@ -48,6 +48,12 @@ import {
   StepIndicator,
   DocumentUpload,
 } from '../../../components/ui';
+import {
+  handleAuthFlowError,
+  getNetworkAuthMessage,
+  isAccountExistsError,
+  AUTH_ERROR_CODES,
+} from '../../../utils/authErrors';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Full name must be at least 2 characters'),
@@ -602,9 +608,9 @@ const VendorSignup = () => {
     const otherDocs = formData.documents.filter((d) => d.type === 'other').map((d) => d.url).filter(Boolean);
 
     return {
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phoneNumber,
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      phone: String(formData.phoneNumber).replace(/\D/g, '').slice(0, 10),
       providerType: 'INDIVIDUAL',
       address: {
         fullAddress: formData.fullAddress,
@@ -634,8 +640,28 @@ const VendorSignup = () => {
 
   const goNextFromInfo = () => {
     setFieldErrors({});
-    const phone = verificationToken ? formData.phoneNumber || '9876543210' : formData.phoneNumber;
-    const result = profileSchema.safeParse({ ...formData, phoneNumber: phone });
+
+    if (verificationToken) {
+      const nameCheck = z.string().trim().min(2).safeParse(formData.name);
+      if (!nameCheck.success) {
+        toast.error('Please enter a valid name (at least 2 characters)');
+        return;
+      }
+      const phone = String(formData.phoneNumber || location.state?.phone || '').replace(/\D/g, '').slice(0, 10);
+      if (phone.length !== 10) {
+        toast.error('Verified phone missing. Please sign in and try again.');
+        navigate('/vendor/login', { replace: true });
+        return;
+      }
+      setStepIndex(1);
+      return;
+    }
+
+    const result = profileSchema.safeParse({
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      phoneNumber: formData.phoneNumber.trim(),
+    });
 
     if (!result.success) {
       const errs = {};
@@ -717,11 +743,23 @@ const VendorSignup = () => {
           localStorage.removeItem(SIGNUP_STORAGE_KEY);
           setStepIndex(4);
           toast.success('Application Submitted Successfully!');
+        } else if (response.code === AUTH_ERROR_CODES.ACCOUNT_EXISTS || isAccountExistsError(response)) {
+          navigate('/vendor/login', {
+            replace: true,
+            state: { phone: formData.phoneNumber, fromSignup: true },
+          });
         } else {
           toast.error(response.message || 'Registration failed');
         }
       } catch (error) {
-        toast.error(error.response?.data?.message || 'Registration failed');
+        if (
+          !handleAuthFlowError(error, navigate, {
+            panel: 'vendor',
+            phone: formData.phoneNumber,
+          })
+        ) {
+          toast.error(getNetworkAuthMessage(error, 'Registration failed'));
+        }
       } finally {
         setIsLoading(false);
       }
@@ -729,17 +767,29 @@ const VendorSignup = () => {
     }
 
     try {
-      const response = await sendVendorOTP(formData.phoneNumber);
+      const response = await sendVendorOTP(formData.phoneNumber.replace(/\D/g, ''), 'signup');
       if (response.success) {
         setOtpToken(response.token || 'verification-pending');
         setStepIndex(3);
         setResendTimer(120);
         toast.success('OTP sent successfully to +91 ' + formData.phoneNumber);
+      } else if (response.code === AUTH_ERROR_CODES.ACCOUNT_EXISTS || isAccountExistsError(response)) {
+        navigate('/vendor/login', {
+          replace: true,
+          state: { phone: formData.phoneNumber, fromSignup: true },
+        });
       } else {
         toast.error(response.message || 'Failed to send OTP');
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to send OTP');
+      if (
+        !handleAuthFlowError(error, navigate, {
+          panel: 'vendor',
+          phone: formData.phoneNumber,
+        })
+      ) {
+        toast.error(getNetworkAuthMessage(error, 'Failed to send OTP'));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -764,13 +814,25 @@ const VendorSignup = () => {
         localStorage.removeItem(SIGNUP_STORAGE_KEY);
         setStepIndex(4);
         toast.success('Provider onboarding complete! Pending admin approval.');
+      } else if (response.code === AUTH_ERROR_CODES.ACCOUNT_EXISTS || isAccountExistsError(response)) {
+        navigate('/vendor/login', {
+          replace: true,
+          state: { phone: formData.phoneNumber, fromSignup: true },
+        });
       } else {
         toast.error(response.message || 'Registration failed');
         setIsLoading(false);
       }
     } catch (error) {
       setIsLoading(false);
-      toast.error(error.response?.data?.message || 'Registration failed');
+      if (
+        !handleAuthFlowError(error, navigate, {
+          panel: 'vendor',
+          phone: formData.phoneNumber,
+        })
+      ) {
+        toast.error(getNetworkAuthMessage(error, 'Registration failed'));
+      }
     }
   };
 

@@ -93,7 +93,7 @@ const coerceNestedNumbers = (obj = {}, keys = []) => {
 
 const CATALOG_CORE_KEYS = new Set([
   'id', '_id', 'title', 'name', 'description', 'price', 'photoUrl', 'photo', 'isActive',
-  'requireAdvancePayment', 'advancePaymentPercent'
+  'requireAdvancePayment', 'advancePaymentPercent', 'serviceId', 'isAvailable'
 ]);
 
 const normalizeCatalogItems = async (items = [], vendorId) => {

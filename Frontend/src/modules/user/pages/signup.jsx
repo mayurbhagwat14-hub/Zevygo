@@ -7,6 +7,12 @@ import { userAuthService } from '../../../services/authService';
 import { useBranding } from '../../../context/BrandingContext';
 import { APP_NAME } from '../../../theme/brand';
 import { AuthShell, Button, Input, OtpInput, StepIndicator } from '../../../components/ui';
+import {
+  handleAuthFlowError,
+  getNetworkAuthMessage,
+  isAccountExistsError,
+  AUTH_ERROR_CODES,
+} from '../../../utils/authErrors';
 
 const signupSchema = z.object({
   name: z
@@ -44,15 +50,22 @@ const Signup = () => {
     ? formData.name.trim().length >= 2
     : formData.name.trim().length >= 2 && /^[6-9]\d{9}$/.test(formData.phoneNumber);
 
-  const getAuthErrorMessage = (error, fallback) => {
-    if (error?.code === 'ECONNABORTED') {
-      return 'Request timed out. Please check your internet and try again.';
-    }
-    if (!error?.response) {
-      return 'Cannot reach server. Please check your connection and try again.';
-    }
-    return error.response?.data?.message || fallback;
+  const getAuthErrorMessage = (error, fallback) => getNetworkAuthMessage(error, fallback);
+
+  const redirectToLogin = (phone) => {
+    navigate('/user/login', {
+      replace: true,
+      state: { phone: phone.replace(/\D/g, '').slice(0, 10), fromSignup: true },
+    });
   };
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+    const userData = sessionStorage.getItem('userData') || localStorage.getItem('userData');
+    if (token && userData) {
+      navigate('/user', { replace: true });
+    }
+  }, [navigate]);
 
   useEffect(() => {
     let interval;
@@ -134,11 +147,15 @@ const Signup = () => {
             { icon: <FiCheckCircle className="text-success-500" /> }
           );
           navigate('/user', { replace: true });
+        } else if (response.code === AUTH_ERROR_CODES.ACCOUNT_EXISTS || isAccountExistsError(response)) {
+          redirectToLogin(formData.phoneNumber);
         } else {
           toast.error(response.message || 'Registration failed');
         }
       } catch (error) {
-        toast.error(getAuthErrorMessage(error, 'Registration failed'));
+        if (!handleAuthFlowError(error, navigate, { panel: 'user', phone: formData.phoneNumber })) {
+          toast.error(getAuthErrorMessage(error, 'Registration failed'));
+        }
       } finally {
         detailsSubmitLock.current = false;
         setIsLoading(false);
@@ -149,7 +166,8 @@ const Signup = () => {
     try {
       const response = await userAuthService.sendOTP(
         formData.phoneNumber.trim(),
-        formData.email.trim() || null
+        formData.email.trim() || null,
+        'signup'
       );
       if (response.success) {
         setOtpToken(response.token || 'verification-pending');
@@ -158,11 +176,15 @@ const Signup = () => {
         setStep('otp');
         setResendTimer(120);
         toast.success('OTP sent successfully');
+      } else if (response.code === AUTH_ERROR_CODES.ACCOUNT_EXISTS || isAccountExistsError(response)) {
+        redirectToLogin(formData.phoneNumber);
       } else {
         toast.error(response.message || 'Failed to send OTP');
       }
     } catch (error) {
-      toast.error(getAuthErrorMessage(error, 'Failed to send OTP. Please try again.'));
+      if (!handleAuthFlowError(error, navigate, { panel: 'user', phone: formData.phoneNumber })) {
+        toast.error(getAuthErrorMessage(error, 'Failed to send OTP. Please try again.'));
+      }
     } finally {
       detailsSubmitLock.current = false;
       setIsLoading(false);
@@ -187,9 +209,9 @@ const Signup = () => {
     setIsLoading(true);
     try {
       const response = await userAuthService.register({
-        name: formData.name,
-        email: formData.email || null,
-        phone: formData.phoneNumber,
+        name: formData.name.trim(),
+        email: formData.email.trim() || null,
+        phone: formData.phoneNumber.trim(),
         otp: otpValue,
         token: otpToken,
       });
@@ -208,13 +230,18 @@ const Signup = () => {
           { icon: <FiCheckCircle className="text-success-500" /> }
         );
         navigate('/user', { replace: true });
+      } else if (response.code === AUTH_ERROR_CODES.ACCOUNT_EXISTS || isAccountExistsError(response)) {
+        redirectToLogin(formData.phoneNumber);
+        otpSubmitLock.current = false;
       } else {
         toast.error(response.message || 'Registration failed');
         otpSubmitLock.current = false;
       }
     } catch (error) {
       otpSubmitLock.current = false;
-      toast.error(getAuthErrorMessage(error, 'Registration failed. Please try again.'));
+      if (!handleAuthFlowError(error, navigate, { panel: 'user', phone: formData.phoneNumber })) {
+        toast.error(getAuthErrorMessage(error, 'Registration failed. Please try again.'));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -355,7 +382,8 @@ const Signup = () => {
                   setIsLoading(true);
                   const response = await userAuthService.sendOTP(
                     formData.phoneNumber,
-                    formData.email || null
+                    formData.email || null,
+                    'signup'
                   );
                   if (response.success) {
                     setOtpToken(response.token || 'verification-pending');

@@ -20,7 +20,26 @@ const sendOTP = async (req, res) => {
       });
     }
 
-    const { phone, email } = req.body;
+    const { phone, email, intent } = req.body;
+
+    // Block signup OTP for phones already registered
+    if (intent === 'signup') {
+      const existingUser = await User.findOne({ phone }).select('_id isActive').lean();
+      if (existingUser) {
+        if (!existingUser.isActive) {
+          return res.status(403).json({
+            success: false,
+            code: 'ACCOUNT_RESTRICTED',
+            message: 'Your account has been deactivated. Please contact support.'
+          });
+        }
+        return res.status(409).json({
+          success: false,
+          code: 'ACCOUNT_EXISTS',
+          message: 'This mobile number is already registered. Please sign in instead.'
+        });
+      }
+    }
 
     // 1. Rate limit check
     const allowed = await checkRateLimit(phone);
@@ -190,9 +209,10 @@ const register = async (req, res) => {
     // Check if user already exists
     const existingUser = await User.findOne({ phone });
     if (existingUser) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        message: 'User already exists. Please login.'
+        code: 'ACCOUNT_EXISTS',
+        message: 'This mobile number is already registered. Please sign in instead.'
       });
     }
 

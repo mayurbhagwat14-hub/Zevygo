@@ -20,10 +20,39 @@ const sendOTP = async (req, res) => {
       });
     }
 
-    const { phone, email } = req.body;
+    const { phone, email, intent } = req.body;
 
-    // Check existing vendor status to prevent OTP if restricted
     const existingVendor = await Vendor.findOne({ phone });
+
+    // Signup flow — do not send OTP if account already exists or is pending review
+    if (intent === 'signup') {
+      if (existingVendor) {
+        if (existingVendor.approvalStatus === VENDOR_STATUS.PENDING) {
+          return res.status(409).json({
+            success: false,
+            code: 'VENDOR_PENDING',
+            message: 'Your provider application is under admin review. Please wait for approval or sign in once approved.'
+          });
+        }
+        if (
+          existingVendor.approvalStatus === VENDOR_STATUS.REJECTED ||
+          existingVendor.approvalStatus === VENDOR_STATUS.SUSPENDED
+        ) {
+          return res.status(403).json({
+            success: false,
+            code: 'ACCOUNT_RESTRICTED',
+            message: 'This account is restricted. Please contact support.'
+          });
+        }
+        return res.status(409).json({
+          success: false,
+          code: 'ACCOUNT_EXISTS',
+          message: 'This mobile number is already registered as a provider. Please sign in instead.'
+        });
+      }
+    }
+
+    // Login flow — handle restricted / pending vendor before sending OTP
     if (existingVendor) {
       if (existingVendor.approvalStatus === VENDOR_STATUS.PENDING) {
         return res.status(200).json({
@@ -199,7 +228,11 @@ const register = async (req, res) => {
     // Check existing
     const existingPhone = await Vendor.findOne({ phone });
     if (existingPhone) {
-      return res.status(400).json({ success: false, message: 'This phone number is already registered. Please login.' });
+      return res.status(409).json({
+        success: false,
+        code: 'ACCOUNT_EXISTS',
+        message: 'This phone number is already registered. Please sign in instead.'
+      });
     }
     
     const existingEmail = await Vendor.findOne({ email });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { FiPhone, FiArrowRight, FiChevronLeft, FiCheckCircle } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { z } from 'zod';
@@ -7,6 +7,7 @@ import { sendOTP, verifyLogin } from '../services/authService';
 import { useBranding } from '../../../context/BrandingContext';
 import { APP_NAME } from '../../../theme/brand';
 import { AuthShell, Button, Input, OtpInput } from '../../../components/ui';
+import { getNetworkAuthMessage } from '../../../utils/authErrors';
 
 const phoneSchema = z.object({
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian phone number'),
@@ -16,6 +17,7 @@ const VendorLogin = () => {
   const { branding } = useBranding();
   const name = branding?.appName || APP_NAME;
   const navigate = useNavigate();
+  const location = useLocation();
   const [step, setStep] = useState('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -24,6 +26,20 @@ const VendorLogin = () => {
   const [resendTimer, setResendTimer] = useState(0);
   const phoneInputRef = useRef(null);
   const otpSubmitLock = useRef(false);
+  const phoneSubmitLock = useRef(false);
+
+  const getAuthErrorMessage = (error, fallback) => getNetworkAuthMessage(error, fallback);
+
+  useEffect(() => {
+    if (location.state?.phone) {
+      const clean = String(location.state.phone).replace(/\D/g, '').slice(0, 10);
+      if (clean.length === 10) setPhoneNumber(clean);
+    }
+    if (location.state?.fromSignup) {
+      toast('Provider account already exists. Sign in with OTP.', { icon: 'ℹ️', duration: 5000 });
+      window.history.replaceState({}, '', location.pathname);
+    }
+  }, [location.state, location.pathname]);
 
   useEffect(() => {
     let interval;
@@ -53,6 +69,8 @@ const VendorLogin = () => {
 
   const handlePhoneSubmit = async (e) => {
     e.preventDefault();
+    if (phoneSubmitLock.current || isLoading) return;
+
     const validationResult = phoneSchema.safeParse({ phone: phoneNumber });
     if (!validationResult.success) {
       toast.error(validationResult.error.errors[0].message);
@@ -60,9 +78,10 @@ const VendorLogin = () => {
     }
 
     const cleanPhone = phoneNumber.replace(/\D/g, '');
+    phoneSubmitLock.current = true;
     setIsLoading(true);
     try {
-      const response = await sendOTP(cleanPhone);
+      const response = await sendOTP(cleanPhone, 'login');
       if (response.success) {
         if (response.vendor?.adminApproval?.toLowerCase() === 'pending') {
           toast.error('Your account is currently under review. Please wait for admin approval.', {
@@ -80,8 +99,9 @@ const VendorLogin = () => {
         toast.error(response.message || 'Failed to send OTP');
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to send OTP. Please try again.');
+      toast.error(getAuthErrorMessage(error, 'Failed to send OTP. Please try again.'));
     } finally {
+      phoneSubmitLock.current = false;
       setIsLoading(false);
     }
   };
@@ -150,7 +170,7 @@ const VendorLogin = () => {
     } catch (error) {
       otpSubmitLock.current = false;
       setIsLoading(false);
-      toast.error(error.response?.data?.message || 'Verification failed. Please try again.');
+      toast.error(getAuthErrorMessage(error, 'Verification failed. Please try again.'));
     }
   };
 
@@ -234,9 +254,9 @@ const VendorLogin = () => {
               onClick={async () => {
                 if (resendTimer > 0) return;
                 try {
-                  const response = await sendOTP(phoneNumber.replace(/\D/g, ''));
+                  const response = await sendOTP(phoneNumber.replace(/\D/g, ''), 'login');
                   if (response.success) {
-                    setOtpToken(response.token);
+                    setOtpToken(response.token || 'verification-pending');
                     setResendTimer(120);
                     toast.success('New code sent!');
                   }

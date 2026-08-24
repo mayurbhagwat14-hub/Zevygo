@@ -41,9 +41,9 @@ function storeVendorSession({ accessToken, refreshToken, vendor }) {
  * @param {string} phone - Phone number
  * @returns {Promise<Object>} OTP response with token
  */
-export const sendOTP = async (phone) => {
+export const sendOTP = async (phone, intent = 'login') => {
   try {
-    const response = await api.post('/vendors/auth/send-otp', { phone });
+    const response = await api.post('/vendors/auth/send-otp', { phone, intent });
     return response.data;
   } catch (error) {
     console.error('Error sending OTP:', error);

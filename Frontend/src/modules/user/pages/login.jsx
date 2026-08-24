@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { FiPhone, FiArrowRight, FiCheckCircle, FiChevronLeft, FiUserPlus, FiLock } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { z } from 'zod';
@@ -7,6 +7,7 @@ import { userAuthService } from '../../../services/authService';
 import { useBranding } from '../../../context/BrandingContext';
 import { APP_NAME } from '../../../theme/brand';
 import { AuthShell, Button, Input, OtpInput } from '../../../components/ui';
+import { getNetworkAuthMessage } from '../../../utils/authErrors';
 
 const phoneSchema = z.object({
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian phone number'),
@@ -22,6 +23,7 @@ const Login = () => {
   const { branding } = useBranding();
   const name = branding?.appName || APP_NAME;
   const navigate = useNavigate();
+  const location = useLocation();
   const [step, setStep] = useState('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -34,15 +36,18 @@ const Login = () => {
 
   const canSendOtp = phoneNumber.length === 10;
 
-  const getAuthErrorMessage = (error, fallback) => {
-    if (error?.code === 'ECONNABORTED') {
-      return 'Request timed out. Please check your internet and try again.';
+  const getAuthErrorMessage = (error, fallback) => getNetworkAuthMessage(error, fallback);
+
+  useEffect(() => {
+    if (location.state?.phone) {
+      const clean = String(location.state.phone).replace(/\D/g, '').slice(0, 10);
+      if (clean.length === 10) setPhoneNumber(clean);
     }
-    if (!error?.response) {
-      return 'Cannot reach server. Please check your connection and try again.';
+    if (location.state?.fromSignup) {
+      toast('You already have an account. Sign in with OTP.', { icon: 'ℹ️', duration: 5000 });
+      window.history.replaceState({}, '', location.pathname);
     }
-    return error.response?.data?.message || fallback;
-  };
+  }, [location.state, location.pathname]);
 
   useEffect(() => {
     let interval;

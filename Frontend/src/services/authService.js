@@ -47,9 +47,9 @@ function storeUserSession({ accessToken, refreshToken, user }) {
  * User Authentication Service
  */
 export const userAuthService = {
-  // Send OTP
-  sendOTP: async (phone, email = null) => {
-    const response = await api.post('/users/auth/send-otp', { phone, email });
+  // Send OTP — intent: 'login' | 'signup'
+  sendOTP: async (phone, email = null, intent = 'login') => {
+    const response = await api.post('/users/auth/send-otp', { phone, email, intent });
     return response.data;
   },
 
