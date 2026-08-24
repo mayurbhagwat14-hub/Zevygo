@@ -5,11 +5,13 @@ import { vendorTheme as themeColors, gradients } from '../../../../theme';
 import Header from '../../components/layout/Header';
 import BottomNav from '../../components/layout/BottomNav';
 import { Loader } from '../../../../components/ui';
-import { getBookingById, updateBookingStatus, startSelfJob, verifySelfVisit, completeSelfJob, collectSelfCash, payWorker } from '../../services/bookingService';
+import { getBookingById, updateBookingStatus, startSelfJob, verifySelfVisit, completeSelfJob, collectSelfCash, payWorker, checkInBooking } from '../../services/bookingService';
 import { CashCollectionModal, ConfirmDialog } from '../../components/common';
 import WorkCompletionModal from '../../components/common/WorkCompletionModal';
 import vendorWalletService from '../../../../services/vendorWalletService';
 import { toast } from 'react-hot-toast';
+import { skipsJourney, trackingTypeOf } from '../../../../utils/trackingType';
+import { getVendorActionLabels, resolveServiceFulfillmentType } from '../../../../utils/bookingStatusLabels';
 
 const BookingTimeline = () => {
   const { id } = useParams();
@@ -66,6 +68,7 @@ const BookingTimeline = () => {
           'searching': 1,
           'confirmed': 2,
           'assigned': 2,
+          'accepted': 2,
           'journey_started': 3,
           'visited': 4,
           'in_progress': 4,
@@ -179,11 +182,18 @@ const BookingTimeline = () => {
   const handleStartSelfJob = async () => {
     try {
       setActionLoading(true);
+      const type = trackingTypeOf(booking);
+      if (skipsJourney(type)) {
+        await checkInBooking(id);
+        toast.success('Checked in');
+        window.location.reload();
+        return;
+      }
       await startSelfJob(id);
       toast.success('Journey Started');
       navigate(`/vendor/booking/${id}/map`);
     } catch (error) {
-      toast.error('Failed to start journey');
+      toast.error(error?.response?.data?.message || 'Failed to start');
     } finally {
       setActionLoading(false);
     }
@@ -226,6 +236,10 @@ const BookingTimeline = () => {
     }
   };
 
+  const trackingType = booking ? trackingTypeOf(booking) : 'live';
+  const skipTravel = skipsJourney(trackingType);
+  const actionLabels = getVendorActionLabels(resolveServiceFulfillmentType({ booking }));
+
   const timelineStages = [
     {
       id: 1,
@@ -243,17 +257,17 @@ const BookingTimeline = () => {
     },
     {
       id: 3,
-      title: 'Journey Started',
+      title: skipTravel ? 'Check In' : 'Journey Started',
       icon: FiMapPin,
       action: (currentStage === 2) ? handleStartSelfJob : null,
-      description: 'You started journey',
+      description: skipTravel ? 'Check in when you start the service' : 'You started journey',
     },
     {
       id: 4,
-      title: 'Visited Site',
+      title: skipTravel ? 'On site' : 'Visited Site',
       icon: FiMapPin,
-      action: (currentStage === 3) ? () => setIsVisitModalOpen(true) : null,
-      description: 'Arrived at location',
+      action: (!skipTravel && currentStage === 3) ? () => setIsVisitModalOpen(true) : null,
+      description: skipTravel ? 'You are checked in' : 'Arrived at location',
     },
     {
       id: 5,
@@ -426,8 +440,8 @@ const BookingTimeline = () => {
                             boxShadow: `0 2px 8px ${themeColors.button}40`,
                           }}
                         >
-                          {stage.id === 3 ? 'Start Journey' :
-                            stage.id === 4 ? 'Mark Arrived' :
+                          {stage.id === 3 ? (skipTravel ? actionLabels.checkIn : actionLabels.startJourney) :
+                            stage.id === 4 ? actionLabels.arrived :
                               stage.id === 5 ? 'Mark workdone' :
                                 stage.id === 6 ? (
                                   (booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid')

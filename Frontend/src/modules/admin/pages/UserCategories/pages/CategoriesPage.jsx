@@ -34,6 +34,7 @@ const mapSavedCategory = (cat, formFallback = {}) => ({
   pricingLimits: cat.pricingLimits || { minPrice: 0, maxPrice: 999999 },
   bookingMode: cat.bookingMode || formFallback.bookingMode || 'BOTH',
   serviceFulfillmentType: cat.serviceFulfillmentType || formFallback.serviceFulfillmentType || 'ON_SITE',
+  trackingType: cat.trackingType || formFallback.trackingType || 'live',
   paymentConfig: cat.paymentConfig || formFallback.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: 0 },
 });
 
@@ -52,7 +53,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
     pricingLimits: { minPrice: '', maxPrice: '' },
     paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' },
     bookingMode: 'BOTH',
-    serviceFulfillmentType: 'ON_SITE'
+    serviceFulfillmentType: 'ON_SITE',
+    trackingType: 'live'
   });
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
@@ -94,6 +96,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
             paymentConfig: cat.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: '' },
             bookingMode: cat.bookingMode || 'BOTH',
             serviceFulfillmentType: cat.serviceFulfillmentType || 'ON_SITE',
+            trackingType: cat.trackingType || 'live',
           }));
 
           // Update catalog with fetched categories
@@ -124,7 +127,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         pricingLimits: { minPrice: '', maxPrice: '' },
         paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' },
         bookingMode: 'BOTH',
-        serviceFulfillmentType: 'ON_SITE'
+        serviceFulfillmentType: 'ON_SITE',
+        trackingType: 'live'
       });
       return;
     }
@@ -140,6 +144,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       paymentConfig: safe.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: '' },
       bookingMode: safe.bookingMode || 'BOTH',
       serviceFulfillmentType: safe.serviceFulfillmentType || 'ON_SITE',
+      trackingType: safe.trackingType || 'live',
     });
   }, [editing]);
 
@@ -157,7 +162,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       pricingLimits: { minPrice: '', maxPrice: '' },
       paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' },
       bookingMode: 'BOTH',
-      serviceFulfillmentType: 'ON_SITE'
+      serviceFulfillmentType: 'ON_SITE',
+      trackingType: 'live'
     });
     setIsModalOpen(false);
   };
@@ -223,6 +229,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         },
         bookingMode: form.bookingMode || 'BOTH',
         serviceFulfillmentType: form.serviceFulfillmentType || 'ON_SITE',
+        trackingType: form.trackingType || 'live',
         cityIds: selectedCity ? [selectedCity] : [],
       };
 
@@ -780,6 +787,34 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                   }`}
                 >
                   {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100">
+            <h4 className="text-sm font-bold text-gray-900 mb-1">Tracking type</h4>
+            <p className="text-xs text-gray-500 mb-3">How customers follow this service. Live uses GPS; status-only is check-in/duration; hybrid is arrival map then presence.</p>
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                { value: 'live', label: '📍 Live location', hint: 'Vendor travels to customer (driver, electrician, tiffin)' },
+                { value: 'status_only', label: '⏱️ Status only', hint: 'Posted/presence — no travel map (security, room, hall)' },
+                { value: 'hybrid', label: '🔀 Hybrid', hint: 'Live arrival, then check-in / duration card' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, trackingType: opt.value }))}
+                  className={`px-3 py-2.5 rounded-xl text-left border transition-all ${
+                    (form.trackingType || 'live') === opt.value
+                      ? 'bg-primary-600 text-white border-primary-600'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-primary-300'
+                  }`}
+                >
+                  <span className="block text-xs font-bold">{opt.label}</span>
+                  <span className={`block text-[10px] mt-0.5 ${
+                    (form.trackingType || 'live') === opt.value ? 'text-white/80' : 'text-gray-500'
+                  }`}>{opt.hint}</span>
                 </button>
               ))}
             </div>

@@ -5,7 +5,16 @@ import useAppNotifications from '../../../../hooks/useAppNotifications';
 import { colors, gradients } from '../../../../theme';
 import { MdQrCode } from 'react-icons/md';
 import { useBranding } from '../../../../context/BrandingContext';
-import { getStatusLabel, resolveServiceFulfillmentType } from '../../../../utils/bookingStatusLabels';
+import { getStatusLabel, resolveServiceFulfillmentType, isLiveTrackingStatus } from '../../../../utils/bookingStatusLabels';
+import {
+  trackingTypeOf,
+  usesLiveLocation,
+  usesPresence,
+  skipsJourney,
+  isCheckedIn,
+  isCheckedOut,
+  formatPresenceTime
+} from '../../../../utils/trackingType';
 import {
   getDueChargeAmount,
   isAdvancePaymentDue,
@@ -269,16 +278,24 @@ const BookingDetails = () => {
   const getStatusLabelForBooking = (status) =>
     getStatusLabel(status, resolveServiceFulfillmentType({ booking }));
 
+  const trackingType = booking ? trackingTypeOf(booking) : 'live';
+  const skipTravel = skipsJourney(trackingType);
+  const liveTrackingOn = Boolean(booking && isLiveTrackingStatus(booking.status, trackingType));
+
   // ... (keep handle methods same) ...
 
   const handleCancelBooking = async () => {
-    // Check if journey has started to determine if a fee applies
-    const journeyStarted = ['journey_started', 'visited', 'in_progress'].includes(booking.status?.toLowerCase());
+    const status = booking.status?.toLowerCase();
+    const serviceStarted = skipTravel
+      ? ['visited', 'in_progress'].includes(status)
+      : ['journey_started', 'visited', 'in_progress'].includes(status);
     const cancellationFee = booking.visitingCharges || 49;
 
-    const modalTitle = journeyStarted ? 'Cancellation Fee Applies' : 'Cancel Booking';
-    const modalMessage = journeyStarted
-      ? `The service agent has already started their journey. Cancelling now will incur a fee of ₹${cancellationFee}, which will be deducted from your wallet or refund amount. Do you want to proceed?`
+    const modalTitle = serviceStarted ? 'Cancellation Fee Applies' : 'Cancel Booking';
+    const modalMessage = serviceStarted
+      ? (skipTravel
+        ? `The service has already started. Cancelling now will incur a fee of ₹${cancellationFee}, which will be deducted from your wallet or refund amount. Do you want to proceed?`
+        : `The service agent has already started their journey. Cancelling now will incur a fee of ₹${cancellationFee}, which will be deducted from your wallet or refund amount. Do you want to proceed?`)
       : 'Are you sure you want to cancel this booking? You will receive a full refund if applicable. This action cannot be undone.';
 
     setConfirmDialog({
@@ -578,7 +595,7 @@ const BookingDetails = () => {
 
                 {/* Step 2: Assigned */}
                 <div className="flex flex-col items-center gap-2 w-1/4">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${['assigned', 'journey_started', 'visited', 'in_progress', 'work_done', 'completed'].includes(booking.status?.toLowerCase())
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${['assigned', 'accepted', 'journey_started', 'visited', 'in_progress', 'work_done', 'completed'].includes(booking.status?.toLowerCase())
                     ? 'bg-primary-500 text-white shadow-lg shadow-primary-200' : 'bg-gray-100 text-gray-400'
                     }`}>
                     2
@@ -657,10 +674,10 @@ const BookingDetails = () => {
           )}
 
           {/* Service Partner Card */}
-          {(booking.workerId || booking.assignedTo || booking.vendorId) && ['confirmed', 'assigned', 'journey_started', 'visited', 'in_progress', 'work_done'].includes(booking.status?.toLowerCase()) && (
+          {(booking.workerId || booking.assignedTo || booking.vendorId) && ['confirmed', 'assigned', 'accepted', 'journey_started', 'visited', 'in_progress', 'work_done'].includes(booking.status?.toLowerCase()) && (
             <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
               <div className="flex justify-between items-start mb-4">
-                {['journey_started', 'visited', 'in_progress'].includes(booking.status?.toLowerCase()) ? (
+                {liveTrackingOn ? (
                   <div className="flex items-center gap-2">
                     <span className="flex h-3 w-3 relative">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -668,16 +685,20 @@ const BookingDetails = () => {
                     </span>
                     <p className="text-xs font-bold text-green-600 tracking-wider">LIVE TRACKING ACTIVE</p>
                   </div>
+                ) : isCheckedIn(booking) ? (
+                  <p className="text-xs font-bold text-primary-600 tracking-wider uppercase">Provider checked in</p>
                 ) : (
                   <p className="text-xs font-bold text-gray-400 tracking-wider uppercase">Your Professional</p>
                 )}
 
-                <button
-                  onClick={() => navigate(`/user/booking/${booking._id || booking.id}/track`)}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
-                >
-                  Map View <FiChevronRight />
-                </button>
+                {usesLiveLocation(trackingType) && (
+                  <button
+                    onClick={() => navigate(`/user/booking/${booking._id || booking.id}/track`)}
+                    className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                  >
+                    Map View <FiChevronRight />
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center gap-4">
@@ -729,8 +750,27 @@ const BookingDetails = () => {
             </div>
           )}
 
+          {usesPresence(trackingType) && (
+            <div className="bg-white rounded-3xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100">
+              <p className="text-xs font-bold text-gray-400 tracking-wider uppercase mb-2">Presence</p>
+              {isCheckedIn(booking) && (
+                <p className="text-sm font-semibold text-gray-800">
+                  Checked in {formatPresenceTime(booking.tracking?.presence?.checkedInAt)}
+                </p>
+              )}
+              {isCheckedOut(booking) && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Checked out {formatPresenceTime(booking.tracking.presence.checkedOutAt)}
+                </p>
+              )}
+              {!isCheckedIn(booking) && !isCheckedOut(booking) && (
+                <p className="text-sm text-gray-500">Waiting for the provider to check in</p>
+              )}
+            </div>
+          )}
+
           {/* Arrival OTP Card - Show during early stages until verified */}
-          {(booking.arrivalOTP || booking.visitOtp) && ['confirmed', 'assigned', 'journey_started'].includes(booking.status?.toLowerCase()) && (
+          {!skipTravel && (booking.arrivalOTP || booking.visitOtp) && ['confirmed', 'assigned', 'journey_started'].includes(booking.status?.toLowerCase()) && (
             <div className="relative overflow-hidden rounded-3xl shadow-lg border border-primary-100 mb-6 active:scale-[0.99] transition-all">
               {/* Animated gradient background */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 opacity-95"></div>
@@ -778,8 +818,12 @@ const BookingDetails = () => {
                   <FiCheckCircle className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white tracking-tight">Professional Arrived</h3>
-                  <p className="text-sm text-blue-50 font-medium">Expert is at your location and starting the work.</p>
+                  <h3 className="text-lg font-bold text-white tracking-tight">
+                    {skipTravel ? 'Provider checked in' : 'Professional Arrived'}
+                  </h3>
+                  <p className="text-sm text-blue-50 font-medium">
+                    {skipTravel ? 'Your service is underway.' : 'Expert is at your location and starting the work.'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -967,21 +1011,19 @@ const BookingDetails = () => {
                     </div>
                   </div>
 
-                  {/* Track Button Overlay - Only clickable when journey started */}
-                  {['journey_started', 'visited', 'in_progress'].includes(booking.status?.toLowerCase()) && (
+                  {liveTrackingOn && (
                     <div className="absolute inset-0 flex items-center justify-center bg-transparent pointer-events-none">
                       <div
                         className="pointer-events-auto bg-white text-gray-900 px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all border border-gray-100 cursor-pointer"
                         onClick={() => navigate(`/user/booking/${booking._id || booking.id}/track`)}
                       >
-                        <FiMapPin className="w-4 h-4 text-red-500" /> View Live Location
+                        <FiMapPin className="w-4 h-4 text-primary-500" /> View Live Location
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Dedicated Track Button - Only visible when journey started */}
-                {['journey_started', 'visited', 'in_progress'].includes(booking.status?.toLowerCase()) && (
+                {liveTrackingOn && (
                   <Button
                     type="button"
                     fullWidth

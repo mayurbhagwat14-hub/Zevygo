@@ -87,6 +87,12 @@ const serviceListingSchema = new mongoose.Schema({
     enum: ['INSTANT', 'SCHEDULED', 'BOTH', 'REQUEST_QUOTE'],
     default: 'BOTH'
   },
+  /** Optional override of category trackingType (null = inherit) */
+  trackingType: {
+    type: String,
+    enum: ['live', 'status_only', 'hybrid'],
+    required: false
+  },
   bookingConfig: {
     minAdvanceBookingMinutes: { type: Number, default: 30 },
     maxAdvanceBookingDays: { type: Number, default: 30 },

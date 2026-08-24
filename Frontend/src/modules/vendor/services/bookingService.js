@@ -170,6 +170,18 @@ export const verifySelfVisit = async (bookingId, otp, location) => {
   return response.data;
 };
 
+export const checkInBooking = async (bookingId, notes) => {
+  invalidateBookingCache(bookingId);
+  const response = await api.post(`/vendors/bookings/${bookingId}/tracking/check-in`, notes ? { notes } : {});
+  return response.data;
+};
+
+export const checkOutBooking = async (bookingId, notes) => {
+  invalidateBookingCache(bookingId);
+  const response = await api.post(`/vendors/bookings/${bookingId}/tracking/check-out`, notes ? { notes } : {});
+  return response.data;
+};
+
 /**
  * Complete Self Job (Vendor)
  */

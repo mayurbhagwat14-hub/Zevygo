@@ -2,6 +2,7 @@
  * Contextual booking status labels — delivery vs on-site service.
  */
 const { BOOKING_STATUS } = require('./constants');
+const { skipsJourney } = require('./trackingType');
 
 const DELIVERY_SLUGS = new Set(['tiffin', 'food', 'meals', 'catering']);
 
@@ -98,8 +99,10 @@ const getNotificationCopy = (event, fulfillmentType = 'ON_SITE') => {
 };
 
 /** Statuses where live GPS tracking is meaningful for the customer */
-const isLiveTrackingStatus = (status) =>
-  [BOOKING_STATUS.JOURNEY_STARTED, BOOKING_STATUS.VISITED].includes(String(status || '').toLowerCase());
+const isLiveTrackingStatus = (status, trackingType) => {
+  if (skipsJourney(trackingType)) return false;
+  return [BOOKING_STATUS.JOURNEY_STARTED, BOOKING_STATUS.VISITED].includes(String(status || '').toLowerCase());
+};
 
 module.exports = {
   resolveServiceFulfillmentType,

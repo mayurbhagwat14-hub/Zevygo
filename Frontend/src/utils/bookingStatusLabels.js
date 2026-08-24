@@ -1,6 +1,4 @@
-/**
- * Contextual booking status labels — delivery vs on-site (mirrors Backend/utils/bookingStatusLabels.js).
- */
+import { skipsJourney } from './trackingType';
 
 const DELIVERY_SLUGS = new Set(['tiffin', 'food', 'meals', 'catering']);
 
@@ -56,12 +54,16 @@ const VENDOR_ACTION_LABELS = {
   DELIVERY: {
     startJourney: 'Start Delivery',
     arrived: 'Arrived at customer',
-    workDone: 'Mark Delivered'
+    workDone: 'Mark Delivered',
+    checkIn: 'Check In',
+    checkOut: 'Check Out'
   },
   ON_SITE: {
     startJourney: 'Start Journey',
     arrived: "I've Arrived",
-    workDone: 'Mark Work Done'
+    workDone: 'Mark Work Done',
+    checkIn: 'Check In',
+    checkOut: 'Check Out'
   }
 };
 
@@ -76,12 +78,18 @@ export const getStatusLabel = (status, fulfillmentType = 'ON_SITE') => {
 export const getVendorActionLabels = (fulfillmentType = 'ON_SITE') =>
   VENDOR_ACTION_LABELS[normalizeFulfillment(fulfillmentType)];
 
-export const isLiveTrackingStatus = (status) =>
-  ['journey_started', 'visited'].includes(String(status || '').toLowerCase());
+export const isLiveTrackingStatus = (status, trackingType) => {
+  if (skipsJourney(trackingType)) return false;
+  return ['journey_started', 'visited'].includes(String(status || '').toLowerCase());
+};
 
-export const getTrackingHeadline = (status, fulfillmentType = 'ON_SITE') => {
+export const getTrackingHeadline = (status, fulfillmentType = 'ON_SITE', trackingType) => {
   const key = normalizeFulfillment(fulfillmentType);
   const s = String(status || '').toLowerCase();
+  if (skipsJourney(trackingType)) {
+    if (s === 'visited' || s === 'in_progress') return 'Provider checked in';
+    return getStatusLabel(status, fulfillmentType);
+  }
   if (s === 'journey_started') {
     return key === 'DELIVERY' ? 'Out for delivery' : 'On the way';
   }

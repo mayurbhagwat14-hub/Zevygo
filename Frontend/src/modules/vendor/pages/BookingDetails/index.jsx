@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FiMapPin, FiClock, FiDollarSign, FiUser, FiPhone, FiNavigation, FiArrowRight, FiEdit, FiCheckCircle, FiCreditCard, FiX, FiCheck, FiTool, FiXCircle, FiAward, FiPackage, FiAlertCircle } from 'react-icons/fi';
+import { FiMapPin, FiClock, FiDollarSign, FiUser, FiPhone, FiNavigation, FiArrowRight, FiEdit, FiCheckCircle, FiCreditCard, FiX, FiCheck, FiTool, FiXCircle, FiAward, FiPackage, FiAlertCircle, FiLogIn, FiLogOut } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { vendorTheme as themeColors, gradients } from '../../../../theme';
 import Header from '../../components/layout/Header';
@@ -13,7 +13,11 @@ import {
   startSelfJob,
   vendorReached,
   verifySelfVisit,
-  completeSelfJob
+  checkInBooking,
+  checkOutBooking,
+  completeSelfJob,
+  acceptBooking,
+  rejectBooking
 } from '../../services/bookingService';
 import vendorBillService from '../../../../services/vendorBillService';
 import { CashCollectionModal, ConfirmDialog, WorkerPaymentModal, OtpVerificationModal } from '../../components/common';
@@ -27,8 +31,17 @@ import { useLocationTracking } from '../../../../hooks/useLocationTracking';
 import {
   getStatusLabel,
   getVendorActionLabels,
-  resolveServiceFulfillmentType
+  resolveServiceFulfillmentType,
+  isLiveTrackingStatus
 } from '../../../../utils/bookingStatusLabels';
+import {
+  trackingTypeOf,
+  usesLiveLocation,
+  usesPresence,
+  skipsJourney,
+  isCheckedIn,
+  isCheckedOut
+} from '../../../../utils/trackingType';
 import {
   canVendorStartService,
   isAdvancePaymentDue
@@ -134,7 +147,9 @@ export default function BookingDetails() {
         paymentStatus: apiData.paymentStatus,
         cashCollected: apiData.cashCollected || false,
         workerPaymentStatus: apiData.workerPaymentStatus,
-        finalSettlementStatus: apiData.finalSettlementStatus
+        finalSettlementStatus: apiData.finalSettlementStatus,
+        trackingType: apiData.trackingType,
+        tracking: apiData.tracking
       };
 
       setBooking(mappedBooking);
@@ -172,10 +187,13 @@ export default function BookingDetails() {
   const socket = useAppNotifications('vendor'); // Get socket
 
   // Optimized Live Location Tracking with distance filter and heading
-  const isTrackingActive = booking?.status === 'journey_started' || booking?.status === 'visited';
+  const trackingType = booking ? trackingTypeOf(booking) : 'live';
+  const isTrackingActive = Boolean(
+    booking && usesLiveLocation(trackingType) && isLiveTrackingStatus(booking.status, trackingType)
+  );
   const { forceEmit } = useLocationTracking(socket, id, isTrackingActive, {
-    distanceFilter: 10, // Only emit when moved 10+ meters
-    interval: 3000,     // Minimum 3s between emissions
+    distanceFilter: 10,
+    interval: 3000,
     enableHighAccuracy: true
   });
 
@@ -214,6 +232,8 @@ export default function BookingDetails() {
           status: data.status || prev.status,
           paymentStatus: data.paymentStatus || prev.paymentStatus,
           paymentPhase: data.paymentPhase || prev.paymentPhase,
+          trackingType: data.trackingType || prev.trackingType,
+          tracking: data.tracking || prev.tracking,
         };
       });
 
@@ -300,16 +320,29 @@ export default function BookingDetails() {
     const finalSettlementDone = booking?.finalSettlementStatus === 'DONE';
     const isSelfJob = booking?.assignedTo?.name === 'You (Self)';
 
-    const statusFlow = {
-      'confirmed': ['assigned', 'visited', 'journey_started'],
-      'assigned': ['visited', 'journey_started'],
-      'journey_started': ['visited'],
-      'visited': ['in_progress', 'work_done'],
-      'in_progress': ['work_done'],
-      'work_done': ['completed', 'final_settlement'],
-      'final_settlement': ['completed'],
-      'completed': [],
-    };
+    const skipTravel = skipsJourney(trackingTypeOf(booking));
+    const statusFlow = skipTravel
+      ? {
+        'confirmed': ['assigned', 'visited'],
+        'assigned': ['visited'],
+        'accepted': ['visited'],
+        'visited': ['in_progress', 'work_done'],
+        'in_progress': ['work_done'],
+        'work_done': ['completed', 'final_settlement'],
+        'final_settlement': ['completed'],
+        'completed': [],
+      }
+      : {
+        'confirmed': ['assigned', 'visited', 'journey_started'],
+        'assigned': ['visited', 'journey_started'],
+        'accepted': ['journey_started', 'visited'],
+        'journey_started': ['visited'],
+        'visited': ['in_progress', 'work_done'],
+        'in_progress': ['work_done'],
+        'work_done': ['completed', 'final_settlement'],
+        'final_settlement': ['completed'],
+        'completed': [],
+      };
     return statusFlow[currentStatus] || [];
   };
 
@@ -512,21 +545,59 @@ export default function BookingDetails() {
     try {
       setLoading(true);
       await startSelfJob(id);
-      forceEmit();
-      toast.success(fulfillmentType === 'DELIVERY' ? 'Delivery started' : 'Journey started');
-      // Refresh to update status
+      if (usesLiveLocation(trackingType)) {
+        forceEmit();
+      }
+      toast.success(
+        skipsJourney(trackingType)
+          ? 'Checked in'
+          : (fulfillmentType === 'DELIVERY' ? 'Delivery started' : 'Journey started')
+      );
       const response = await getBookingById(id);
       const apiData = response.data || response;
-      setBooking(prev => ({ ...prev, status: apiData.status }));
+      setBooking(prev => ({
+        ...prev,
+        status: apiData.status,
+        trackingType: apiData.trackingType || prev.trackingType,
+        tracking: apiData.tracking || prev.tracking
+      }));
+      if (usesLiveLocation(trackingTypeOf(apiData))) {
+        navigate(`/vendor/booking/${booking.id || id}/map`);
+      }
     } catch (error) {
       console.error('Error starting self journey:', error);
-      toast.error(error?.response?.data?.message || 'Failed to start journey');
-      return;
+      toast.error(error?.response?.data?.message || 'Failed to start');
     } finally {
       setLoading(false);
     }
+  };
 
-    navigate(`/vendor/booking/${booking.id || id}/map`);
+  const handleCheckIn = async () => {
+    try {
+      setActionLoading(true);
+      await checkInBooking(id);
+      toast.success('Checked in');
+      invalidateBookingCache(id);
+      await loadBooking({ showSpinner: false });
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to check in');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCheckOut = async () => {
+    try {
+      setActionLoading(true);
+      await checkOutBooking(id);
+      toast.success('Checked out');
+      invalidateBookingCache(id);
+      await loadBooking({ showSpinner: false });
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to check out');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
 
@@ -687,7 +758,17 @@ export default function BookingDetails() {
           </div>
 
           {/* Map Embed */}
-          <div className="w-full h-48 rounded-lg overflow-hidden mb-3 bg-gray-200 relative group cursor-pointer" onClick={() => navigate(`/vendor/booking/${booking.id}/map`)}>
+          <div className="w-full h-48 rounded-lg overflow-hidden mb-3 bg-gray-200 relative group cursor-pointer" onClick={() => {
+            if (skipsJourney(trackingType)) {
+              const hasCoords = booking.location.lat && booking.location.lng;
+              const dest = hasCoords
+                ? `${booking.location.lat},${booking.location.lng}`
+                : encodeURIComponent(booking.location.address);
+              window.open(`https://www.google.com/maps/search/?api=1&query=${dest}`, '_blank');
+              return;
+            }
+            navigate(`/vendor/booking/${booking.id}/map`);
+          }}>
             {(() => {
               const hasCoordinates = booking.location.lat && booking.location.lng && booking.location.lat !== 0 && booking.location.lng !== 0;
               const mapQuery = hasCoordinates
@@ -718,7 +799,17 @@ export default function BookingDetails() {
 
           <div className="flex gap-3 mt-4">
             <button
-              onClick={() => navigate(`/vendor/booking/${booking.id || id}/map`)}
+              onClick={() => {
+                if (skipsJourney(trackingType)) {
+                  const hasCoords = booking.location.lat && booking.location.lng;
+                  const dest = hasCoords
+                    ? `${booking.location.lat},${booking.location.lng}`
+                    : encodeURIComponent(booking.location.address);
+                  window.open(`https://www.google.com/maps/search/?api=1&query=${dest}`, '_blank');
+                  return;
+                }
+                navigate(`/vendor/booking/${booking.id || id}/map`);
+              }}
               className="flex-1 py-3.5 rounded-xl font-bold border-2 flex items-center justify-center gap-2 transition-all active:scale-95 bg-white"
               style={{
                 borderColor: themeColors.button,
@@ -747,6 +838,42 @@ export default function BookingDetails() {
             </button>
           </div>
         </div>
+
+        {usesPresence(trackingType) && (
+          <div
+            className="bg-white rounded-xl p-4 mb-4 shadow-md"
+            style={{ boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}
+          >
+            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Presence</p>
+            {isCheckedIn(booking) && (
+              <p className="text-sm text-gray-800 font-semibold">
+                Checked in {booking.tracking?.presence?.checkedInAt
+                  ? new Date(booking.tracking.presence.checkedInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                  : ''}
+              </p>
+            )}
+            {isCheckedOut(booking) && (
+              <p className="text-sm text-gray-600 mt-1">
+                Checked out {new Date(booking.tracking.presence.checkedOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
+            {!isCheckedIn(booking) && !isCheckedOut(booking) && (
+              <p className="text-sm text-gray-500">Not checked in yet</p>
+            )}
+            {isTrackingActive && (
+              <p className="text-xs mt-2 font-semibold" style={{ color: themeColors.button }}>Live location sharing is on</p>
+            )}
+          </div>
+        )}
+
+        {isTrackingActive && !usesPresence(trackingType) && (
+          <div
+            className="rounded-xl p-3 mb-4 text-sm font-semibold"
+            style={{ background: `${themeColors.button}12`, color: themeColors.button }}
+          >
+            Sharing live location with the customer
+          </div>
+        )}
 
         {/* Service Description */}
         {/* Service Description */}
@@ -1302,17 +1429,93 @@ export default function BookingDetails() {
             </div>
           )}
 
+          {/* Accept / Reject Buttons for Pending Requests */}
+          {['requested', 'searching'].includes(booking.status?.toLowerCase()) && (
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setConfirmDialog({
+                    isOpen: true,
+                    title: 'Decline Request',
+                    message: 'Are you sure you want to decline this request?',
+                    type: 'warning',
+                    onConfirm: async () => {
+                      setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                      setActionLoading(true);
+                      try {
+                        await rejectBooking(id, 'Declined by vendor');
+                        toast.success('Request declined');
+                        window.dispatchEvent(new Event('vendorJobsUpdated'));
+                        navigate('/vendor/jobs');
+                      } catch (error) {
+                        toast.error('Failed to decline request');
+                      } finally {
+                        setActionLoading(false);
+                      }
+                    }
+                  });
+                }}
+                disabled={actionLoading}
+                className="flex-1 py-4 bg-white text-red-600 rounded-xl font-bold text-sm active:scale-95 transition-transform border-2 border-red-200 shadow-sm disabled:opacity-50"
+              >
+                Decline
+              </button>
+              <button
+                onClick={async () => {
+                  setActionLoading(true);
+                  try {
+                    const res = await acceptBooking(id);
+                    const data = res?.data || res;
+                    const advance = data?.advanceAmount || booking.advanceAmount;
+                    const needsAdvance = data?.requireAdvancePayment && Number(advance) > 0;
+                    toast.success(
+                      needsAdvance
+                        ? `Accepted! Waiting for advance ₹${Number(advance).toLocaleString('en-IN')}`
+                        : 'Booking accepted!'
+                    );
+                    window.dispatchEvent(new Event('vendorJobsUpdated'));
+                    loadBooking();
+                  } catch (error) {
+                    toast.error(error?.response?.data?.message || 'Failed to accept booking');
+                  } finally {
+                    setActionLoading(false);
+                  }
+                }}
+                disabled={actionLoading}
+                className="flex-[2] py-4 rounded-xl font-bold text-white text-sm shadow-md active:scale-95 transition-transform disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}
+              >
+                Accept Request
+              </button>
+            </div>
+          )}
+
           {/* Vendor job actions (no worker assign step) */}
           {!['requested', 'searching', 'rejected', 'cancelled'].includes(booking.status) && (
             <div className="space-y-3 pt-2">
-              {(booking.status === 'confirmed' || booking.status === 'assigned' || booking.status === 'accepted') && (
+              {skipsJourney(trackingType) && ['confirmed', 'assigned', 'accepted'].includes(booking.status) && (
+                <button
+                  onClick={handleCheckIn}
+                  disabled={advanceBlocksService || actionLoading}
+                  className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    background: themeColors.button,
+                    boxShadow: `0 4px 12px ${themeColors.button}40`,
+                  }}
+                >
+                  <FiLogIn className="w-5 h-5" />
+                  {actionLabels.checkIn}
+                </button>
+              )}
+
+              {!skipsJourney(trackingType) && ['confirmed', 'assigned', 'accepted'].includes(booking.status) && (
                 <button
                   onClick={handleStartJourney}
                   disabled={advanceBlocksService}
                   className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
-                    background: 'linear-gradient(135deg, #10B981, #059669)',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
+                    background: themeColors.button,
+                    boxShadow: `0 4px 12px ${themeColors.button}40`,
                   }}
                 >
                   <FiNavigation className="w-5 h-5" />
@@ -1320,7 +1523,7 @@ export default function BookingDetails() {
                 </button>
               )}
 
-              {booking.status === 'journey_started' && (
+              {booking.status === 'journey_started' && !skipsJourney(trackingType) && (
                 <button
                   onClick={async () => {
                     try {
@@ -1332,12 +1535,42 @@ export default function BookingDetails() {
                   }}
                   className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg"
                   style={{
-                    background: 'linear-gradient(135deg, #0F348F, #0F348F)',
-                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                    background: themeColors.button,
+                    boxShadow: `0 4px 12px ${themeColors.button}40`,
                   }}
                 >
                   <FiMapPin className="w-5 h-5" />
                   {actionLabels.arrived}
+                </button>
+              )}
+
+              {usesPresence(trackingType) && !skipsJourney(trackingType) && ['visited', 'in_progress'].includes(booking.status) && !isCheckedIn(booking) && !isCheckedOut(booking) && (
+                <button
+                  onClick={handleCheckIn}
+                  disabled={actionLoading}
+                  className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg disabled:opacity-50"
+                  style={{
+                    background: themeColors.button,
+                    boxShadow: `0 4px 12px ${themeColors.button}40`,
+                  }}
+                >
+                  <FiLogIn className="w-5 h-5" />
+                  {actionLabels.checkIn}
+                </button>
+              )}
+
+              {usesPresence(trackingType) && isCheckedIn(booking) && (
+                <button
+                  onClick={handleCheckOut}
+                  disabled={actionLoading}
+                  className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg disabled:opacity-50"
+                  style={{
+                    background: themeColors.button,
+                    boxShadow: `0 4px 12px ${themeColors.button}40`,
+                  }}
+                >
+                  <FiLogOut className="w-5 h-5" />
+                  {actionLabels.checkOut}
                 </button>
               )}
 
@@ -1346,8 +1579,8 @@ export default function BookingDetails() {
                   onClick={() => setIsWorkDoneModalOpen(true)}
                   className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg"
                   style={{
-                    background: 'linear-gradient(135deg, #10B981, #059669)',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
+                    background: themeColors.button,
+                    boxShadow: `0 4px 12px ${themeColors.button}40`,
                   }}
                 >
                   <FiCheckCircle className="w-5 h-5" />

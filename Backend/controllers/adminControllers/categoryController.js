@@ -47,6 +47,7 @@ const getAllCategories = async (req, res) => {
         supportedBookingTypes: cat.supportedBookingTypes || ['scheduled'],
         bookingMode: cat.bookingMode || 'BOTH',
         serviceFulfillmentType: cat.serviceFulfillmentType || 'ON_SITE',
+        trackingType: cat.trackingType || 'live',
         defaultPricingModel: cat.defaultPricingModel || 'FIXED',
         allowMultiSelect: Boolean(cat.allowMultiSelect),
         formSchema: cat.formSchema || [],
@@ -111,6 +112,7 @@ const getCategoryById = async (req, res) => {
         paymentConfig: category.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: 0 },
         bookingMode: category.bookingMode || 'BOTH',
         serviceFulfillmentType: category.serviceFulfillmentType || 'ON_SITE',
+        trackingType: category.trackingType || 'live',
         metaTitle: category.metaTitle,
         metaDescription: category.metaDescription,
         createdAt: category.createdAt,
@@ -158,6 +160,7 @@ const createCategory = async (req, res) => {
       paymentConfig,
       bookingMode,
       serviceFulfillmentType,
+      trackingType,
       metaTitle,
       metaDescription,
       cityIds
@@ -234,6 +237,9 @@ const createCategory = async (req, res) => {
       serviceFulfillmentType: String(serviceFulfillmentType || '').toUpperCase() === 'DELIVERY'
         ? 'DELIVERY'
         : 'ON_SITE',
+      trackingType: ['live', 'status_only', 'hybrid'].includes(String(trackingType || '').toLowerCase())
+        ? String(trackingType).toLowerCase()
+        : 'live',
       metaTitle: metaTitle?.trim() || null,
       metaDescription: metaDescription?.trim() || null,
       cityIds: cityIds || [],
@@ -311,6 +317,7 @@ const updateCategory = async (req, res) => {
       paymentConfig,
       bookingMode,
       serviceFulfillmentType,
+      trackingType,
       metaTitle,
       metaDescription,
       cityIds: updateCityIds
@@ -400,6 +407,12 @@ const updateCategory = async (req, res) => {
       category.serviceFulfillmentType = String(serviceFulfillmentType).toUpperCase() === 'DELIVERY'
         ? 'DELIVERY'
         : 'ON_SITE';
+    }
+    if (trackingType !== undefined) {
+      const nextTracking = String(trackingType).toLowerCase();
+      if (['live', 'status_only', 'hybrid'].includes(nextTracking)) {
+        category.trackingType = nextTracking;
+      }
     }
     if (metaTitle !== undefined) category.metaTitle = metaTitle?.trim() || null;
     if (metaDescription !== undefined) category.metaDescription = metaDescription?.trim() || null;

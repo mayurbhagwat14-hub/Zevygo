@@ -10,6 +10,7 @@ import VisitVerificationModal from '../../components/common/VisitVerificationMod
 import vendorService from '../../../../services/vendorService';
 import { toast } from 'react-hot-toast';
 import { useAppNotifications } from '../../../../hooks/useAppNotifications';
+import { skipsJourney, trackingTypeOf, usesLiveLocation } from '../../../../utils/trackingType';
 
 // Simple toggle for the simulation button (Controlled via .env)
 const SHOW_SIMULATION_BUTTON = import.meta.env.VITE_ENABLE_MAP_SIMULATION === 'true';
@@ -92,6 +93,11 @@ const BookingMap = () => {
       try {
         const response = await getBookingById(id);
         const data = response.data || response;
+        if (skipsJourney(trackingTypeOf(data))) {
+          toast('This service uses check-in, not live map tracking.');
+          navigate(`/vendor/booking/${id}`, { replace: true });
+          return;
+        }
         setBooking(data);
 
         // 1. Destination: Fixed Booking Address from DB
@@ -210,17 +216,15 @@ const BookingMap = () => {
 
   // Sync Location to Backend (Periodic)
   useEffect(() => {
-    if (socket && id) {
+    if (socket && id && booking && usesLiveLocation(trackingTypeOf(booking))) {
       socket.emit('join_tracking', id);
     }
-  }, [socket, id]);
+  }, [socket, id, booking]);
 
   useEffect(() => {
-    if (currentLocation && socket && id) {
+    if (currentLocation && socket && id && booking && usesLiveLocation(trackingTypeOf(booking))) {
       const syncInterval = setInterval(() => {
-        // START CHANGE: If simulating, do NOT emit periodic updates here (simulation loop does it)
         if (isSimulating) return;
-        // END CHANGE
 
         if (currentLocation.lat && currentLocation.lng) {
           socket.emit('update_location', {
@@ -234,7 +238,7 @@ const BookingMap = () => {
 
       return () => clearInterval(syncInterval);
     }
-  }, [currentLocation, socket, id, heading, isSimulating]); // Add isSimulating to dependency array
+  }, [currentLocation, socket, id, heading, isSimulating, booking]);
 
   // DEBUG: Location Simulator Functions
   const startSimulation = () => {

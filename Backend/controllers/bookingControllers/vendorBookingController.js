@@ -10,6 +10,13 @@ const {
   isLiveTrackingStatus
 } = require('../../utils/bookingStatusLabels');
 const {
+  trackingTypeOf,
+  skipsJourney,
+  usesPresence,
+  usesLiveLocation,
+  allowedVendorStatusTransitions
+} = require('../../utils/trackingType');
+const {
   assertCanStartService,
   assertCanCompleteBooking,
   assertCanTransitionTo
@@ -733,15 +740,7 @@ const updateBookingStatus = async (req, res) => {
 
     // Validate status transition if status is changing
     if (status && status !== booking.status) {
-      const validTransitions = {
-        [BOOKING_STATUS.PENDING]: [BOOKING_STATUS.CONFIRMED, BOOKING_STATUS.REJECTED, BOOKING_STATUS.CANCELLED],
-        [BOOKING_STATUS.AWAITING_PAYMENT]: [BOOKING_STATUS.CONFIRMED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.REJECTED],
-        [BOOKING_STATUS.CONFIRMED]: [BOOKING_STATUS.ASSIGNED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.CANCELLED],
-        [BOOKING_STATUS.ASSIGNED]: [BOOKING_STATUS.VISITED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.CANCELLED],
-        [BOOKING_STATUS.VISITED]: [BOOKING_STATUS.WORK_DONE, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.CANCELLED],
-        [BOOKING_STATUS.IN_PROGRESS]: [BOOKING_STATUS.WORK_DONE, BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED],
-        [BOOKING_STATUS.WORK_DONE]: [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED]
-      };
+      const validTransitions = allowedVendorStatusTransitions(trackingTypeOf(booking));
 
       if (!validTransitions[booking.status]?.includes(status)) {
         return res.status(400).json({
@@ -891,8 +890,39 @@ const addVendorNotes = async (req, res) => {
   }
 };
 
+const ensureTrackingSubdoc = (booking) => {
+  const type = trackingTypeOf(booking);
+  if (!booking.tracking) booking.tracking = {};
+  booking.tracking.type = type;
+  booking.trackingType = type;
+  if (usesLiveLocation(type) && !booking.tracking.live) {
+    booking.tracking.live = { lat: null, lng: null, heading: 0, lastUpdatedAt: null };
+  }
+  if (usesPresence(type) && !booking.tracking.presence) {
+    booking.tracking.presence = { checkedInAt: null, checkedOutAt: null, notes: null };
+  }
+  return type;
+};
+
+const emitBookingUpdated = (req, booking, extra = {}) => {
+  const io = req.app.get('io');
+  if (!io) return;
+  const type = trackingTypeOf(booking);
+  io.to(`user_${booking.userId}`).emit('booking_updated', {
+    bookingId: booking._id,
+    status: booking.status,
+    trackingType: type,
+    serviceFulfillmentType: booking.serviceFulfillmentType || 'ON_SITE',
+    liveTracking: isLiveTrackingStatus(booking.status, type),
+    tracking: booking.tracking,
+    ...extra
+  });
+};
+
 /**
  * Start Self Job (Vendor performing job)
+ * live/hybrid → journey_started + OTP
+ * status_only → check-in (visited) without journey
  */
 const startSelfJob = async (req, res) => {
   try {
@@ -925,22 +955,51 @@ const startSelfJob = async (req, res) => {
       });
     }
 
-    // Generate Visit OTP
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const type = ensureTrackingSubdoc(booking);
+    booking.assignedAt = booking.assignedAt || new Date();
+    const fulfillment = booking.serviceFulfillmentType || 'ON_SITE';
 
-    // Update booking
+    if (skipsJourney(type)) {
+      const now = new Date();
+      booking.status = BOOKING_STATUS.VISITED;
+      booking.visitedAt = now;
+      booking.startedAt = now;
+      booking.tracking.presence.checkedInAt = now;
+
+      await booking.save();
+
+      await createNotification({
+        userId: booking.userId,
+        type: 'visit_verified',
+        title: 'Provider checked in',
+        message: 'Your service provider has checked in.',
+        relatedId: booking._id,
+        relatedType: 'booking',
+        priority: 'high',
+        pushData: {
+          type: 'checked_in',
+          bookingId: booking._id.toString(),
+          link: `/user/booking/${booking._id}`
+        }
+      });
+
+      emitBookingUpdated(req, booking, { message: 'Provider checked in' });
+      return res.status(200).json({
+        success: true,
+        message: 'Checked in',
+        data: booking
+      });
+    }
+
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
     booking.status = BOOKING_STATUS.JOURNEY_STARTED;
     booking.journeyStartedAt = new Date();
     booking.visitOtp = otp;
-    booking.assignedAt = new Date(); // Implicitly assigned to self now
 
     await booking.save();
 
-    const fulfillment = booking.serviceFulfillmentType || 'ON_SITE';
     const journeyMsg = getNotificationCopy('journeyStarted', fulfillment);
 
-    // Notify user
-    const { createNotification } = require('../notificationControllers/notificationController');
     await createNotification({
       userId: booking.userId,
       type: 'worker_started',
@@ -957,21 +1016,7 @@ const startSelfJob = async (req, res) => {
       }
     });
 
-    // Send FCM push notification to user
-    // Manual push removed - auto handled by createNotification
-    // sendNotificationToUser(booking.userId, { ... });
-
-    const io = req.app.get('io');
-    if (io) {
-      io.to(`user_${booking.userId}`).emit('booking_updated', {
-        bookingId: booking._id,
-        status: BOOKING_STATUS.JOURNEY_STARTED,
-        serviceFulfillmentType: fulfillment,
-        visitOtp: otp,
-        liveTracking: true
-      });
-      // Socket notification removed - createNotification already handles this
-    }
+    emitBookingUpdated(req, booking, { visitOtp: otp, liveTracking: true });
 
     res.status(200).json({ success: true, message: 'Journey started, OTP sent', data: booking });
   } catch (error) {
@@ -994,6 +1039,10 @@ const vendorReachedLocation = async (req, res) => {
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (skipsJourney(trackingTypeOf(booking))) {
+      return res.status(400).json({ success: false, message: 'This service uses check-in, not live arrival.' });
     }
 
     if (booking.status !== BOOKING_STATUS.JOURNEY_STARTED) {
@@ -1042,6 +1091,9 @@ const verifySelfVisit = async (req, res) => {
     const booking = await Booking.findOne({ _id: id, vendorId }).select('+visitOtp');
 
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    if (skipsJourney(trackingTypeOf(booking))) {
+      return res.status(400).json({ success: false, message: 'Use check-in for this service. Visit OTP is not required.' });
+    }
     if (booking.status !== BOOKING_STATUS.JOURNEY_STARTED) return res.status(400).json({ success: false, message: 'Journey not started' });
 
     const startCheck = assertCanStartService(booking);
@@ -1051,6 +1103,7 @@ const verifySelfVisit = async (req, res) => {
 
     if (booking.visitOtp !== otp) return res.status(400).json({ success: false, message: 'Invalid OTP' });
 
+    const type = ensureTrackingSubdoc(booking);
     booking.status = BOOKING_STATUS.VISITED;
     booking.visitedAt = new Date();
     booking.startedAt = new Date();
@@ -1085,17 +1138,178 @@ const verifySelfVisit = async (req, res) => {
       io.to(`user_${booking.userId}`).emit('booking_updated', {
         bookingId: booking._id,
         status: BOOKING_STATUS.VISITED,
+        trackingType: trackingTypeOf(booking),
         serviceFulfillmentType: fulfillment,
-        liveTracking: isLiveTrackingStatus(BOOKING_STATUS.VISITED),
+        liveTracking: isLiveTrackingStatus(BOOKING_STATUS.VISITED, trackingTypeOf(booking)),
         message: 'Visit verified successful'
       });
-      // Socket notification removed - createNotification already handles this
     }
 
     res.status(200).json({ success: true, message: 'Visit verified', data: booking });
   } catch (error) {
     console.error('Verify self visit error:', error);
     res.status(500).json({ success: false, message: 'Failed to verify visit' });
+  }
+};
+
+const checkInBooking = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { id } = req.params;
+    const { notes } = req.body || {};
+
+    const booking = await Booking.findOne({ _id: id, vendorId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const type = ensureTrackingSubdoc(booking);
+    if (!usesPresence(type)) {
+      return res.status(400).json({ success: false, message: 'This service uses live tracking, not check-in.' });
+    }
+
+    const startCheck = assertCanStartService(booking);
+    if (!startCheck.ok) {
+      return res.status(402).json({ success: false, message: startCheck.message, code: startCheck.code });
+    }
+
+    if (booking.tracking.presence?.checkedInAt && !booking.tracking.presence?.checkedOutAt) {
+      return res.status(400).json({ success: false, message: 'Already checked in' });
+    }
+
+    if (skipsJourney(type)) {
+      const allowed = [BOOKING_STATUS.CONFIRMED, BOOKING_STATUS.ASSIGNED, BOOKING_STATUS.ACCEPTED];
+      if (!allowed.includes(booking.status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot check in while booking is ${booking.status}.`
+        });
+      }
+      const now = new Date();
+      booking.status = BOOKING_STATUS.VISITED;
+      booking.visitedAt = now;
+      booking.startedAt = now;
+      booking.assignedAt = booking.assignedAt || now;
+    } else {
+      const allowed = [BOOKING_STATUS.VISITED, BOOKING_STATUS.IN_PROGRESS];
+      if (!allowed.includes(booking.status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Verify arrival (OTP) before check-in on hybrid tracking.'
+        });
+      }
+    }
+
+    const now = new Date();
+    booking.tracking.presence.checkedInAt = now;
+    booking.tracking.presence.checkedOutAt = null;
+    if (notes != null) booking.tracking.presence.notes = String(notes).trim();
+    await booking.save();
+
+    await createNotification({
+      userId: booking.userId,
+      type: 'visit_verified',
+      title: 'Provider checked in',
+      message: 'Your service provider has checked in.',
+      relatedId: booking._id,
+      relatedType: 'booking',
+      priority: 'high',
+      pushData: {
+        type: 'checked_in',
+        bookingId: booking._id.toString(),
+        link: `/user/booking/${booking._id}`
+      }
+    });
+
+    emitBookingUpdated(req, booking, { message: 'Checked in' });
+    res.status(200).json({ success: true, message: 'Checked in', data: booking });
+  } catch (error) {
+    console.error('Check-in error:', error);
+    res.status(500).json({ success: false, message: 'Failed to check in' });
+  }
+};
+
+const checkOutBooking = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { id } = req.params;
+    const { notes } = req.body || {};
+
+    const booking = await Booking.findOne({ _id: id, vendorId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const type = ensureTrackingSubdoc(booking);
+    if (!usesPresence(type)) {
+      return res.status(400).json({ success: false, message: 'This service does not use check-out.' });
+    }
+    if (!booking.tracking.presence?.checkedInAt) {
+      return res.status(400).json({ success: false, message: 'Check in before check-out.' });
+    }
+    if (booking.tracking.presence?.checkedOutAt) {
+      return res.status(400).json({ success: false, message: 'Already checked out' });
+    }
+
+    const allowed = [BOOKING_STATUS.VISITED, BOOKING_STATUS.IN_PROGRESS];
+    if (!allowed.includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot check out while booking is ${booking.status}.`
+      });
+    }
+
+    booking.tracking.presence.checkedOutAt = new Date();
+    if (notes != null) booking.tracking.presence.notes = String(notes).trim();
+    await booking.save();
+
+    await createNotification({
+      userId: booking.userId,
+      type: 'booking_updated',
+      title: 'Provider checked out',
+      message: 'Your service provider has checked out.',
+      relatedId: booking._id,
+      relatedType: 'booking',
+      priority: 'medium',
+      pushData: {
+        type: 'checked_out',
+        bookingId: booking._id.toString(),
+        link: `/user/booking/${booking._id}`
+      }
+    });
+
+    emitBookingUpdated(req, booking, { message: 'Checked out' });
+    res.status(200).json({ success: true, message: 'Checked out', data: booking });
+  } catch (error) {
+    console.error('Check-out error:', error);
+    res.status(500).json({ success: false, message: 'Failed to check out' });
+  }
+};
+
+const updatePresenceNotes = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { id } = req.params;
+    const { notes } = req.body || {};
+
+    const booking = await Booking.findOne({ _id: id, vendorId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const type = ensureTrackingSubdoc(booking);
+    if (!usesPresence(type)) {
+      return res.status(400).json({ success: false, message: 'This service does not use presence notes.' });
+    }
+
+    booking.tracking.presence.notes = notes != null ? String(notes).trim() : null;
+    await booking.save();
+
+    emitBookingUpdated(req, booking);
+    res.status(200).json({ success: true, message: 'Presence notes updated', data: booking });
+  } catch (error) {
+    console.error('Presence notes error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update notes' });
   }
 };
 
@@ -1700,6 +1914,9 @@ module.exports = {
   startSelfJob,
   vendorReachedLocation,
   verifySelfVisit,
+  checkInBooking,
+  checkOutBooking,
+  updatePresenceNotes,
   completeSelfJob,
   collectSelfCash,
   payWorker,

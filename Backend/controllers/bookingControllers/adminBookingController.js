@@ -1,6 +1,7 @@
 const Booking = require('../../models/Booking');
 const { validationResult } = require('express-validator');
-const { BOOKING_STATUS } = require('../../utils/constants');
+const { BOOKING_STATUS, TRACKING_TYPE } = require('../../utils/constants');
+const { normalizeTrackingType } = require('../../utils/trackingType');
 
 /**
  * Get all bookings with filters and search
@@ -10,6 +11,7 @@ const getAllBookings = async (req, res) => {
     const {
       status,
       paymentStatus,
+      trackingType,
       userId,
       vendorId,
       startDate,
@@ -27,6 +29,12 @@ const getAllBookings = async (req, res) => {
     if (userId) query.userId = userId;
     if (vendorId) query.vendorId = vendorId;
 
+    if (trackingType) {
+      const normalized = normalizeTrackingType(trackingType);
+      if (Object.values(TRACKING_TYPE).includes(normalized)) {
+        query.trackingType = normalized;
+      }
+    }
 
     if (startDate || endDate) {
       query.scheduledDate = {};
@@ -51,8 +59,7 @@ const getAllBookings = async (req, res) => {
       .populate('vendorId', 'name businessName phone')
       .populate('serviceId', 'title iconUrl')
       .populate('serviceListingId', 'title categoryName status pricing pricingModel')
-      .populate('categoryId', 'title slug')
-
+      .populate('categoryId', 'title slug trackingType serviceFulfillmentType')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -91,7 +98,7 @@ const getBookingById = async (req, res) => {
       .populate('vendorId', 'name businessName phone email address')
       .populate('serviceId', 'title description iconUrl images')
       .populate('serviceListingId', 'title categoryName status portfolioPhotos pricing pricingModel bookingMode')
-      .populate('categoryId', 'title slug');
+      .populate('categoryId', 'title slug trackingType serviceFulfillmentType');
 
     if (!booking) {
       return res.status(404).json({

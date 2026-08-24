@@ -584,20 +584,21 @@ const Checkout = () => {
         return;
       }
 
-      // Open modal and start searching
-      setShowVendorModal(true);
-      setCurrentStep('searching');
-      setSearchingVendors(true);
-
       // Get first service
       const firstItem = cartItems[0];
       if (!firstItem.serviceId && !firstItem.serviceListingId) {
         toast.error('Service information missing. Please try again.');
-        setCurrentStep('details');
-        setSearchingVendors(false);
-        setShowVendorModal(false);
         return;
       }
+
+      const isProviderRequest = Boolean(firstItem.serviceListingId);
+
+      // Open modal and start searching only if not a direct provider request
+      if (!isProviderRequest) {
+        setShowVendorModal(true);
+        setCurrentStep('searching');
+      }
+      setSearchingVendors(true);
 
       // Prepare address object
       const addressObj = {
@@ -630,7 +631,6 @@ const Checkout = () => {
       }
 
       // Create booking request
-      const isProviderRequest = Boolean(firstItem.serviceListingId);
       toast.loading(isProviderRequest ? 'Sending request to provider...' : 'Searching for nearby vendors...');
 
       // Ensure serviceId is a string (handle populated cart data)
@@ -1660,7 +1660,10 @@ const Checkout = () => {
           {(houseNumber || addressDetails) ? (
             <div className="space-y-2.5">
               {/* Address */}
-              <div className="flex items-start gap-2.5">
+              <div 
+                className="flex items-start gap-2.5 cursor-pointer hover:bg-gray-50 p-2 -mx-2 rounded-lg transition-colors"
+                onClick={() => setShowAddressModal(true)}
+              >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary-50">
                   <FiHome className="w-4 h-4 text-primary-500" />
                 </div>
@@ -1682,7 +1685,10 @@ const Checkout = () => {
 
               {/* Time Slot (Only for Scheduled) */}
               {bookingType === 'scheduled' && (
-                <div className="flex items-start gap-2.5">
+                <div 
+                  className="flex items-start gap-2.5 cursor-pointer hover:bg-gray-50 p-2 -mx-2 rounded-lg transition-colors"
+                  onClick={() => setShowTimeSlotModal(true)}
+                >
                   <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary-50">
                     <FiClock className="w-4 h-4 text-primary-500" />
                   </div>

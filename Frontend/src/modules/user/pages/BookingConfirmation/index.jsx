@@ -19,6 +19,7 @@ import { paymentService } from '../../../../services/paymentService';
 import NotificationBell from '../../components/common/NotificationBell';
 import ConfirmDialog from '../../../../components/common/ConfirmDialog';
 import { Button, Badge, Card, Loader } from '../../../../components/ui';
+import { usesLiveLocation, trackingTypeOf } from '../../../../utils/trackingType';
 
 // Inline Searching Animation Component
 const SearchingAnimation = () => {
@@ -633,9 +634,16 @@ const BookingConfirmation = () => {
               size="xl"
               icon={FiArrowRight}
               iconPosition="right"
-              onClick={() => navigate(`/user/booking/${booking._id || booking.id}/track`)}
+              onClick={() => {
+                const path = (isConfirmed && usesLiveLocation(trackingTypeOf(booking)))
+                  ? `/user/booking/${booking._id || booking.id}/track`
+                  : `/user/booking/${booking._id || booking.id}`;
+                navigate(path);
+              }}
             >
-              {isConfirmed ? 'Track Service' : 'View Full Details'}
+              {isConfirmed
+                ? (usesLiveLocation(trackingTypeOf(booking)) ? 'Track Service' : 'View Booking')
+                : 'View Full Details'}
             </Button>
             <Button variant="outline" fullWidth size="xl" onClick={handleGoHome}>
               Back to Home

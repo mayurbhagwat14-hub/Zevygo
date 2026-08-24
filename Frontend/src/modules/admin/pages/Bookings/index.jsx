@@ -8,6 +8,9 @@ import {
 import { toast } from 'react-hot-toast';
 import { adminBookingService } from '../../../../services/adminBookingService';
 import { getDashboardStats } from '../../../../services/adminDashboardService';
+import TrackingTypeBadge from '../../components/TrackingTypeBadge';
+import { trackingTypeOf, TRACKING_TYPE } from '../../../../utils/trackingType';
+import { getStatusLabel, resolveServiceFulfillmentType } from '../../../../utils/bookingStatusLabels';
 
 const BookingStatsCard = ({ title, count, icon: Icon, colorClass, bgClass }) => (
   <div className={`p-3 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between ${bgClass}`}>
@@ -30,6 +33,7 @@ const Bookings = () => {
   // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
+  const [trackingFilter, setTrackingFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -70,6 +74,9 @@ const Bookings = () => {
       if (statusFilter !== 'All Status') {
         params.status = statusFilter.toUpperCase().replace(' ', '_');
       }
+      if (trackingFilter !== 'all') {
+        params.trackingType = trackingFilter;
+      }
 
       const res = await adminBookingService.getAllBookings(params);
       if (res.success) {
@@ -102,14 +109,15 @@ const Bookings = () => {
 
   useEffect(() => {
     fetchData();
-  }, [page, debouncedSearch, statusFilter, startDate, endDate]);
+  }, [page, debouncedSearch, statusFilter, trackingFilter, startDate, endDate]);
 
   const handleExport = () => {
-    const headers = ['Order ID', 'Customer', 'Service', 'Total', 'Status', 'Date'];
+    const headers = ['Order ID', 'Customer', 'Service', 'Tracking', 'Total', 'Status', 'Date'];
     const rows = bookings.map(b => [
       b.bookingNumber,
       b.userId?.name || 'Unknown',
       b.serviceListingId?.title || b.serviceName || b.serviceId?.title || 'Service',
+      trackingTypeOf(b),
       b.finalAmount,
       b.status,
       new Date(b.createdAt).toLocaleDateString()
@@ -158,7 +166,7 @@ const Bookings = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 focus:outline-none focus:border-green-500 cursor-pointer"
+            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 focus:outline-none focus:border-primary-500 cursor-pointer"
           >
             <option>All Status</option>
             <option value="pending">Pending</option>
@@ -166,6 +174,20 @@ const Bookings = () => {
             <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
+          </select>
+
+          <select
+            value={trackingFilter}
+            onChange={(e) => {
+              setTrackingFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 focus:outline-none focus:border-primary-500 cursor-pointer"
+          >
+            <option value="all">All tracking</option>
+            <option value={TRACKING_TYPE.LIVE}>Live GPS</option>
+            <option value={TRACKING_TYPE.STATUS_ONLY}>Status only</option>
+            <option value={TRACKING_TYPE.HYBRID}>Hybrid</option>
           </select>
 
           <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5">
@@ -203,6 +225,7 @@ const Bookings = () => {
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Order ID</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Customer</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Listing</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Tracking</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total (₹)</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Payment</th>
@@ -213,11 +236,11 @@ const Bookings = () => {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="px-4 py-8 text-center text-xs text-gray-500">Loading bookings...</td>
+                  <td colSpan="9" className="px-4 py-8 text-center text-xs text-gray-500">Loading bookings...</td>
                 </tr>
               ) : bookings.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-4 py-8 text-center text-xs text-gray-500">No bookings found</td>
+                  <td colSpan="9" className="px-4 py-8 text-center text-xs text-gray-500">No bookings found</td>
                 </tr>
               ) : (
                 bookings.map((booking) => (
@@ -244,15 +267,19 @@ const Bookings = () => {
                       )}
                     </td>
                     <td className="px-4 py-3">
+                      <TrackingTypeBadge trackingType={trackingTypeOf(booking)} />
+                    </td>
+                    <td className="px-4 py-3">
                       <span className="font-bold text-gray-900 text-xs">₹{booking.finalAmount?.toLocaleString()}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider
-                            ${booking.status === 'completed' ? 'bg-green-100 text-green-700' :
-                          booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                            booking.status === 'in_progress' ? 'bg-purple-100 text-purple-700' :
-                              'bg-yellow-100 text-yellow-700'}`}>
-                        {booking.status?.replace('_', ' ')}
+                            ${booking.status === 'completed' ? 'bg-primary-100 text-primary-700' :
+                          booking.status === 'cancelled' ? 'bg-neutral-100 text-neutral-700' :
+                            booking.status === 'in_progress' || booking.status === 'visited' || booking.status === 'journey_started'
+                              ? 'bg-primary-50 text-primary-600'
+                              : 'bg-secondary-50 text-secondary-700'}`}>
+                        {getStatusLabel(booking.status, resolveServiceFulfillmentType({ booking }))}
                       </span>
                     </td>
                     <td className="px-4 py-3">

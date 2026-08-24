@@ -14,6 +14,9 @@ const {
   startSelfJob,
   vendorReachedLocation,
   verifySelfVisit,
+  checkInBooking,
+  checkOutBooking,
+  updatePresenceNotes,
   completeSelfJob,
   collectSelfCash,
   getVendorRatings,
@@ -27,8 +30,19 @@ const rejectBookingValidation = [
 
 
 const updateStatusValidation = [
-  body('status').isIn(['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'rejected'])
-    .withMessage('Invalid status')
+  body('status').isIn([
+    'pending',
+    'confirmed',
+    'assigned',
+    'accepted',
+    'journey_started',
+    'visited',
+    'in_progress',
+    'work_done',
+    'completed',
+    'cancelled',
+    'rejected'
+  ]).withMessage('Invalid status')
 ];
 
 const addNotesValidation = [
@@ -50,6 +64,9 @@ router.post('/:id/notes', authenticate, isVendor, addNotesValidation, addVendorN
 router.post('/:id/self/start', authenticate, isVendor, startSelfJob);
 router.post('/:id/self/reached', authenticate, isVendor, vendorReachedLocation);
 router.post('/:id/self/visit/verify', authenticate, isVendor, verifySelfVisit);
+router.post('/:id/tracking/check-in', authenticate, isVendor, checkInBooking);
+router.post('/:id/tracking/check-out', authenticate, isVendor, checkOutBooking);
+router.patch('/:id/tracking/presence', authenticate, isVendor, updatePresenceNotes);
 router.post('/:id/self/complete', authenticate, isVendor, completeSelfJob);
 router.post('/:id/self/payment/collect', authenticate, isVendor, collectSelfCash);
 

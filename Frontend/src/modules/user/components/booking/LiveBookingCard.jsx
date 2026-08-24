@@ -6,6 +6,8 @@ import userBookingService from '../../../../services/bookingService';
 import RatingModal from './RatingModal';
 import { toast } from 'react-hot-toast';
 import { useSocket } from '../../../../context/SocketContext';
+import { trackingTypeOf, usesLiveLocation, skipsJourney } from '../../../../utils/trackingType';
+import { isLiveTrackingStatus } from '../../../../utils/bookingStatusLabels';
 
 const LiveBookingCard = ({ hasBottomNav }) => {
   const navigate = useNavigate();
@@ -22,8 +24,10 @@ const LiveBookingCard = ({ hasBottomNav }) => {
     setIsDismissed(false);
   }, [location.pathname]);
 
-  const getStatusInfo = (status) => {
-    switch (status?.toUpperCase()) {
+  const getStatusInfo = (booking) => {
+    const status = booking?.status?.toUpperCase();
+    const type = trackingTypeOf(booking);
+    switch (status) {
       case 'ASSIGNED':
       case 'CONFIRMED':
       case 'AWAITING_PAYMENT':
@@ -31,13 +35,17 @@ const LiveBookingCard = ({ hasBottomNav }) => {
         return { label: 'Booking Active', icon: FiCheckCircle, color: 'bg-primary-500', sub: 'Vendor is handling your request' };
       case 'STARTED':
       case 'JOURNEY_STARTED':
-        return { label: 'On the Way', icon: FiNavigation, color: 'bg-orange-500', sub: 'Track location live', pulse: true };
+        return usesLiveLocation(type)
+          ? { label: 'On the Way', icon: FiNavigation, color: 'bg-primary-500', sub: 'Track location live', pulse: true }
+          : { label: 'Service started', icon: FiCheckCircle, color: 'bg-primary-500', sub: 'Provider is on the job', pulse: true };
       case 'VISITED':
-        return { label: 'Reached & Started', icon: FiMapPin, color: 'bg-green-500', sub: 'At your location' };
+        return skipsJourney(type)
+          ? { label: 'Checked in', icon: FiCheckCircle, color: 'bg-primary-500', sub: 'Provider is on site' }
+          : { label: 'Reached & Started', icon: FiMapPin, color: 'bg-primary-500', sub: 'At your location' };
       case 'IN_PROGRESS':
-        return { label: 'In Progress', icon: FiTool, color: 'bg-purple-500', sub: 'Service in progress' };
+        return { label: 'In Progress', icon: FiTool, color: 'bg-primary-500', sub: 'Service in progress' };
       case 'WORK_DONE':
-        return { label: 'Completed', icon: FiCheckCircle, color: 'bg-green-600', sub: 'Review payment details' };
+        return { label: 'Completed', icon: FiCheckCircle, color: 'bg-primary-600', sub: 'Review payment details' };
       case 'REQUESTED':
       case 'SEARCHING':
         return { label: 'Waiting for Vendor', icon: FiClock, color: 'bg-primary-500', sub: 'Vendor will accept soon...', pulse: true };
@@ -131,7 +139,7 @@ const LiveBookingCard = ({ hasBottomNav }) => {
 
   if (loading || !activeBooking || isDismissed) return null;
 
-  const statusInfo = getStatusInfo(activeBooking.status);
+  const statusInfo = getStatusInfo(activeBooking);
   if (!statusInfo) return null;
 
   const Icon = statusInfo.icon;
@@ -146,7 +154,9 @@ const LiveBookingCard = ({ hasBottomNav }) => {
         transition={{ type: 'spring', stiffness: 200, damping: 20 }}
         onClick={() => {
           const status = activeBooking.status?.toUpperCase();
-          if (status === 'STARTED' || status === 'JOURNEY_STARTED') {
+          const goLiveMap = usesLiveLocation(trackingTypeOf(activeBooking))
+            && (status === 'STARTED' || status === 'JOURNEY_STARTED' || isLiveTrackingStatus(activeBooking.status, trackingTypeOf(activeBooking)));
+          if (goLiveMap) {
             navigate(`/user/booking/${activeBooking._id || activeBooking.id}/track`);
           } else if (status === 'SEARCHING' || status === 'REQUESTED') {
             navigate(`/user/booking-confirmation/${activeBooking._id || activeBooking.id}`);

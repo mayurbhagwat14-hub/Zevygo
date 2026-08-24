@@ -111,6 +111,13 @@ const categorySchema = new mongoose.Schema({
     enum: ['DELIVERY', 'ON_SITE'],
     default: 'ON_SITE'
   },
+  /** live GPS / presence-only / hybrid (arrival then presence) */
+  trackingType: {
+    type: String,
+    enum: ['live', 'status_only', 'hybrid'],
+    default: 'live',
+    index: true
+  },
   defaultPricingModel: {
     type: String,
     enum: ['FIXED', 'PER_VISIT', 'HOURLY', 'DAILY', 'MONTHLY', 'YEARLY', 'PER_UNIT', 'CUSTOM_QUOTE'],

@@ -312,6 +312,31 @@ const bookingSchema = new mongoose.Schema({
     default: 'ON_SITE',
     index: true
   },
+  /** Snapshot of category/listing tracking UX at booking time */
+  trackingType: {
+    type: String,
+    enum: ['live', 'status_only', 'hybrid'],
+    default: 'live',
+    index: true
+  },
+  tracking: {
+    type: {
+      type: String,
+      enum: ['live', 'status_only', 'hybrid'],
+      default: 'live'
+    },
+    live: {
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
+      heading: { type: Number, default: 0 },
+      lastUpdatedAt: { type: Date, default: null }
+    },
+    presence: {
+      checkedInAt: { type: Date, default: null },
+      checkedOutAt: { type: Date, default: null },
+      notes: { type: String, default: null, trim: true }
+    }
+  },
   status: {
     type: String,
     enum: Object.values(BOOKING_STATUS),

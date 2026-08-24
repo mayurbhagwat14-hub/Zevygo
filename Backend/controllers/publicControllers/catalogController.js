@@ -27,7 +27,7 @@ const getPublicCategories = async (req, res) => {
     }
 
     const categories = await Category.find(query)
-      .select('title slug homeIconUrl imageUrl homeBadge hasSaleBadge homeOrder showOnHome supportedBookingTypes bookingMode defaultPricingModel allowMultiSelect formSchema vendorFormSchema')
+      .select('title slug homeIconUrl imageUrl homeBadge hasSaleBadge homeOrder showOnHome supportedBookingTypes bookingMode defaultPricingModel allowMultiSelect formSchema vendorFormSchema serviceFulfillmentType trackingType')
       .sort({ homeOrder: 1, createdAt: -1 })
       .lean();
 
@@ -42,6 +42,8 @@ const getPublicCategories = async (req, res) => {
       showOnHome: cat.showOnHome !== false,
       supportedBookingTypes: cat.supportedBookingTypes || ['scheduled'],
       bookingMode: cat.bookingMode || 'BOTH',
+      serviceFulfillmentType: cat.serviceFulfillmentType || 'ON_SITE',
+      trackingType: cat.trackingType || 'live',
       defaultPricingModel: cat.defaultPricingModel || 'FIXED',
       allowMultiSelect: Boolean(cat.allowMultiSelect),
       formSchema: cat.formSchema || [],
@@ -403,7 +405,7 @@ const getPublicHomeData = async (req, res) => {
     // Fetch both in parallel
     const [categoriesRes, homeContent] = await Promise.all([
       Category.find(categoryQuery)
-        .select('title slug homeIconUrl imageUrl homeBadge hasSaleBadge supportedBookingTypes bookingMode defaultPricingModel allowMultiSelect formSchema vendorFormSchema')
+        .select('title slug homeIconUrl imageUrl homeBadge hasSaleBadge supportedBookingTypes bookingMode defaultPricingModel allowMultiSelect formSchema vendorFormSchema serviceFulfillmentType trackingType')
         .sort({ homeOrder: 1 })
         .lean(),
       HomeContent.getHomeContent(cityId)
@@ -418,6 +420,8 @@ const getPublicHomeData = async (req, res) => {
       hasSaleBadge: cat.hasSaleBadge || false,
       supportedBookingTypes: cat.supportedBookingTypes || ['scheduled'],
       bookingMode: cat.bookingMode || 'BOTH',
+      serviceFulfillmentType: cat.serviceFulfillmentType || 'ON_SITE',
+      trackingType: cat.trackingType || 'live',
       defaultPricingModel: cat.defaultPricingModel || 'FIXED',
       allowMultiSelect: Boolean(cat.allowMultiSelect),
       formSchema: cat.formSchema || [],
@@ -545,7 +549,7 @@ const getPublicServiceListings = async (req, res) => {
     const [listings, total] = await Promise.all([
       ServiceListing.find(query)
         .populate('vendorId', 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus')
-        .populate('categoryId', 'title slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType defaultPricingModel vendorFormSchema catalogItemSchema pricingFormSchema availabilityFormSchema serviceAreaFormSchema bookingRulesFormSchema documentsFormSchema')
+        .populate('categoryId', 'title slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType trackingType defaultPricingModel vendorFormSchema catalogItemSchema pricingFormSchema availabilityFormSchema serviceAreaFormSchema bookingRulesFormSchema documentsFormSchema')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
@@ -590,7 +594,7 @@ const getPublicServiceListingById = async (req, res) => {
 
     const listing = await ServiceListing.findById(req.params.id)
       .populate('vendorId', 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus')
-      .populate('categoryId', 'title slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType defaultPricingModel vendorFormSchema catalogItemSchema')
+      .populate('categoryId', 'title slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType trackingType defaultPricingModel vendorFormSchema catalogItemSchema')
       .lean();
 
     if (!listing || !isListingBookable(listing)) {
@@ -639,7 +643,7 @@ const getPublicProviderProfile = async (req, res) => {
 
     const listings = await ServiceListing.find(query)
       .populate('vendorId', 'name profilePhoto rating totalReviews completedJobs address approvalStatus accountStatus businessName')
-      .populate('categoryId', 'title slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType defaultPricingModel vendorFormSchema catalogItemSchema')
+      .populate('categoryId', 'title slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType trackingType defaultPricingModel vendorFormSchema catalogItemSchema')
       .sort({ updatedAt: -1 })
       .lean();
 

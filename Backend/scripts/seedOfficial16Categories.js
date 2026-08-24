@@ -10,6 +10,7 @@ const dotenv = require('dotenv');
 
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const connectDB = require('../config/db');
+const { defaultTrackingTypeForSlug } = require('../utils/trackingType');
 
 const field = (key, label, type, options = {}) => ({
   key,
@@ -327,9 +328,10 @@ async function seedOfficial16Categories() {
     for (const catData of OFFICIAL_16_CATEGORIES) {
       const created = await Category.create({
         ...catData,
+        trackingType: defaultTrackingTypeForSlug(catData.slug),
         status: 'active'
       });
-      console.log(`  ✅ Inserted [${created.homeOrder}]: "${created.title}" (${created.vendorFormSchema.length} form fields)`);
+      console.log(`  ✅ Inserted [${created.homeOrder}]: "${created.title}" tracking=${created.trackingType}`);
     }
 
     console.log('\n🎉 ALL 16 OFFICIAL CATEGORIES SEEDED SUCCESSFULLY WITH HD IMAGES & VENDOR FORMS!');

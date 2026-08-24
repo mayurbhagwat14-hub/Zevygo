@@ -112,6 +112,13 @@ const SERVICE_FULFILLMENT_TYPE = {
   ON_SITE: 'ON_SITE'
 };
 
+// ─── Tracking UX (live GPS vs presence/duration vs hybrid) ───
+const TRACKING_TYPE = {
+  LIVE: 'live',
+  STATUS_ONLY: 'status_only',
+  HYBRID: 'hybrid'
+};
+
 // ─── NEW: Booking Mode (per service listing) ───
 const BOOKING_MODE = {
   INSTANT: 'INSTANT',
@@ -158,5 +165,6 @@ module.exports = {
   BOOKING_MODE,
   PRICING_MODEL,
   VENDOR_ACCOUNT_STATUS,
-  SERVICE_FULFILLMENT_TYPE
+  SERVICE_FULFILLMENT_TYPE,
+  TRACKING_TYPE
 };

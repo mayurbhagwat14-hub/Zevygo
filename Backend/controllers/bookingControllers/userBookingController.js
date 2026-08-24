@@ -18,6 +18,7 @@ const { calculateBookingPricing } = require('../../utils/bookingPricing');
 const { resolveAdvancePaymentConfig } = require('../../utils/advancePaymentConfig');
 const { isBookingTypeAllowed } = require('../../utils/listingBookingMode');
 const { resolveServiceFulfillmentType } = require('../../utils/bookingStatusLabels');
+const { resolveTrackingType, buildTrackingSubdoc } = require('../../utils/trackingType');
 
 const LISTING_BOOKING_POPULATE = 'title categoryName status portfolioPhotos pricing pricingModel bookingMode';
 
@@ -125,7 +126,7 @@ const createListingBooking = async (req, res) => {
 
   const listingDoc = await ServiceListing.findById(serviceListingId)
     .populate('vendorId', 'name approvalStatus accountStatus')
-    .populate('categoryId', 'title icon image slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType');
+    .populate('categoryId', 'title icon image slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType trackingType');
 
   if (!listingDoc || !isListingBookable(listingDoc)) {
     return res.status(404).json({ success: false, message: 'This listing is not available for booking.' });
@@ -238,7 +239,11 @@ const createListingBooking = async (req, res) => {
       }]
       : []);
 
-  const booking = await Booking.create({
+    const resolvedTrackingType = resolveTrackingType({
+      category: categoryDoc,
+      listing: { ...live, trackingType: live.trackingType || listingDoc.trackingType }
+    });
+    const booking = await Booking.create({
     bookingNumber,
     userId,
     vendorId: null,
@@ -252,6 +257,8 @@ const createListingBooking = async (req, res) => {
     categoryIcon: reqCategoryIcon || category?.homeIconUrl || category?.icon || category?.image || null,
     bookingType: resolvedBookingType,
     serviceFulfillmentType: resolveServiceFulfillmentType({ category: categoryDoc }),
+    trackingType: resolvedTrackingType,
+    tracking: buildTrackingSubdoc(resolvedTrackingType),
     description: live.description,
     serviceImages: live.portfolioPhotos || [],
     bookedItems: formattedBookedItems,
@@ -420,7 +427,7 @@ const createBooking = async (req, res) => {
 
     // 2. Fetch Category if exists
     const categoryId = service.categoryId || service.categoryIds?.[0];
-    const category = categoryId ? await Category.findById(categoryId).select('title icon image slug serviceFulfillmentType bookingMode paymentConfig').lean() : null;
+    const category = categoryId ? await Category.findById(categoryId).select('title icon image slug serviceFulfillmentType trackingType bookingMode paymentConfig').lean() : null;
 
     // Calculate total value from booked items or fallback to service base price
     if (totalServiceValue === 0) {
@@ -631,6 +638,7 @@ const createBooking = async (req, res) => {
       brandIcon = formattedBookedItems[0].brandIcon || null;
     }
 
+    const resolvedTrackingType = resolveTrackingType({ category: finalCategory || category });
     const booking = await Booking.create({
       bookingNumber,
       userId,
@@ -645,6 +653,8 @@ const createBooking = async (req, res) => {
       brandIcon: reqBrandIcon || brandIcon,
       bookingType: bookingType || 'scheduled',
       serviceFulfillmentType: resolveServiceFulfillmentType({ category: finalCategory || category }),
+      trackingType: resolvedTrackingType,
+      tracking: buildTrackingSubdoc(resolvedTrackingType),
 
       description: service.description,
       serviceImages: service.images || [],
@@ -933,7 +943,7 @@ const getUserBookings = async (req, res) => {
       .populate('vendorId', 'name businessName phone profilePhoto')
       .populate('serviceId', 'title iconUrl')
       .populate('serviceListingId', LISTING_BOOKING_POPULATE)
-      .populate('categoryId', 'title slug')
+      .populate('categoryId', 'title slug trackingType serviceFulfillmentType')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
@@ -975,7 +985,7 @@ const getBookingById = async (req, res) => {
       .populate('vendorId', 'name businessName phone email address profilePhoto')
       .populate('serviceId', 'title description iconUrl images')
       .populate('serviceListingId', LISTING_BOOKING_POPULATE)
-      .populate('categoryId', 'title slug')
+      .populate('categoryId', 'title slug trackingType serviceFulfillmentType')
       .lean();
 
     if (!booking) {

@@ -52,6 +52,8 @@ const mapJobFromApi = (job) => ({
   balanceAmount: job.balanceAmount,
   paymentPhase: job.paymentPhase,
   serviceFulfillmentType: job.serviceFulfillmentType,
+  trackingType: job.trackingType,
+  tracking: job.tracking,
   createdAt: job.createdAt,
   expiresAt: job.expiresAt,
   user: { name: job.userId?.name || 'Customer' },

@@ -156,17 +156,22 @@ const respondQuote = async (req, res) => {
       quote.status = 'ACCEPTED';
 
       // Create a confirmed booking automatically
-      const listing = await ServiceListing.findById(quote.serviceListingId);
+      const listing = await ServiceListing.findById(quote.serviceListingId).populate('categoryId', 'slug trackingType');
+      const { resolveTrackingType, buildTrackingSubdoc } = require('../../utils/trackingType');
+      const trackingType = resolveTrackingType({ category: listing?.categoryId, listing });
       const booking = await Booking.create({
         userId: customerId,
         vendorId: quote.vendorId,
+        serviceListingId: listing?._id || quote.serviceListingId,
         serviceName: listing ? listing.title : quote.serviceCategory,
         serviceCategory: quote.serviceCategory,
         scheduledDate: quote.eventDate,
         totalAmount: quote.proposedAmount,
         finalAmount: quote.proposedAmount,
         address: { fullAddress: quote.location },
-        status: 'confirmed'
+        status: 'confirmed',
+        trackingType,
+        tracking: buildTrackingSubdoc(trackingType)
       });
 
       quote.bookingId = booking._id;

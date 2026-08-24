@@ -12,11 +12,20 @@ import { useAppNotifications } from '../../../../hooks/useAppNotifications';
 import LogoLoader from '../../../../components/common/LogoLoader';
 import PaymentVerificationModal from '../../components/booking/PaymentVerificationModal';
 import { useBranding } from '../../../../context/BrandingContext';
-import { colors } from '../../../../theme/tokens';
+import { colors, gradients } from '../../../../theme/tokens';
 import {
   getTrackingHeadline,
   resolveServiceFulfillmentType
 } from '../../../../utils/bookingStatusLabels';
+import {
+  trackingTypeOf,
+  usesLiveLocation,
+  usesPresence,
+  skipsJourney,
+  isCheckedIn,
+  isCheckedOut,
+  formatPresenceTime
+} from '../../../../utils/trackingType';
 
 const RAZORPAY_THEME = colors.primary[600];
 
@@ -80,8 +89,12 @@ const BookingTrack = () => {
     [booking?.serviceFulfillmentType]
   );
 
+  const trackingType = booking ? trackingTypeOf(booking) : 'live';
+  const skipTravel = skipsJourney(trackingType);
+  const showLiveMap = Boolean(booking) && usesLiveLocation(trackingType);
+
   const trackingHeadline = booking
-    ? getTrackingHeadline(booking.status, fulfillmentType)
+    ? getTrackingHeadline(booking.status, fulfillmentType, trackingType)
     : 'Tracking';
 
   const getChargeAmount = (b) => {
@@ -234,13 +247,12 @@ const BookingTrack = () => {
         // Only run this complex logic on first load or if coords/location are missing
         if (isFirstLoad || !hasInitializedLocation.current) {
           hasInitializedLocation.current = true;
-          const geocoder = new window.google.maps.Geocoder();
           const bAddr = response.data.address || {};
 
-          // 1. Destination
           if (bAddr.lat && bAddr.lng) {
             setCoords({ lat: parseFloat(bAddr.lat), lng: parseFloat(bAddr.lng) });
-          } else {
+          } else if (window.google?.maps?.Geocoder) {
+            const geocoder = new window.google.maps.Geocoder();
             const addressStr = typeof bAddr === 'string' ? bAddr : `${bAddr.addressLine1 || ''}, ${bAddr.city || ''}, ${bAddr.state || ''} ${bAddr.pincode || ''}`;
             if (addressStr && addressStr.replaceAll(',', '').trim() && !addressStr.toLowerCase().includes('current location')) {
               geocoder.geocode({ address: addressStr }, (results, status) => {
@@ -251,17 +263,19 @@ const BookingTrack = () => {
             }
           }
 
-          // 2. Source (Provider Location) - ONLY on first load if no socket location received yet
-          if (isFirstLoad && !locationFromSocketRef.current) {
-            const provider = response.data.workerId || response.data.assignedTo || response.data.vendorId || {};
-            if (provider.location && provider.location.lat && provider.location.lng) {
-              setCurrentLocation({ lat: parseFloat(provider.location.lat), lng: parseFloat(provider.location.lng) });
-            } else if (response.data.vendorId && provider.address && provider.address.lat && provider.address.lng) {
-              // Fallback to vendor address
-              setCurrentLocation({ lat: parseFloat(provider.address.lat), lng: parseFloat(provider.address.lng) });
+          if (isFirstLoad && !locationFromSocketRef.current && usesLiveLocation(trackingTypeOf(response.data))) {
+            const live = response.data.tracking?.live;
+            if (live?.lat && live?.lng) {
+              setCurrentLocation({ lat: parseFloat(live.lat), lng: parseFloat(live.lng) });
             } else {
-              // Reset if no location found to avoid wrong location display
-              setCurrentLocation(null);
+              const provider = response.data.workerId || response.data.assignedTo || response.data.vendorId || {};
+              if (provider.location && provider.location.lat && provider.location.lng) {
+                setCurrentLocation({ lat: parseFloat(provider.location.lat), lng: parseFloat(provider.location.lng) });
+              } else if (response.data.vendorId && provider.address && provider.address.lat && provider.address.lng) {
+                setCurrentLocation({ lat: parseFloat(provider.address.lat), lng: parseFloat(provider.address.lng) });
+              } else {
+                setCurrentLocation(null);
+              }
             }
           }
         }
@@ -279,67 +293,84 @@ const BookingTrack = () => {
     libraries
   });
 
-  // Initial Load and Polling
+  // Initial Load and Polling — booking loads even without Google Maps (status-only)
   useEffect(() => {
-    if (isLoaded) {
-      refreshBooking(true);
-      const intervalId = setInterval(() => refreshBooking(false), 10000); // Poll every 10s
-      return () => clearInterval(intervalId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded]);
+    refreshBooking(true);
+    const intervalId = setInterval(() => refreshBooking(false), 10000);
+    return () => clearInterval(intervalId);
+  }, [refreshBooking]);
 
   const socket = useAppNotifications('user');
 
-  // Socket Listener
+  // Socket Listener — live GPS only for live/hybrid
   useEffect(() => {
-    if (socket && id) {
-      socket.emit('join_tracking', id);
+    if (!socket || !id || !booking || !usesLiveLocation(trackingTypeOf(booking))) return;
 
-      const handleLocationUpdate = (data) => {
-        if (data.lat && data.lng) {
-          // Mark that we've received location from socket - don't let booking refresh override
-          locationFromSocketRef.current = true;
-          setCurrentLocation({ lat: parseFloat(data.lat), lng: parseFloat(data.lng) });
-          // Use heading from socket if available (more accurate)
-          if (data.heading !== undefined && data.heading !== null) {
-            setHeading(parseFloat(data.heading));
-          }
+    socket.emit('join_tracking', id);
+
+    const handleLocationUpdate = (data) => {
+      if (data.lat && data.lng) {
+        locationFromSocketRef.current = true;
+        setCurrentLocation({ lat: parseFloat(data.lat), lng: parseFloat(data.lng) });
+        if (data.heading !== undefined && data.heading !== null) {
+          setHeading(parseFloat(data.heading));
         }
-      };
+      }
+    };
 
-      const handleBookingUpdate = (data) => {
-        if (data.bookingId === id || data.relatedId === id || data.data?.bookingId === id) {
-          setBooking(prev => {
-            if (!prev) return prev;
-            return { ...prev, ...(data.data || data) };
-          });
-          if (data.qrPaymentInitiated) {
-            setShowPaymentModal(true);
-            toast.success('Professional has initiated payment!');
-          } else if (data.customerConfirmationOTP) {
-            setShowPaymentModal(true);
-            toast.success('Professional has requested payment!');
-          }
-          refreshBooking(false);
+    const handleBookingUpdate = (data) => {
+      if (data.bookingId === id || data.relatedId === id || data.data?.bookingId === id) {
+        setBooking(prev => {
+          if (!prev) return prev;
+          return { ...prev, ...(data.data || data) };
+        });
+        if (data.qrPaymentInitiated) {
+          setShowPaymentModal(true);
+          toast.success('Professional has initiated payment!');
+        } else if (data.customerConfirmationOTP) {
+          setShowPaymentModal(true);
+          toast.success('Professional has requested payment!');
         }
-      };
+        refreshBooking(false);
+      }
+    };
 
-      socket.on('live_location_update', handleLocationUpdate);
-      socket.on('booking_updated', handleBookingUpdate);
-      socket.on('notification', handleBookingUpdate);
+    socket.on('live_location_update', handleLocationUpdate);
+    socket.on('booking_updated', handleBookingUpdate);
+    socket.on('notification', handleBookingUpdate);
 
-      return () => {
-        socket.off('live_location_update', handleLocationUpdate);
-        socket.off('booking_updated', handleBookingUpdate);
-        socket.off('notification', handleBookingUpdate);
-      };
-    }
-  }, [socket, id]);
+    return () => {
+      socket.off('live_location_update', handleLocationUpdate);
+      socket.off('booking_updated', handleBookingUpdate);
+      socket.off('notification', handleBookingUpdate);
+    };
+  }, [socket, id, booking, refreshBooking]);
+
+  // Status-only / hybrid still need booking_updated without GPS
+  useEffect(() => {
+    if (!socket || !id || !booking || usesLiveLocation(trackingTypeOf(booking))) return;
+
+    const handleBookingUpdate = (data) => {
+      if (data.bookingId === id || data.relatedId === id || data.data?.bookingId === id) {
+        setBooking(prev => {
+          if (!prev) return prev;
+          return { ...prev, ...(data.data || data) };
+        });
+        refreshBooking(false);
+      }
+    };
+
+    socket.on('booking_updated', handleBookingUpdate);
+    socket.on('notification', handleBookingUpdate);
+    return () => {
+      socket.off('booking_updated', handleBookingUpdate);
+      socket.off('notification', handleBookingUpdate);
+    };
+  }, [socket, id, booking, refreshBooking]);
 
   // Firebase Realtime Tracking Listener
   useEffect(() => {
-    if (!db || !id) return;
+    if (!db || !id || !booking || !usesLiveLocation(trackingTypeOf(booking))) return;
 
     const trackingRef = ref(db, `trackings/${id}`);
     
@@ -360,7 +391,7 @@ const BookingTrack = () => {
     });
 
     return () => unsubscribe();
-  }, [id]);
+  }, [id, booking]);
 
   // Animated location for smooth marker movement
   const [animatedLocation, setAnimatedLocation] = useState(null);
@@ -632,7 +663,8 @@ const BookingTrack = () => {
     </OverlayView>
   ), [animatedLocation, heading]);
 
-  if (!isLoaded || loading || !booking) return <LogoLoader />;
+  if (loading || !booking) return <LogoLoader />;
+  if (showLiveMap && !isLoaded) return <LogoLoader />;
 
   // Determine active provider based on priority: Worker -> Assigned -> Vendor
   const provider = booking?.workerId || booking?.assignedTo || booking?.vendorId || {};
@@ -687,6 +719,8 @@ const BookingTrack = () => {
       </AnimatePresence>
 
       <div className="flex-1 w-full h-full">
+        {showLiveMap ? (
+          <>
         <GoogleMap
           mapContainerStyle={{ width: '100%', height: '100%' }}
           defaultCenter={defaultCenter}
@@ -763,8 +797,6 @@ const BookingTrack = () => {
           {destinationMarker}
         </GoogleMap>
 
-
-
         {/* Full Screen Toggle */}
         <button
           onClick={() => setIsFullScreen(!isFullScreen)}
@@ -788,8 +820,32 @@ const BookingTrack = () => {
         >
           <FiCrosshair className="w-6 h-6" />
         </button>
-
-        {/* Recenter Button */}
+          </>
+        ) : (
+          <div className="h-full w-full pt-24 px-5" style={{ background: gradients.pageSoft }}>
+            <p className="text-sm font-semibold text-primary-600 mb-2">
+              {isCheckedIn(booking) ? 'On site' : 'Status'}
+            </p>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-4">{trackingHeadline}</h1>
+            {usesPresence(trackingType) && (
+              <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                {isCheckedIn(booking) && (
+                  <p className="text-sm font-semibold text-gray-800">
+                    Checked in {formatPresenceTime(booking.tracking?.presence?.checkedInAt)}
+                  </p>
+                )}
+                {isCheckedOut(booking) && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Checked out {formatPresenceTime(booking.tracking.presence.checkedOutAt)}
+                  </p>
+                )}
+                {!isCheckedIn(booking) && !isCheckedOut(booking) && (
+                  <p className="text-sm text-gray-500">Waiting for the provider to check in</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
 
@@ -801,11 +857,13 @@ const BookingTrack = () => {
           <div>
             <p className="text-sm font-medium text-primary-600 mb-1 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-primary-600 animate-pulse"></span>
-              {duration ? `Arriving in ${duration}` : 'Calculating time...'}
+              {skipTravel
+                ? (isCheckedIn(booking) ? 'Provider is on site' : 'Waiting for check-in')
+                : (duration ? `Arriving in ${duration}` : 'Calculating time...')}
             </p>
             <h2 className="text-2xl font-black text-gray-900 tracking-tight">{trackingHeadline}</h2>
           </div>
-          {distance && (
+          {showLiveMap && distance && (
             <div className="text-right">
               <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Distance</p>
               <p className="text-xl font-bold text-gray-800">
@@ -833,8 +891,26 @@ const BookingTrack = () => {
           </div>
         </div>
 
+        {usesPresence(trackingType) && showLiveMap && (
+          <div className="mb-4 rounded-2xl p-4 border border-gray-100 bg-gray-50">
+            {isCheckedIn(booking) && (
+              <p className="text-sm font-semibold text-gray-800">
+                Checked in {formatPresenceTime(booking.tracking?.presence?.checkedInAt)}
+              </p>
+            )}
+            {isCheckedOut(booking) && (
+              <p className="text-sm text-gray-600 mt-1">
+                Checked out {formatPresenceTime(booking.tracking.presence.checkedOutAt)}
+              </p>
+            )}
+            {!isCheckedIn(booking) && !isCheckedOut(booking) && (
+              <p className="text-sm text-gray-500">Check-in pending after arrival</p>
+            )}
+          </div>
+        )}
+
         {/* Arrival OTP - New Premium Display */}
-        {(booking?.visitOtp || booking?.arrivalOTP) && ['confirmed', 'assigned', 'journey_started'].includes(booking?.status?.toLowerCase()) && (
+        {!skipTravel && (booking?.visitOtp || booking?.arrivalOTP) && ['confirmed', 'assigned', 'journey_started'].includes(booking?.status?.toLowerCase()) && (
           <div className="mb-3 relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-600 to-primary-800 p-3 shadow-lg">
             <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-10 translate-x-10 blur-xl"></div>
             <div className="relative z-10 flex items-center justify-between gap-3">
@@ -865,8 +941,12 @@ const BookingTrack = () => {
               <FiCheckCircle className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Professional Arrived</h3>
-              <p className="text-[10px] text-primary-50">Expert is starting the work now.</p>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                {skipTravel ? 'Provider checked in' : 'Professional Arrived'}
+              </h3>
+              <p className="text-[10px] text-primary-50">
+                {skipTravel ? 'Service is underway.' : 'Expert is starting the work now.'}
+              </p>
             </div>
           </div>
         )}
