@@ -48,6 +48,7 @@ const getAllCategories = async (req, res) => {
         bookingMode: cat.bookingMode || 'BOTH',
         serviceFulfillmentType: cat.serviceFulfillmentType || 'ON_SITE',
         trackingType: cat.trackingType || 'live',
+        allowVendorBilling: cat.allowVendorBilling !== false,
         defaultPricingModel: cat.defaultPricingModel || 'FIXED',
         allowMultiSelect: Boolean(cat.allowMultiSelect),
         formSchema: cat.formSchema || [],
@@ -113,6 +114,7 @@ const getCategoryById = async (req, res) => {
         bookingMode: category.bookingMode || 'BOTH',
         serviceFulfillmentType: category.serviceFulfillmentType || 'ON_SITE',
         trackingType: category.trackingType || 'live',
+        allowVendorBilling: category.allowVendorBilling !== false,
         metaTitle: category.metaTitle,
         metaDescription: category.metaDescription,
         createdAt: category.createdAt,
@@ -161,6 +163,7 @@ const createCategory = async (req, res) => {
       bookingMode,
       serviceFulfillmentType,
       trackingType,
+      allowVendorBilling,
       metaTitle,
       metaDescription,
       cityIds
@@ -240,6 +243,7 @@ const createCategory = async (req, res) => {
       trackingType: ['live', 'status_only', 'hybrid'].includes(String(trackingType || '').toLowerCase())
         ? String(trackingType).toLowerCase()
         : 'live',
+      allowVendorBilling: allowVendorBilling === undefined ? true : Boolean(allowVendorBilling),
       metaTitle: metaTitle?.trim() || null,
       metaDescription: metaDescription?.trim() || null,
       cityIds: cityIds || [],
@@ -318,6 +322,7 @@ const updateCategory = async (req, res) => {
       bookingMode,
       serviceFulfillmentType,
       trackingType,
+      allowVendorBilling,
       metaTitle,
       metaDescription,
       cityIds: updateCityIds
@@ -413,6 +418,9 @@ const updateCategory = async (req, res) => {
       if (['live', 'status_only', 'hybrid'].includes(nextTracking)) {
         category.trackingType = nextTracking;
       }
+    }
+    if (allowVendorBilling !== undefined) {
+      category.allowVendorBilling = Boolean(allowVendorBilling);
     }
     if (metaTitle !== undefined) category.metaTitle = metaTitle?.trim() || null;
     if (metaDescription !== undefined) category.metaDescription = metaDescription?.trim() || null;

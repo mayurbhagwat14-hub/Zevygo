@@ -9,6 +9,7 @@ import vendorWalletService from '../../../../services/vendorWalletService';
 import { getBookingById } from '../../services/bookingService';
 import { publicCatalogService } from '../../../../services/catalogService';
 import { OtpVerificationModal, ScanAndPayModal } from '../../components/common';
+import { canPrepareVendorBill } from '../../../../utils/vendorBilling';
 
 const BillingPage = () => {
   const { id } = useParams();
@@ -105,6 +106,12 @@ const BillingPage = () => {
       const bookingRes = await getBookingById(id);
       const bookingData = bookingRes.data || bookingRes;
       setBooking(bookingData);
+
+      if (!canPrepareVendorBill(bookingData)) {
+        toast.error('Bill prepare is not enabled for this service');
+        navigate(`/vendor/booking/${id}`, { replace: true });
+        return;
+      }
 
       // Check if OTP was already sent
       if (bookingData?.customerConfirmationOTP || bookingData?.paymentOtp) {

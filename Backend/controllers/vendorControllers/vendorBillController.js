@@ -38,6 +38,13 @@ const createOrUpdateBill = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
     }
 
+    if (booking.allowVendorBilling === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bill prepare is not enabled for this service. Contact admin.'
+      });
+    }
+
     // Always use the booking's vendorId for the bill
     const billVendorId = booking.vendorId;
 

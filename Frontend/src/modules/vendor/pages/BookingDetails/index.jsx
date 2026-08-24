@@ -46,6 +46,7 @@ import {
   canVendorStartService,
   isAdvancePaymentDue
 } from '../../../../utils/bookingPaymentGuard';
+import { canPrepareVendorBill } from '../../../../utils/vendorBilling';
 
 export default function BookingDetails() {
   const { id } = useParams();
@@ -149,7 +150,8 @@ export default function BookingDetails() {
         workerPaymentStatus: apiData.workerPaymentStatus,
         finalSettlementStatus: apiData.finalSettlementStatus,
         trackingType: apiData.trackingType,
-        tracking: apiData.tracking
+        tracking: apiData.tracking,
+        allowVendorBilling: apiData.allowVendorBilling !== false
       };
 
       setBooking(mappedBooking);
@@ -435,11 +437,18 @@ export default function BookingDetails() {
 
   // Handle cash collection button click
   const handleCollectCashClick = () => {
+    if (!canPrepareVendorBill(booking)) {
+      if (booking?.customerConfirmationOTP || booking?.paymentOtp) {
+        setIsCashModalOpen(true);
+        return;
+      }
+      toast.error('Bill prepare is not enabled for this service');
+      return;
+    }
     // If OTP already sent, open modal. Otherwise navigate to full billing page.
     if (booking?.customerConfirmationOTP || booking?.paymentOtp) {
       setIsCashModalOpen(true);
     } else {
-      // Navigate to the full page billing flow
       navigate(`/vendor/booking/${booking.id || id}/billing`);
     }
   };
@@ -492,6 +501,11 @@ export default function BookingDetails() {
     const validStatus = (booking?.status === 'work_done' || booking?.status === 'completed');
 
     if (!validStatus) return false;
+
+    // Admin disabled prepare-bill for this service — only show if OTP already pending
+    if (!canPrepareVendorBill(booking) && !(booking?.customerConfirmationOTP || booking?.paymentOtp)) {
+      return false;
+    }
 
     // CRITICAL FIX: Allow bill preparation for Plan Benefit bookings
     // Even if base is pre-paid (SUCCESS), vendor must generate final bill (for extras etc.)
@@ -1276,14 +1290,22 @@ export default function BookingDetails() {
               )}
 
               <div className="flex flex-col gap-3 w-full">
-                <button
-                  onClick={() => navigate(`/vendor/booking/${booking.id || id}/billing`)}
-                  disabled={loading}
-                  className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_8px_20px_rgba(26,54,115,0.2)] bg-[#0F348F] hover:bg-[#122652]"
-                >
-                  <FiDollarSign className="w-5 h-5" />
-                  {booking.paymentMethod === 'plan_benefit' ? 'Prepare/Edit Final Bill' : 'Prepare Bill & Collect Cash'}
-                </button>
+                {canPrepareVendorBill(booking) && (
+                  <button
+                    onClick={() => navigate(`/vendor/booking/${booking.id || id}/billing`)}
+                    disabled={loading}
+                    className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_8px_20px_rgba(26,54,115,0.2)] bg-[#0F348F] hover:bg-[#122652]"
+                  >
+                    <FiDollarSign className="w-5 h-5" />
+                    {booking.paymentMethod === 'plan_benefit' ? 'Prepare/Edit Final Bill' : 'Prepare Bill & Collect Cash'}
+                  </button>
+                )}
+
+                {!canPrepareVendorBill(booking) && !(booking?.customerConfirmationOTP || booking?.paymentOtp) && (
+                  <p className="text-xs text-gray-500 text-center py-2">
+                    Bill prepare is not enabled for this service by admin.
+                  </p>
+                )}
 
                 {(booking?.customerConfirmationOTP || booking?.paymentOtp) && (
                   <button

@@ -12,6 +12,7 @@ import vendorWalletService from '../../../../services/vendorWalletService';
 import { toast } from 'react-hot-toast';
 import { skipsJourney, trackingTypeOf } from '../../../../utils/trackingType';
 import { getVendorActionLabels, resolveServiceFulfillmentType } from '../../../../utils/bookingStatusLabels';
+import { canPrepareVendorBill } from '../../../../utils/vendorBilling';
 
 const BookingTimeline = () => {
   const { id } = useParams();
@@ -282,10 +283,13 @@ const BookingTimeline = () => {
       icon: FiCheckCircle,
       action: (() => {
         if (booking?.status === 'completed' || booking?.status === 'COMPLETED' || booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid') return null;
+        if (!canPrepareVendorBill(booking)) return null;
         if (currentStage === 6) return () => navigate(`/vendor/booking/${id}/billing`);
         return null;
       })(),
-      description: 'Collect cash and complete booking',
+      description: canPrepareVendorBill(booking)
+        ? 'Collect cash and complete booking'
+        : 'Bill prepare not enabled for this service',
     },
     {
       id: 7,

@@ -319,6 +319,12 @@ const bookingSchema = new mongoose.Schema({
     default: 'live',
     index: true
   },
+  /** Snapshot from category — vendor may prepare custom bill for this booking */
+  allowVendorBilling: {
+    type: Boolean,
+    default: true,
+    index: true
+  },
   tracking: {
     type: {
       type: String,

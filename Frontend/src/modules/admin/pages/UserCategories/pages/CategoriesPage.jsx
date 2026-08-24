@@ -35,6 +35,7 @@ const mapSavedCategory = (cat, formFallback = {}) => ({
   bookingMode: cat.bookingMode || formFallback.bookingMode || 'BOTH',
   serviceFulfillmentType: cat.serviceFulfillmentType || formFallback.serviceFulfillmentType || 'ON_SITE',
   trackingType: cat.trackingType || formFallback.trackingType || 'live',
+  allowVendorBilling: cat.allowVendorBilling !== false,
   paymentConfig: cat.paymentConfig || formFallback.paymentConfig || { requireAdvancePayment: false, advancePaymentPercent: 0 },
 });
 
@@ -54,7 +55,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
     paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' },
     bookingMode: 'BOTH',
     serviceFulfillmentType: 'ON_SITE',
-    trackingType: 'live'
+    trackingType: 'live',
+    allowVendorBilling: true
   });
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
@@ -97,6 +99,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
             bookingMode: cat.bookingMode || 'BOTH',
             serviceFulfillmentType: cat.serviceFulfillmentType || 'ON_SITE',
             trackingType: cat.trackingType || 'live',
+            allowVendorBilling: cat.allowVendorBilling !== false,
           }));
 
           // Update catalog with fetched categories
@@ -128,7 +131,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' },
         bookingMode: 'BOTH',
         serviceFulfillmentType: 'ON_SITE',
-        trackingType: 'live'
+        trackingType: 'live',
+        allowVendorBilling: true
       });
       return;
     }
@@ -145,6 +149,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       bookingMode: safe.bookingMode || 'BOTH',
       serviceFulfillmentType: safe.serviceFulfillmentType || 'ON_SITE',
       trackingType: safe.trackingType || 'live',
+      allowVendorBilling: safe.allowVendorBilling !== false,
     });
   }, [editing]);
 
@@ -163,7 +168,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       paymentConfig: { requireAdvancePayment: false, advancePaymentPercent: '' },
       bookingMode: 'BOTH',
       serviceFulfillmentType: 'ON_SITE',
-      trackingType: 'live'
+      trackingType: 'live',
+      allowVendorBilling: true
     });
     setIsModalOpen(false);
   };
@@ -230,6 +236,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         bookingMode: form.bookingMode || 'BOTH',
         serviceFulfillmentType: form.serviceFulfillmentType || 'ON_SITE',
         trackingType: form.trackingType || 'live',
+        allowVendorBilling: form.allowVendorBilling !== false,
         cityIds: selectedCity ? [selectedCity] : [],
       };
 
@@ -818,6 +825,22 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100">
+            <h4 className="text-sm font-bold text-gray-900 mb-1">Prepare Bill (vendor)</h4>
+            <p className="text-xs text-gray-500 mb-3">
+              Only enable for services where vendor should build a custom bill (parts/extras). Turn off for fixed-price services like room rental or marriage hall.
+            </p>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.allowVendorBilling !== false}
+                onChange={(e) => setForm((p) => ({ ...p, allowVendorBilling: e.target.checked }))}
+                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-sm font-semibold text-gray-800">Allow vendor to prepare bill</span>
+            </label>
           </div>
 
           <div className="pt-4 border-t border-gray-100">

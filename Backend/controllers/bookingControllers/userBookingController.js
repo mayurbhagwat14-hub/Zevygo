@@ -126,7 +126,7 @@ const createListingBooking = async (req, res) => {
 
   const listingDoc = await ServiceListing.findById(serviceListingId)
     .populate('vendorId', 'name approvalStatus accountStatus')
-    .populate('categoryId', 'title icon image slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType trackingType');
+    .populate('categoryId', 'title icon image slug homeIconUrl bookingMode paymentConfig serviceFulfillmentType trackingType allowVendorBilling');
 
   if (!listingDoc || !isListingBookable(listingDoc)) {
     return res.status(404).json({ success: false, message: 'This listing is not available for booking.' });
@@ -259,6 +259,7 @@ const createListingBooking = async (req, res) => {
     serviceFulfillmentType: resolveServiceFulfillmentType({ category: categoryDoc }),
     trackingType: resolvedTrackingType,
     tracking: buildTrackingSubdoc(resolvedTrackingType),
+    allowVendorBilling: categoryDoc?.allowVendorBilling !== false,
     description: live.description,
     serviceImages: live.portfolioPhotos || [],
     bookedItems: formattedBookedItems,
@@ -427,7 +428,7 @@ const createBooking = async (req, res) => {
 
     // 2. Fetch Category if exists
     const categoryId = service.categoryId || service.categoryIds?.[0];
-    const category = categoryId ? await Category.findById(categoryId).select('title icon image slug serviceFulfillmentType trackingType bookingMode paymentConfig').lean() : null;
+    const category = categoryId ? await Category.findById(categoryId).select('title icon image slug serviceFulfillmentType trackingType bookingMode paymentConfig allowVendorBilling').lean() : null;
 
     // Calculate total value from booked items or fallback to service base price
     if (totalServiceValue === 0) {
@@ -655,6 +656,7 @@ const createBooking = async (req, res) => {
       serviceFulfillmentType: resolveServiceFulfillmentType({ category: finalCategory || category }),
       trackingType: resolvedTrackingType,
       tracking: buildTrackingSubdoc(resolvedTrackingType),
+      allowVendorBilling: (finalCategory || category)?.allowVendorBilling !== false,
 
       description: service.description,
       serviceImages: service.images || [],

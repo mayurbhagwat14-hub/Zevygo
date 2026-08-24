@@ -118,6 +118,12 @@ const categorySchema = new mongoose.Schema({
     default: 'live',
     index: true
   },
+  /** When true, vendor can open Prepare Bill / custom billing for this category */
+  allowVendorBilling: {
+    type: Boolean,
+    default: true,
+    index: true
+  },
   defaultPricingModel: {
     type: String,
     enum: ['FIXED', 'PER_VISIT', 'HOURLY', 'DAILY', 'MONTHLY', 'YEARLY', 'PER_UNIT', 'CUSTOM_QUOTE'],
