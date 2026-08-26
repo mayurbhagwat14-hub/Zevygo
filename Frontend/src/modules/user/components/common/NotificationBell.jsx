@@ -35,8 +35,13 @@ const NotificationBell = ({ notificationCount = 0 }) => {
     };
 
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 60000);
-    return () => clearInterval(interval);
+    
+    const handleNotification = () => fetchUnreadCount();
+    window.addEventListener('appNotificationReceived', handleNotification);
+    
+    return () => {
+      window.removeEventListener('appNotificationReceived', handleNotification);
+    };
   }, []);
 
   return (

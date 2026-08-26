@@ -12,7 +12,7 @@ import vendorWalletService from '../../../../services/vendorWalletService';
 import { toast } from 'react-hot-toast';
 import { skipsJourney, trackingTypeOf } from '../../../../utils/trackingType';
 import { getVendorActionLabels, resolveServiceFulfillmentType } from '../../../../utils/bookingStatusLabels';
-import { canPrepareVendorBill } from '../../../../utils/vendorBilling';
+import { canPrepareVendorBill, isPaymentSettled } from '../../../../utils/vendorBilling';
 
 const BookingTimeline = () => {
   const { id } = useParams();
@@ -102,10 +102,10 @@ const BookingTimeline = () => {
 
   // Handle modal closing if payment is detected
   useEffect(() => {
-    if (booking?.paymentStatus === 'SUCCESS') {
+    if (isPaymentSettled(booking)) {
       // payment was successful
     }
-  }, [booking?.paymentStatus]);
+  }, [booking?.paymentStatus, booking?.cashCollected]);
 
   /* Handlers */
   const handleWorkerPayment = async () => {
@@ -282,7 +282,7 @@ const BookingTimeline = () => {
       title: 'Collect Payment',
       icon: FiCheckCircle,
       action: (() => {
-        if (booking?.status === 'completed' || booking?.status === 'COMPLETED' || booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid') return null;
+        if (booking?.status === 'completed' || booking?.status === 'COMPLETED' || isPaymentSettled(booking)) return null;
         if (!canPrepareVendorBill(booking)) return null;
         if (currentStage === 6) return () => navigate(`/vendor/booking/${id}/billing`);
         return null;
@@ -448,7 +448,7 @@ const BookingTimeline = () => {
                             stage.id === 4 ? actionLabels.arrived :
                               stage.id === 5 ? 'Mark workdone' :
                                 stage.id === 6 ? (
-                                  (booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid')
+                                  isPaymentSettled(booking)
                                     ? 'Online Payment Done'
                                     : 'Collect Cash'
                                 ) :
@@ -457,7 +457,7 @@ const BookingTimeline = () => {
                       )}
 
                       {/* Online Payment Status Badge for Stage 7 */}
-                      {stage.id === 7 && (booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid') && !isCompleted && (
+                      {stage.id === 7 && isPaymentSettled(booking) && !isCompleted && (
                         <div className="mt-2 flex items-center gap-1.5 text-green-600 font-bold text-xs bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
                           <FiCheckCircle className="w-4 h-4" />
                           ONLINE PAYMENT RECEIVED

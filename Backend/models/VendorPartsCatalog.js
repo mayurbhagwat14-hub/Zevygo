@@ -40,7 +40,6 @@ const vendorPartsCatalogSchema = new mongoose.Schema({
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
-    required: [true, 'Please select a category'],
     index: true
   },
   description: {

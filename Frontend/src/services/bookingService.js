@@ -13,6 +13,18 @@ export const bookingService = {
     return response.data;
   },
 
+  // Nearby vendors for catalog checkout (pick one)
+  getNearbyVendors: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.serviceId) queryParams.append('serviceId', params.serviceId);
+    if (params.lat != null) queryParams.append('lat', params.lat);
+    if (params.lng != null) queryParams.append('lng', params.lng);
+    if (params.city) queryParams.append('city', params.city);
+    if (params.paymentMethod) queryParams.append('paymentMethod', params.paymentMethod);
+    const response = await api.get(`/users/bookings/nearby-vendors?${queryParams.toString()}`);
+    return response.data;
+  },
+
   // Get user bookings with filters
   getUserBookings: async (params = {}) => {
     const queryParams = new URLSearchParams();

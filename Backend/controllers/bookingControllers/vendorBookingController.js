@@ -317,13 +317,25 @@ const acceptBooking = async (req, res) => {
     const vendorId = req.user.id;
     const { id } = req.params;
 
-    const existingBooking = await Booking.findById(id).select('serviceListingId vendorId status');
+    const existingBooking = await Booking.findById(id).select('serviceListingId vendorId status notifiedVendors potentialVendors');
     if (existingBooking?.serviceListingId) {
       const listing = await ServiceListing.findById(existingBooking.serviceListingId).select('vendorId');
       if (!listing || listing.vendorId.toString() !== vendorId.toString()) {
         return res.status(403).json({
           success: false,
           message: 'This booking is assigned to another provider\'s listing.'
+        });
+      }
+    }
+
+    // Direct / notified requests: only vendors already notified may accept
+    const notified = existingBooking?.notifiedVendors || [];
+    if (notified.length > 0) {
+      const allowed = notified.some((id) => id.toString() === vendorId.toString());
+      if (!allowed) {
+        return res.status(403).json({
+          success: false,
+          message: 'This booking was sent to another provider.'
         });
       }
     }

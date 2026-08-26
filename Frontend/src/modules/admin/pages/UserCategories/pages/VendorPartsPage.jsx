@@ -10,21 +10,18 @@ const schema = z.object({
   name: z.string().min(2, "Name is required"),
   hsnCode: z.string().optional(),
   basePrice: z.number().min(0, "Price must be non-negative"),
-  description: z.string().optional(),
-  categoryId: z.string().min(1, "Category is required")
+  description: z.string().optional()
 });
 
 const VendorPartsPage = () => {
   const [parts, setParts] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("All");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ name: "", hsnCode: "", basePrice: "", description: "", categoryId: "" });
+  const [form, setForm] = useState({ name: "", hsnCode: "", basePrice: "", description: "" });
 
   useEffect(() => {
     loadData();
@@ -33,16 +30,10 @@ const VendorPartsPage = () => {
   const loadData = async () => {
     try {
       setFetching(true);
-      const [partsRes, catsRes] = await Promise.all([
-        vendorCatalogService.getAllParts(),
-        categoryService.getAll({ status: 'active' })
-      ]);
+      const partsRes = await vendorCatalogService.getAllParts();
 
       if (partsRes.success) {
         setParts(partsRes.parts || []);
-      }
-      if (catsRes.success) {
-        setCategories(catsRes.categories || []);
       }
     } catch (error) {
       console.error("Failed to load catalog data:", error);
@@ -57,8 +48,7 @@ const VendorPartsPage = () => {
       name: form.name,
       hsnCode: form.hsnCode,
       basePrice: Number(form.basePrice),
-      description: form.description,
-      categoryId: form.categoryId || undefined
+      description: form.description
     };
 
     const result = schema.safeParse(data);
@@ -110,7 +100,7 @@ const VendorPartsPage = () => {
 
   const reset = () => {
     setEditingId(null);
-    setForm({ name: "", hsnCode: "", basePrice: "", description: "", categoryId: "" });
+    setForm({ name: "", hsnCode: "", basePrice: "", description: "" });
     setIsModalOpen(false);
   };
 
@@ -120,18 +110,14 @@ const VendorPartsPage = () => {
       name: part.name,
       hsnCode: part.hsnCode || "",
       basePrice: part.basePrice || part.price,
-      description: part.description || "",
-      categoryId: part.categoryId?._id || part.categoryId || ""
+      description: part.description || ""
     });
     setIsModalOpen(true);
   };
 
   const filteredParts = parts.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategoryFilter === "All" ||
-      (s.categoryId?._id === selectedCategoryFilter) ||
-      (s.categoryId === selectedCategoryFilter); // Handle populated or raw ID
-    return matchesSearch && matchesCategory;
+    return matchesSearch;
   });
 
   return (
@@ -148,19 +134,6 @@ const VendorPartsPage = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border rounded-xl focus:ring-2 focus:ring-primary-500"
               />
-            </div>
-
-            <div className="w-full sm:w-48">
-              <select
-                value={selectedCategoryFilter}
-                onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-primary-500 bg-white"
-              >
-                <option value="All">All Categories</option>
-                {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.title}</option>
-                ))}
-              </select>
             </div>
           </div>
 
@@ -181,7 +154,6 @@ const VendorPartsPage = () => {
             <table className="w-full">
               <thead className="bg-gray-50 text-left">
                 <tr>
-                  <th className="p-3 text-xs font-bold text-gray-500 uppercase">Category</th>
                   <th className="p-3 text-xs font-bold text-gray-500 uppercase">HSN</th>
                   <th className="p-3 text-xs font-bold text-gray-500 uppercase">Name</th>
                   <th className="p-3 text-xs font-bold text-gray-500 uppercase">Price (₹)</th>
@@ -192,15 +164,6 @@ const VendorPartsPage = () => {
               <tbody className="divide-y">
                 {filteredParts.map((s) => (
                   <tr key={s._id || s.id} className="hover:bg-gray-50">
-                    <td className="p-3 text-xs">
-                      {s.categoryId?.title ? (
-                        <span className="bg-primary-50 text-primary-500 px-2 py-0.5 rounded-full font-medium border border-primary-100">
-                          {s.categoryId.title}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 italic">Uncategorized</span>
-                      )}
-                    </td>
                     <td className="p-3 font-medium text-xs text-gray-500">{s.hsnCode || "—"}</td>
                     <td className="p-3 font-medium">{s.name}</td>
                     <td className="p-3">₹{s.basePrice || s.price}</td>
@@ -223,19 +186,6 @@ const VendorPartsPage = () => {
 
       <Modal isOpen={isModalOpen} onClose={reset} title={editingId ? "Edit Vendor Part" : "Add Vendor Part"}>
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-bold mb-1">Category</label>
-            <select
-              value={form.categoryId}
-              onChange={(e) => setForm(p => ({ ...p, categoryId: e.target.value }))}
-              className="w-full px-4 py-2 border rounded-xl bg-white"
-            >
-              <option value="">Select Category</option>
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.title}</option>
-              ))}
-            </select>
-          </div>
           <div>
             <label className="block text-sm font-bold mb-1">Part Name</label>
             <input

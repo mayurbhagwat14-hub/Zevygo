@@ -100,6 +100,79 @@ const notifySingleVendorOfBooking = async ({
 };
 
 /**
+ * Preview nearby vendors for catalog checkout (pick one → send request).
+ * GET query: serviceId, lat, lng, city?, paymentMethod?
+ */
+const getNearbyVendorsPreview = async (req, res) => {
+  try {
+    const { serviceId, lat, lng, city, paymentMethod } = req.query;
+    if (!serviceId) {
+      return res.status(400).json({ success: false, message: 'serviceId is required' });
+    }
+
+    const service = await Service.findById(serviceId)
+      .select('title categoryId category categoryIds')
+      .lean();
+    if (!service) {
+      return res.status(404).json({ success: false, message: 'Service not found' });
+    }
+
+    const categoryId = service.categoryId || service.categoryIds?.[0];
+    const category = categoryId
+      ? await Category.findById(categoryId).select('title').lean()
+      : null;
+
+    const { findNearbyVendors, geocodeAddress } = require('../../services/locationService');
+    let bookingLocation = null;
+    const latN = lat != null ? Number(lat) : NaN;
+    const lngN = lng != null ? Number(lng) : NaN;
+    if (Number.isFinite(latN) && Number.isFinite(lngN)) {
+      bookingLocation = { lat: latN, lng: lngN };
+    } else if (city) {
+      bookingLocation = await geocodeAddress(String(city));
+    }
+
+    const vendorFilters = {
+      ...(category ? { service: category.title } : {}),
+      checkCashLimit: paymentMethod === 'cash',
+      city: city || undefined
+    };
+
+    let nearbyVendors = await findNearbyVendors(bookingLocation, 10, vendorFilters);
+    const seen = new Set();
+    nearbyVendors = (nearbyVendors || [])
+      .filter((v) => {
+        const id = v._id?.toString();
+        if (!id || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      })
+      .sort((a, b) => (a.distance || 0) - (b.distance || 0));
+
+    const vendors = nearbyVendors.map((v) => ({
+      id: v._id,
+      name: v.name,
+      businessName: v.businessName || v.name,
+      profilePhoto: v.profilePhoto || null,
+      phone: v.phone || null,
+      rating: v.rating?.average || v.rating || null,
+      reviewCount: v.rating?.count || 0,
+      distance: typeof v.distance === 'number' ? Number(v.distance.toFixed(1)) : null,
+      isOnline: Boolean(v.isOnline),
+      availability: v.availability || null
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: { vendors, count: vendors.length }
+    });
+  } catch (error) {
+    console.error('[getNearbyVendorsPreview]', error);
+    return res.status(500).json({ success: false, message: 'Failed to find nearby vendors' });
+  }
+};
+
+/**
  * Book a specific vendor listing (skips nearby-vendor wave search).
  */
 const createListingBooking = async (req, res) => {
@@ -478,9 +551,32 @@ const createBooking = async (req, res) => {
     console.log(`[CreateBooking] Found ${nearbyVendors.length} nearby vendors for booking`);
     // --- END VENDOR SEARCH BLOCK ---
 
+    // Direct pick: customer chose one vendor from nearby list (skip wave broadcast)
+    let selectedVendor = null;
+    if (vendorId) {
+      selectedVendor = nearbyVendors.find((v) => v._id.toString() === String(vendorId));
+      if (!selectedVendor) {
+        const VendorModel = require('../../models/Vendor');
+        selectedVendor = await VendorModel.findOne({
+          _id: vendorId,
+          approvalStatus: { $in: ['APPROVED', 'approved'] },
+          isActive: { $ne: false }
+        }).select('name businessName phone address profilePhoto rating isOnline availability').lean();
+        if (selectedVendor) {
+          selectedVendor.distance = 0;
+        }
+      }
+      if (!selectedVendor) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected provider is not available for this booking.'
+        });
+      }
+    }
+
     // Calculate pricing - use amount from frontend if provided, otherwise calculate
     let basePrice, discount, tax, finalAmount;
-    let bookingStatus = BOOKING_STATUS.SEARCHING;
+    let bookingStatus = selectedVendor ? BOOKING_STATUS.REQUESTED : BOOKING_STATUS.SEARCHING;
     let bookingPaymentStatus = PAYMENT_STATUS.PENDING;
 
     // -------------------------------------------------------------------------
@@ -530,7 +626,7 @@ const createBooking = async (req, res) => {
           visitingCharges = 0;
           finalAmount = pendingPenalty; // User only pays penalty
 
-          bookingStatus = BOOKING_STATUS.SEARCHING;
+          bookingStatus = selectedVendor ? BOOKING_STATUS.REQUESTED : BOOKING_STATUS.SEARCHING;
           bookingPaymentStatus = finalAmount > 0 ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.PLAN_COVERED;
         } else {
           // Not covered -> Fallback
@@ -693,15 +789,24 @@ const createBooking = async (req, res) => {
       // isPlusAdded: isPlusAdded || false, // Removed
       paymentMethod: paymentMethod || null,
       status: bookingStatus,
-      paymentStatus: bookingPaymentStatus
-      // notifiedVendors will be set after wave sorting
+      paymentStatus: bookingPaymentStatus,
+      ...(selectedVendor
+        ? {
+          potentialVendors: [{ vendorId: selectedVendor._id, distance: selectedVendor.distance || 0 }],
+          currentWave: 1,
+          waveStartedAt: new Date(),
+          notifiedVendors: [selectedVendor._id]
+        }
+        : {})
     });
 
     // --- IMMEDIATE RESPONSE ---
     // Send immediate response to the client. All subsequent operations will run in the background.
     res.status(201).json({
       success: true,
-      message: 'Booking created successfully. We are finding vendors for you.',
+      message: selectedVendor
+        ? 'Booking request sent to the selected provider.'
+        : 'Booking created successfully. We are finding vendors for you.',
       data: {
         _id: booking._id,
         bookingNumber: booking.bookingNumber,
@@ -715,6 +820,8 @@ const createBooking = async (req, res) => {
         categoryIcon: booking.categoryIcon,
         brandName: booking.brandName,
         brandIcon: booking.brandIcon,
+        isDirectVendorRequest: Boolean(selectedVendor),
+        selectedVendorId: selectedVendor?._id || null
       }
     });
 
@@ -747,6 +854,22 @@ const createBooking = async (req, res) => {
           };
           await userForBackground.save();
           console.log(`User ${userId} upgraded to Plus Membership until ${expiryDate}`);
+        }
+
+        // Direct pick: notify only the selected vendor (no wave broadcast)
+        if (selectedVendor) {
+          await notifySingleVendorOfBooking({
+            booking: bookingForBackground,
+            vendorId: selectedVendor._id,
+            user: userForBackground,
+            serviceTitle: serviceForBackground.title,
+            scheduledDate,
+            scheduledTime,
+            finalAmount,
+            address
+          });
+          await Cart.findOneAndUpdate({ userId }, { $set: { items: [] } });
+          return;
         }
 
         // Nearby vendors already found above
@@ -1488,6 +1611,7 @@ const getUserRatings = async (req, res) => {
 
 module.exports = {
   createBooking,
+  getNearbyVendorsPreview,
   getUserBookings,
   getBookingById,
   cancelBooking,

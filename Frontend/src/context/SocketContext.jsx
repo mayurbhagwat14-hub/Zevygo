@@ -402,7 +402,9 @@ export const SocketProvider = ({ children }) => {
     }
 
     return () => {
-      newSocket.disconnect();
+      if (newSocket) {
+        newSocket.disconnect();
+      }
     };
   }, [userType]); // Only re-run if userType changes. Navigate is stable.
 

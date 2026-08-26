@@ -165,7 +165,7 @@ api.get = (url, config = {}) => {
 
   const request = rawGet(url, config)
     .then((res) => {
-      if (!skipCache && res?.status >= 200 && res?.status < 300) {
+      if (!skipCache && res?.status >= 200 && res?.status <= 304) {
         apiCache.set(key, res, ttlSeconds);
       }
       apiCache.clearInflight(key);

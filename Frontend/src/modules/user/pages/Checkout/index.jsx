@@ -63,6 +63,9 @@ const Checkout = () => {
   const [bookingRequest, setBookingRequest] = useState(null);
   const [searchingVendors, setSearchingVendors] = useState(false);
   const [showVendorModal, setShowVendorModal] = useState(false);
+  const [nearbyVendors, setNearbyVendors] = useState([]);
+  const [loadingNearbyVendors, setLoadingNearbyVendors] = useState(false);
+  const [sendingVendorRequest, setSendingVendorRequest] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' | 'pay_at_home'
 
   const [loading, setLoading] = useState(true);
@@ -555,10 +558,9 @@ const Checkout = () => {
     };
   }, [currentStep, bookingRequest]);
 
-  // Search for nearby vendors
+  // Catalog: show nearby list → pick one vendor. Listing: send direct to listing provider.
   const handleSearchVendors = async () => {
     try {
-      // Validate required fields
       if (bookingType === 'scheduled') {
         if (!selectedDate || !selectedTime) {
           toast.error('Please select time slot');
@@ -570,13 +572,10 @@ const Checkout = () => {
           setShowAddressModal(true);
           return;
         }
-      } else {
-        // Instant
-        if (!addressDetails) {
-          toast.error('Please select address');
-          setShowAddressModal(true);
-          return;
-        }
+      } else if (!addressDetails) {
+        toast.error('Please select address');
+        setShowAddressModal(true);
+        return;
       }
 
       if (cartItems.length === 0 && !bookingRequest) {
@@ -584,7 +583,6 @@ const Checkout = () => {
         return;
       }
 
-      // Get first service
       const firstItem = cartItems[0];
       if (!firstItem.serviceId && !firstItem.serviceListingId) {
         toast.error('Service information missing. Please try again.');
@@ -593,114 +591,16 @@ const Checkout = () => {
 
       const isProviderRequest = Boolean(firstItem.serviceListingId);
 
-      // Open modal and start searching only if not a direct provider request
-      if (!isProviderRequest) {
-        setShowVendorModal(true);
-        setCurrentStep('searching');
-      }
-      setSearchingVendors(true);
-
-      // Prepare address object
-      const addressObj = {
-        type: 'home',
-        addressLine1: address,
-        addressLine2: houseNumber,
-        city: addressDetails?.city || getAddressComponent('locality') || getAddressComponent('administrative_area_level_2') || 'City',
-        state: addressDetails?.state || getAddressComponent('administrative_area_level_1') || 'State',
-        pincode: addressDetails?.pincode || getAddressComponent('postal_code') || '123456',
-
-        landmark: addressDetails?.landmark || '',
-        lat: addressDetails?.lat || null,
-        lng: addressDetails?.lng || null
-      };
-
-      // Prepare time slot
-      let finalDate = selectedDate;
-      let finalTimeDisplay = selectedTime;
-      let timeSlotObj = {
-        start: selectedTime,
-        end: getTimeSlots().find(slot => slot.value === selectedTime)?.end || selectedTime
-      };
-
-      if (bookingType === 'instant') {
-        finalDate = new Date();
-        finalTimeDisplay = "ASAP";
-        timeSlotObj = { start: "Now", end: "45 mins" };
-      } else {
-        finalTimeDisplay = getTimeSlots().find(slot => slot.value === selectedTime)?.display || selectedTime;
-      }
-
-      // Create booking request
-      toast.loading(isProviderRequest ? 'Sending request to provider...' : 'Searching for nearby vendors...');
-
-      // Ensure serviceId is a string (handle populated cart data)
-      const serviceId = typeof firstItem.serviceId === 'object'
-        ? firstItem.serviceId._id || firstItem.serviceId.id
-        : firstItem.serviceId;
-
-      // Prepare bookedItems array matching Service catalog structure
-      // Prepare bookedItems array matching Service catalog structure
-      const bookedItemsData = cartItems.map(item => ({
-        brandName: item.sectionTitle || item.brand || '',
-        brandIcon: item.sectionIcon || null,
-        card: {
-          title: item.card?.title || item.title || 'Unknown Service',
-          subtitle: item.card?.subtitle || item.description || '',
-          price: item.card?.price || item.price || 0,
-          originalPrice: item.card?.originalPrice || item.originalPrice || null,
-          duration: item.card?.duration || item.duration || '',
-          description: item.card?.description || item.description || '',
-          imageUrl: item.card?.imageUrl || item.icon || '',
-          features: item.card?.features || []
-        },
-        quantity: item.serviceCount || 1
-      }));
-
-
-
-      const bookingResponse = await bookingService.create({
-        bookingType, // 'instant' or 'scheduled'
-        ...(firstItem.serviceListingId
-          ? { serviceListingId: firstItem.serviceListingId, catalogItemId: firstItem.catalogItemId || undefined }
-          : { serviceId }),
-        address: addressObj,
-        scheduledDate: finalDate.toISOString(),
-        scheduledTime: finalTimeDisplay,
-        timeSlot: timeSlotObj,
-        // userNotes: null, // Removed per request
-        paymentMethod: amountToPay === 0 ? 'plan_benefit' : 'pay_at_home',
-        amount: amountToPay,
-
-        // Pass Full Breakdown to Backend
-        basePrice: totalOriginalPrice,
-        discount: savings,
-        tax: taxesAndFee,
-        visitationFee: finalVisitedFee,
-
-        // Metadata for better data capture
-        serviceCategory: firstItem.categoryTitle || firstItem.category || 'General',
-        categoryIcon: firstItem.categoryIcon || firstItem.icon || null,
-        brandName: firstItem.sectionTitle || firstItem.brand || '',
-        brandIcon: firstItem.sectionIcon || null,
-
-        bookedItems: bookedItemsData
-      });
-
-      if (!bookingResponse.success) {
-        toast.dismiss();
-        toast.error(bookingResponse.message || 'Failed to search for vendors');
-        setCurrentStep('details');
-        setSearchingVendors(false);
-        setShowVendorModal(false);
-        return;
-      }
-
-      const booking = bookingResponse.data;
-      setBookingRequest(booking);
-      toast.dismiss();
-
-      // Listing / provider-specific: skip nearby search
+      // Listing booking: send request straight to that provider
       if (isProviderRequest) {
+        setSearchingVendors(true);
+        toast.loading('Sending request to provider...');
+        const booking = await createCatalogOrListingBooking(null);
+        toast.dismiss();
+        if (!booking) {
+          setSearchingVendors(false);
+          return;
+        }
         try {
           if (category) await removeCategoryGlobal(category);
           else await clearCartGlobal();
@@ -710,63 +610,43 @@ const Checkout = () => {
         }
         toast.success('Request sent! Waiting for provider to accept.');
         navigate(`/user/booking-confirmation/${booking._id || booking.id}`);
+        setSearchingVendors(false);
         return;
       }
 
-      // Clear cart immediately as search starts (consumes items) - ONLY if vendors found
-      if (!bookingResponse.noVendorsFound) {
-        try {
-          if (category) {
-            await removeCategoryGlobal(category);
-          } else {
-            await clearCartGlobal();
-          }
-          setCartItems([]);
-        } catch (err) {
-          console.error('Failed to clear cart after search start', err);
+      // Catalog: open picker and load nearby vendors — do not broadcast yet
+      setShowVendorModal(true);
+      setCurrentStep('searching');
+      setSearchingVendors(true);
+      setLoadingNearbyVendors(true);
+      setNearbyVendors([]);
+      setAcceptedVendor(null);
+
+      const serviceId = typeof firstItem.serviceId === 'object'
+        ? firstItem.serviceId._id || firstItem.serviceId.id
+        : firstItem.serviceId;
+
+      try {
+        const res = await bookingService.getNearbyVendors({
+          serviceId,
+          lat: addressDetails?.lat || null,
+          lng: addressDetails?.lng || null,
+          city: addressDetails?.city || null,
+          paymentMethod: amountToPay === 0 ? 'plan_benefit' : 'pay_at_home'
+        });
+        const list = res?.data?.vendors || [];
+        setNearbyVendors(list);
+        if (list.length === 0) {
+          toast.error('No providers nearby for this service.');
         }
-      }
-
-      // If no vendors found, redirect or refresh immediately
-      if (bookingResponse.noVendorsFound) {
-        toast.dismiss();
-        const bookingId = booking?._id || booking?.id;
-
-        // Ensure we stop searching and close the modal
+      } catch (err) {
+        console.error('Nearby vendors error:', err);
+        toast.error('Could not load nearby providers.');
+        setNearbyVendors([]);
+      } finally {
+        setLoadingNearbyVendors(false);
         setSearchingVendors(false);
-        setShowVendorModal(false);
-
-        if (bookingId) {
-          toast.error('No vendors currently available for this service.');
-
-          // Auto-cancel and refresh
-          const cancelAndRefresh = async () => {
-            try {
-              await bookingService.cancel(bookingId, 'Initial search found no available vendors');
-              setTimeout(() => {
-                window.location.reload();
-              }, 2000);
-            } catch (err) {
-              console.error('Auto-cancel failed:', err);
-              window.location.reload();
-            }
-          };
-          cancelAndRefresh();
-        } else {
-          // Fallback if ID is missing for some reason
-          setCurrentStep('details');
-          toast.error('Search failed. Please try again.');
-          setTimeout(() => window.location.reload(), 2000);
-        }
-      } else {
-        // Move to waiting state - alerts sent to nearby vendors
-        setCurrentStep('waiting');
-        toast.success('Finding nearby vendors... Alerts sent to vendors within 10km!');
       }
-
-      // REMOVED local setCartItems([]) - The summary should remain visible while searching
-      // The cart is already cleared in server database by the backend and previous API call.
-
     } catch (error) {
       toast.dismiss();
       console.error('Search vendors error:', error);
@@ -774,6 +654,128 @@ const Checkout = () => {
       setCurrentStep('details');
       setSearchingVendors(false);
       setShowVendorModal(false);
+    }
+  };
+
+  const buildBookingPayload = (selectedVendorId) => {
+    const firstItem = cartItems[0];
+    const serviceId = typeof firstItem.serviceId === 'object'
+      ? firstItem.serviceId._id || firstItem.serviceId.id
+      : firstItem.serviceId;
+
+    const addressObj = {
+      type: 'home',
+      addressLine1: address,
+      addressLine2: houseNumber,
+      city: addressDetails?.city || getAddressComponent('locality') || getAddressComponent('administrative_area_level_2') || 'City',
+      state: addressDetails?.state || getAddressComponent('administrative_area_level_1') || 'State',
+      pincode: addressDetails?.pincode || getAddressComponent('postal_code') || '123456',
+      landmark: addressDetails?.landmark || '',
+      lat: addressDetails?.lat || null,
+      lng: addressDetails?.lng || null
+    };
+
+    let finalDate = selectedDate;
+    let finalTimeDisplay = selectedTime;
+    let timeSlotObj = {
+      start: selectedTime,
+      end: getTimeSlots().find(slot => slot.value === selectedTime)?.end || selectedTime
+    };
+
+    if (bookingType === 'instant') {
+      finalDate = new Date();
+      finalTimeDisplay = 'ASAP';
+      timeSlotObj = { start: 'Now', end: '45 mins' };
+    } else {
+      finalTimeDisplay = getTimeSlots().find(slot => slot.value === selectedTime)?.display || selectedTime;
+    }
+
+    const bookedItemsData = cartItems.map(item => ({
+      brandName: item.sectionTitle || item.brand || '',
+      brandIcon: item.sectionIcon || null,
+      card: {
+        title: item.card?.title || item.title || 'Unknown Service',
+        subtitle: item.card?.subtitle || item.description || '',
+        price: item.card?.price || item.price || 0,
+        originalPrice: item.card?.originalPrice || item.originalPrice || null,
+        duration: item.card?.duration || item.duration || '',
+        description: item.card?.description || item.description || '',
+        imageUrl: item.card?.imageUrl || item.icon || '',
+        features: item.card?.features || []
+      },
+      quantity: item.serviceCount || 1
+    }));
+
+    return {
+      bookingType,
+      ...(firstItem.serviceListingId
+        ? { serviceListingId: firstItem.serviceListingId, catalogItemId: firstItem.catalogItemId || undefined }
+        : { serviceId, ...(selectedVendorId ? { vendorId: selectedVendorId } : {}) }),
+      address: addressObj,
+      scheduledDate: finalDate.toISOString(),
+      scheduledTime: finalTimeDisplay,
+      timeSlot: timeSlotObj,
+      paymentMethod: amountToPay === 0 ? 'plan_benefit' : 'pay_at_home',
+      amount: amountToPay,
+      basePrice: totalOriginalPrice,
+      discount: savings,
+      tax: taxesAndFee,
+      visitationFee: finalVisitedFee,
+      serviceCategory: firstItem.categoryTitle || firstItem.category || 'General',
+      categoryIcon: firstItem.categoryIcon || firstItem.icon || null,
+      brandName: firstItem.sectionTitle || firstItem.brand || '',
+      brandIcon: firstItem.sectionIcon || null,
+      bookedItems: bookedItemsData
+    };
+  };
+
+  const createCatalogOrListingBooking = async (selectedVendorId) => {
+    const bookingResponse = await bookingService.create(buildBookingPayload(selectedVendorId));
+    if (!bookingResponse.success) {
+      toast.error(bookingResponse.message || 'Failed to create booking');
+      return null;
+    }
+    const booking = bookingResponse.data;
+    setBookingRequest(booking);
+    return booking;
+  };
+
+  /** Customer picked a vendor from nearby list → send request only to them */
+  const handleSelectVendor = async (vendor) => {
+    if (!vendor?.id || sendingVendorRequest) return;
+    try {
+      setSendingVendorRequest(true);
+      setAcceptedVendor(vendor);
+      toast.loading('Sending request to provider...');
+
+      const booking = await createCatalogOrListingBooking(vendor.id);
+      toast.dismiss();
+
+      if (!booking) {
+        setCurrentStep('failed');
+        return;
+      }
+
+      try {
+        if (category) await removeCategoryGlobal(category);
+        else await clearCartGlobal();
+        setCartItems([]);
+      } catch (err) {
+        console.error('Failed to clear cart', err);
+      }
+
+      setCurrentStep('waiting');
+      toast.success(`Request sent to ${vendor.businessName || vendor.name}!`);
+      navigate(`/user/booking-confirmation/${booking._id || booking.id}`, {
+        state: { selectedVendor: vendor, isDirectVendorRequest: true }
+      });
+    } catch (error) {
+      toast.dismiss();
+      console.error('Select vendor error:', error);
+      toast.error(error?.response?.data?.message || 'Failed to send request. Please try again.');
+      setCurrentStep('failed');
+    } finally {
+      setSendingVendorRequest(false);
     }
   };
 
@@ -1790,34 +1792,38 @@ const Checkout = () => {
                 handleProceed}
             className="!bg-[#0F348F] !bg-none !shadow-[#0F348F]/25 hover:!bg-[#122652]"
           >
-            {searchingVendors ? (isListingBooking ? 'Sending request...' : 'Searching for vendors...') :
+            {searchingVendors || loadingNearbyVendors ? (isListingBooking ? 'Sending request...' : 'Loading providers...') :
               currentStep === 'payment' ? (totalAmount === 0 ? 'Confirm Booking (Free)' : (paymentMethod === 'online' ? 'Proceed to Pay' : 'Confirm Booking')) :
                 plan ? 'Proceed to Payment' :
                   isListingBooking ? 'Send Request to Provider' :
-                  bookingType === 'instant' ? 'Find nearby vendors now' :
+                  bookingType === 'instant' ? 'Choose nearby provider' :
                     (selectedDate && selectedTime && houseNumber ?
-                      'Find nearby vendors' :
+                      'Choose nearby provider' :
                       (houseNumber || addressDetails) ? 'Select Time Slot' : 'Add address to proceed')}
           </Button>
         </div>
       </div>
 
-      {/* Live Booking Status Card (Visible when minimized) */}
-      <LiveBookingCard key={bookingRequest?._id || 'default'} />
+      {/* Live Booking Status Card is rendered globally by UserRoutes */}
 
       {/* Vendor Search Modal */}
       <VendorSearchModal
         isOpen={showVendorModal}
         onClose={() => {
+          if (sendingVendorRequest) return;
           setShowVendorModal(false);
           if (currentStep === 'accepted') {
             setCurrentStep('payment');
-          } else if (currentStep === 'failed') {
+          } else if (currentStep === 'failed' || currentStep === 'searching' || currentStep === 'waiting') {
             setCurrentStep('details');
           }
         }}
         currentStep={currentStep}
         acceptedVendor={acceptedVendor}
+        vendors={nearbyVendors}
+        loadingVendors={loadingNearbyVendors}
+        sendingRequest={sendingVendorRequest}
+        onSelectVendor={handleSelectVendor}
         onRetry={() => {
           handleSearchVendors();
         }}

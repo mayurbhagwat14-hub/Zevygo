@@ -99,9 +99,7 @@ const LiveBookingCard = ({ hasBottomNav }) => {
       socket.on('notification', scheduleFetch);
     }
 
-    const interval = setInterval(fetchActiveBooking, 60000);
     return () => {
-      clearInterval(interval);
       if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
       if (socket) {
         socket.off('booking_updated', scheduleFetch);

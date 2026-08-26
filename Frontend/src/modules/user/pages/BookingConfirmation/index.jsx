@@ -70,7 +70,7 @@ const SearchingAnimation = () => {
       </div>
 
       <div className="text-center relative z-20">
-        <h3 className="text-lg font-bold text-neutral-900 mb-2">Searching nearby experts</h3>
+        <h3 className="text-lg font-bold text-neutral-900 mb-2">Finding nearby experts</h3>
         <p className="text-neutral-500 text-sm max-w-[240px] mx-auto leading-relaxed">
           Searching within 10km radius{dots}
         </p>
@@ -114,10 +114,8 @@ const BookingConfirmation = () => {
           setBooking(data);
 
           const currentStatus = data.status?.toLowerCase();
-          const isDirectProvider = Boolean(data.serviceListingId);
-          if (isDirectProvider || data.vendorId || (currentStatus !== 'requested' && currentStatus !== 'searching')) {
-            setIsSearching(false);
-          }
+          // Wave broadcast only uses `searching`. Direct pick / listing use `requested`.
+          setIsSearching(currentStatus === 'searching');
         } else {
           toast.error(response.message || 'Booking not found');
           navigate('/user/my-bookings');
@@ -154,6 +152,9 @@ const BookingConfirmation = () => {
           setBooking(updatedBooking);
           const currentStatus = updatedBooking.status?.toLowerCase();
           if (updatedBooking.vendorId || (currentStatus !== 'requested' && currentStatus !== 'searching')) {
+            setIsSearching(false);
+          }
+          if (currentStatus === 'requested') {
             setIsSearching(false);
           }
           if (currentStatus === 'confirmed' || updatedBooking.paymentPhase === 'advance_paid') {
@@ -349,9 +350,9 @@ const BookingConfirmation = () => {
               </div>
               <h1 className="text-2xl font-black text-gray-900 mb-2 italic tracking-tight">REQUEST SENT!</h1>
               <p className="text-sm text-gray-500 text-center max-w-[260px] font-medium leading-relaxed">
-                {isListingBooking
+                {isListingBooking || location.state?.isDirectVendorRequest || (booking?.notifiedVendors?.length === 1)
                   ? 'Your request was sent to the selected provider. We\'ll notify you when they accept.'
-                  : 'Your request has been broadcasted to nearby experts. We\'ll notify you the moment someone accepts.'}
+                  : 'Your request has been sent. We\'ll notify you the moment the provider accepts.'}
               </p>
             </div>
           )}

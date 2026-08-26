@@ -46,7 +46,7 @@ import {
   canVendorStartService,
   isAdvancePaymentDue
 } from '../../../../utils/bookingPaymentGuard';
-import { canPrepareVendorBill } from '../../../../utils/vendorBilling';
+import { canPrepareVendorBill, isPaymentSettled } from '../../../../utils/vendorBilling';
 
 export default function BookingDetails() {
   const { id } = useParams();
@@ -240,8 +240,7 @@ export default function BookingDetails() {
       });
 
       const isPaymentSuccess =
-        data.paymentStatus === 'SUCCESS' ||
-        data.paymentStatus === 'paid' ||
+        isPaymentSettled({ paymentStatus: data.paymentStatus }) ||
         data.type === 'payment_success';
 
       if (isPaymentSuccess) {
@@ -358,10 +357,7 @@ export default function BookingDetails() {
   };
 
   const canDoFinalSettlement = (booking) => {
-    // Check if payment is already done (Online SUCCESS or Cash COLLECTED)
-    // Robust check for various status strings (case-insensitive)
-    const pStatus = booking?.paymentStatus?.toLowerCase() || '';
-    const isPaid = pStatus === 'success' || pStatus === 'paid' || booking?.cashCollected;
+    const isPaid = isPaymentSettled(booking);
 
     const status = booking?.status?.toLowerCase() || '';
     const isWorkDone = status === 'work_done' || status === 'completed' || status === 'worker_paid';
@@ -492,10 +488,9 @@ export default function BookingDetails() {
   };
 
   const canCollectCash = (booking) => {
-    // Hide if already collected or paid online
-    if (booking?.cashCollected || booking?.paymentStatus === 'collected_by_vendor') {
-      return false;
-    }
+    // Payment already done — hide Collect Payment / Prepare Bill
+    // Exception: plan_benefit may still need final bill for extras after base is prepaid
+    if (isPaymentSettled(booking) && booking?.paymentMethod !== 'plan_benefit') return false;
 
     // Cash can be collected when booking is completed/work_done and payment was cash/at home
     const validStatus = (booking?.status === 'work_done' || booking?.status === 'completed');
@@ -507,17 +502,12 @@ export default function BookingDetails() {
       return false;
     }
 
-    // CRITICAL FIX: Allow bill preparation for Plan Benefit bookings
-    // Even if base is pre-paid (SUCCESS), vendor must generate final bill (for extras etc.)
+    // Plan benefit: allow bill extras while work is done
     if (booking?.paymentMethod === 'plan_benefit') {
       return true;
     }
 
-    if (booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid') {
-      return false;
-    }
-
-    // IMPORTANT: Only for Cash/Pay at Home methods OR Online if not paid yet.
+    // Cash / pay at home / unpaid online
     return (
       booking?.paymentMethod === 'cash' ||
       booking?.paymentMethod === 'pay_at_home' ||
@@ -1150,7 +1140,7 @@ export default function BookingDetails() {
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-emerald-200/50">
                 <span className="text-emerald-800 font-bold text-xs uppercase tracking-wider">
-                  {(booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid' || booking?.cashCollected)
+                  {isPaymentSettled(booking)
                     ? 'Total Net Earnings'
                     : 'Estimated Net Earnings'}
                 </span>
@@ -1323,8 +1313,8 @@ export default function BookingDetails() {
           </div>
         )}
 
-        {/* Online Payment Done State */}
-        {(booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid') && booking?.status !== 'completed' && (
+        {/* Payment settled — show once; hide Collect Payment via isPaymentSettled */}
+        {isPaymentSettled(booking) && booking?.status !== 'completed' && booking?.finalSettlementStatus !== 'DONE' && (
           <div className="bg-white rounded-2xl mb-4 overflow-hidden shadow-lg border-none relative group"
             style={{ boxShadow: '0 10px 30px -5px rgba(16, 185, 129, 0.2)' }}
           >
@@ -1335,12 +1325,18 @@ export default function BookingDetails() {
                   <FiCheckCircle className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 leading-tight">Paid Online</h3>
+                  <h3 className="text-lg font-bold text-gray-900 leading-tight">
+                    {booking?.cashCollected || String(booking?.paymentStatus || '').toLowerCase().includes('collect')
+                      ? 'Payment Collected'
+                      : 'Paid Online'}
+                  </h3>
                   <p className="text-xs text-green-600 font-bold uppercase tracking-wider">Payment Verified</p>
                 </div>
               </div>
               <div className="mt-4 bg-green-50/50 rounded-xl p-3 border border-green-100">
-                <p className="text-xs text-green-800 font-medium">Customer has paid ₹{booking.finalAmount.toLocaleString()} online via Razorpay. No cash collection needed.</p>
+                <p className="text-xs text-green-800 font-medium">
+                  Customer payment of ₹{(booking.finalAmount || 0).toLocaleString()} is recorded. No further collection needed.
+                </p>
               </div>
             </div>
           </div>

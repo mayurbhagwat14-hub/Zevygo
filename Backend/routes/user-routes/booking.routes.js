@@ -5,6 +5,7 @@ const { authenticate } = require('../../middleware/authMiddleware');
 const { isUser } = require('../../middleware/roleMiddleware');
 const {
   createBooking,
+  getNearbyVendorsPreview,
   getUserBookings,
   getBookingById,
   cancelBooking,
@@ -65,6 +66,7 @@ const addReviewValidation = [
 
 // Routes
 router.get('/ratings', authenticate, isUser, getUserRatings);
+router.get('/nearby-vendors', authenticate, isUser, getNearbyVendorsPreview);
 router.post('/', authenticate, isUser, createBookingValidation, createBooking);
 router.get('/', authenticate, isUser, getUserBookings);
 router.get('/:id', authenticate, isUser, getBookingById);
