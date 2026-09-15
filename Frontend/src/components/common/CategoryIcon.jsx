@@ -132,7 +132,7 @@ const categoryConfigMap = {
   },
 
   // Plumber
-  'plumber': {
+  'plumbers': {
     Icon: FaFaucetDrip,
     bgGradient: 'from-primary-500 via-primary-500 to-primary-700',
     glow: 'rgba(59, 130, 246, 0.4)',
