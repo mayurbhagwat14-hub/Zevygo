@@ -3,11 +3,7 @@ node_modules/
 **/node_modules/
 
 # Environment Variables
-.env
-.env.*
 !.env.example
-**/.env
-**/.env.*
 !**/.env.example
 
 # Logs
@@ -23,7 +19,7 @@ dist-ssr/
 build/
 
 # IDE / System
-.vscode/
 .idea/
 .DS_Store
 Thumbs.db
+config.bat
